@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables — never commit these
+.env
+.env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.staging
+.env.staging.local
+.env.test
+.env.test.local
+.env.*.local
+
+# Claude Code session/memory files
+.claude/
+
+# CLAUDE.md contains project-specific AI instructions and should stay local
+CLAUDE.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
