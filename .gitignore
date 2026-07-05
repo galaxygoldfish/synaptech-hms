@@ -1,8 +1,15 @@
 # Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
+pnpm-lock.yaml
 
 # Build output
 dist/
+build/
+coverage/
 
 # Environment variables — never commit these
 .env
@@ -23,9 +30,15 @@ dist/
 # CLAUDE.md contains project-specific AI instructions and should stay local
 CLAUDE.md
 
+# Logs
+*.log
+logs/
+
 # OS files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # IDE/editor
 .vscode/
@@ -35,3 +48,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Misc
+*.cache
+*.tmp
+*.temp
+.npm
+.npmcache

@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import type { Profile } from '../types'
+import type { Profile } from '../types/index'
 import styles from './ProfileSetupPage.module.css'
 
 function NeuronIcon() {

@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
 import { PublicRoute, SetupRoute, PrivateRoute, AdminRoute } from '../router'
-import type { Profile } from '../types'
+import type { Profile } from '../types/index'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
 
