@@ -1,102 +1,103 @@
 import '../styles.css'
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { fetchActions, fetchDashboard } from "../api";
-import { ActionList } from "../components/admin-dashboard/ActionList";
-import { Header } from "../components/admin-dashboard/Header";
-import { ProfileModal } from "../components/admin-dashboard/ProfileModal";
-import { SearchBar } from "../components/admin-dashboard/SearchBar";
-import { StatCards } from "../components/admin-dashboard/StatCards";
-import type { ActionGroup, DashboardStats, UserProfile } from "../types";
+import { supabase } from '../lib/supabase'
+import { actionGroups } from '../data/actions'
+import { ActionList } from '../components/admin-dashboard/ActionList'
+import { Header } from '../components/admin-dashboard/Header'
+import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
+import { SearchBar } from '../components/admin-dashboard/SearchBar'
+import { StatCards } from '../components/admin-dashboard/StatCards'
+import type { DashboardStats, UserProfile } from '../types'
 
 export default function AdminHomePage() {
-  const { signOut } = useAuth()
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [allGroups, setAllGroups] = useState<ActionGroup[]>([]);
-  const [searchResults, setSearchResults] = useState<ActionGroup[]>([]);
-  const [query, setQuery] = useState("");
-  const [isProfileOpen, setProfileOpen] = useState(false);
-  const [isLoading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { profile, signOut } = useAuth()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [query, setQuery] = useState('')
+  const [isProfileOpen, setProfileOpen] = useState(false)
+  const [isLoading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
 
-    Promise.all([fetchDashboard(), fetchActions()])
-      .then(([dashboard, actions]) => {
-        if (cancelled) return;
-        setStats(dashboard.stats);
-        setUser(dashboard.user);
-        setAllGroups(actions.groups);
+    Promise.all([
+      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'overdue'),
+      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'pending_checkout'),
+      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'pending_return'),
+    ])
+      .then(([active, overdue, pendingReqs, pendingReturns]) => {
+        if (cancelled) return
+        if (active.error ?? overdue.error ?? pendingReqs.error ?? pendingReturns.error) {
+          setError("Couldn't load dashboard stats.")
+          return
+        }
+        setStats({
+          activeLoans:     active.count        ?? 0,
+          overdueLoans:    overdue.count       ?? 0,
+          pendingRequests: pendingReqs.count   ?? 0,
+          pendingReturns:  pendingReturns.count ?? 0,
+        })
       })
       .catch(() => {
-        if (!cancelled) setError("Couldn't load the dashboard. Check that the API server is running.");
+        if (!cancelled) setError("Couldn't load the dashboard.")
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        if (!cancelled) setLoading(false)
+      })
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => { cancelled = true }
+  }, [])
 
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      setSearchResults([]);
-      return;
+  const user = useMemo<UserProfile | null>(() => {
+    if (!profile) return null
+    return {
+      name:     `${profile.first_name} ${profile.last_name}`,
+      role:     profile.role === 'admin' ? 'ADMINISTRATOR' : 'MEMBER',
+      email:    profile.uw_email,
+      handle:   profile.discord,
+      location: profile.address,
     }
+  }, [profile])
 
-    let cancelled = false;
-    const timeout = setTimeout(() => {
-      fetchActions(trimmed)
-        .then((res) => {
-          if (!cancelled) setSearchResults(res.groups);
-        })
-        .catch(() => {
-          if (!cancelled) setSearchResults([]);
-        });
-    }, 120);
+  const visibleGroups = useMemo(() => {
+    const trimmed = query.trim().toLowerCase()
+    if (!trimmed) return actionGroups
+    return actionGroups
+      .map(group => ({
+        category: group.category,
+        items: group.items.filter(item => item.label.toLowerCase().includes(trimmed)),
+      }))
+      .filter(group => group.items.length > 0)
+  }, [query])
 
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [query]);
-
-  const isSearching = query.trim().length > 0;
-  const visibleGroups = useMemo(
-    () => (isSearching ? searchResults : allGroups),
-    [isSearching, searchResults, allGroups]
-  );
+  const isSearching = query.trim().length > 0
 
   const handleAction = (actionId: string) => {
-    // Placeholder: wire this up to routing / real screens as they're built.
     // eslint-disable-next-line no-console
-    console.log("Navigate to action:", actionId);
-  };
+    console.log('Navigate to action:', actionId)
+  }
 
   const handleLogOut = () => {
-    setProfileOpen(false);
-    signOut();
-  };
+    setProfileOpen(false)
+    signOut()
+  }
 
   if (isLoading) {
     return (
       <div className="app-shell app-shell--centered">
         <p className="status-text">Loading dashboard…</p>
       </div>
-    );
+    )
   }
 
   if (error || !stats || !user) {
     return (
       <div className="app-shell app-shell--centered">
-        <p className="status-text status-text--error">{error ?? "Something went wrong."}</p>
+        <p className="status-text status-text--error">{error ?? 'Something went wrong.'}</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -121,5 +122,5 @@ export default function AdminHomePage() {
         <ProfileModal user={user} onClose={() => setProfileOpen(false)} onLogOut={handleLogOut} />
       )}
     </div>
-  );
+  )
 }
