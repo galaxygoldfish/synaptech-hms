@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
 import { actionGroups, currentUser, stats } from "./data";
+import { currentMember, currentLoan, memberActions } from "./memberData";
 import { ActionGroup } from "./types";
 
 const app = express();
@@ -32,6 +33,21 @@ app.get("/api/actions", (req: Request, res: Response) => {
     .filter((group) => group.items.length > 0);
 
   res.json({ groups: filteredGroups });
+});
+
+// GET /api/member/dashboard - the logged-in member, their most relevant current
+// loan (or null), and whether they have any overdue hardware
+app.get("/api/member/dashboard", (_req: Request, res: Response) => {
+  res.json({
+    user: currentMember,
+    loan: currentLoan,
+    hasOverdueLoan: currentLoan?.status === "OVERDUE",
+  });
+});
+
+// GET /api/member/actions - the flat list of home-screen actions
+app.get("/api/member/actions", (_req: Request, res: Response) => {
+  res.json({ items: memberActions });
 });
 
 app.get("/api/health", (_req: Request, res: Response) => {

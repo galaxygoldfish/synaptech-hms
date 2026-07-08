@@ -291,6 +291,10 @@ button {
   flex: 1;
 }
 
+.action-row__label-mobile {
+  display: none;
+}
+
 .action-row__chevron {
   display: flex;
   color: #9aa1ac;
@@ -409,12 +413,313 @@ button {
   filter: brightness(0.97);
 }
 
+/* My hardware card (user dashboard) */
+
+.hardware-section {
+  margin-bottom: 20px;
+}
+
+.hardware-section .action-group__title {
+  margin-bottom: 12px;
+}
+
+.hardware-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.hardware-card--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.hardware-card--empty svg {
+  color: #c7ccd4;
+}
+
+.hardware-card--empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.hardware-card--active,
+.hardware-card--due-soon,
+.hardware-card--overdue {
+  display: flex;
+  gap: 16px;
+}
+
+.hardware-card--due-soon {
+  background: var(--olive-bg);
+  border-color: transparent;
+}
+
+.hardware-card--overdue {
+  background: var(--red-bg);
+  border-color: transparent;
+}
+
+.hardware-card__thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  background: var(--row-bg);
+  color: #8b93a1;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hardware-card--due-soon .hardware-card__thumb,
+.hardware-card--overdue .hardware-card__thumb {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.hardware-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hardware-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.hardware-card--due-soon .hardware-card__date {
+  color: var(--olive-fg);
+}
+
+.hardware-card--overdue .hardware-card__date {
+  color: var(--red-fg);
+}
+
+.hardware-card__date {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.hardware-card__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Checkout CTA + action list row */
+
+.app-main__row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.checkout-cta-wrap {
+  position: relative;
+}
+
+.checkout-cta {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  background: var(--blue-bg);
+  color: var(--blue-fg);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+}
+
+.checkout-cta__icon {
+  display: flex;
+  margin-bottom: 4px;
+}
+
+.checkout-cta__title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.checkout-cta__subtitle {
+  font-size: 12.5px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.checkout-cta--disabled {
+  background: var(--row-bg);
+  color: #aab2bf;
+  cursor: not-allowed;
+}
+
+/* Desktop-only inline warning that swaps in for the CTA card */
+
+.inline-warning {
+  display: none;
+}
+
+.app-main__body--actions {
+  padding: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.app-main__body--actions .action-group__items {
+  width: 100%;
+}
+
+/* Overdue warning modal (mobile only - see media query below) */
+
+.warning-modal {
+  width: 100%;
+  max-width: 340px;
+  background: var(--panel);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px 24px;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(20, 26, 36, 0.22);
+}
+
+.warning-modal__icon {
+  display: flex;
+  justify-content: center;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.warning-modal p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.warning-modal__ok {
+  width: 100%;
+  background: var(--text-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.profile-modal__badge--member {
+  background: var(--blue-bg);
+  color: var(--blue-fg);
+}
+
+/* Desktop only: clicking the disabled CTA swaps it for an inline warning
+   (no dismiss button in the wireframe - click it to dismiss). */
+@media (min-width: 641px) {
+  .checkout-cta-wrap--warning .checkout-cta {
+    display: none;
+  }
+
+  .checkout-cta-wrap--warning .inline-warning {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 100%;
+    text-align: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px 20px;
+    cursor: pointer;
+  }
+
+  .inline-warning__icon {
+    color: var(--text-primary);
+  }
+
+  .inline-warning p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-primary);
+  }
+
+  /* Mobile-only modal is hidden on desktop; the inline warning above is used instead */
+  .warning-overlay {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
-  .stat-row {
-    grid-template-columns: repeat(2, 1fr);
+  .app-header__brand-muted {
+    display: none;
+  }
+
+  .app-header__actions .pill-button {
+    padding: 8px;
+    width: 38px;
+    height: 38px;
+    justify-content: center;
+    border-radius: 999px;
+  }
+
+  .app-header__actions .pill-button span {
+    display: none;
+  }
+
+  .app-main__row {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-cta {
+    flex-direction: row;
+    justify-content: center;
+    padding: 14px;
+  }
+
+  .checkout-cta__icon {
+    margin-bottom: 0;
+  }
+
+  .checkout-cta__subtitle {
+    display: none;
+  }
+
+  .hardware-card--active,
+  .hardware-card--due-soon,
+  .hardware-card--overdue {
+    flex-direction: column;
+  }
+
+  .action-row__label-desktop {
+    display: none;
+  }
+
+  .action-row__label-mobile {
+    display: inline;
   }
 
   .app-header__brand h1 {
     font-size: 15px;
   }
 }
+
