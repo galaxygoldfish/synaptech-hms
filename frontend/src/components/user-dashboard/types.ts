@@ -17,13 +17,3 @@ export interface MemberActionItem {
   mobileLabel?: string;
   icon: MemberIconKey;
 }
-
-export interface MemberDashboardResponse {
-  user: import("../../types").UserProfile;
-  loan: LoanSummary | null;
-  hasOverdueLoan: boolean;
-}
-
-export interface MemberActionsResponse {
-  items: MemberActionItem[];
-}

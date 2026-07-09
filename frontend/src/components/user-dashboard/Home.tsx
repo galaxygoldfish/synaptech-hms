@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { fetchMemberActions, fetchMemberDashboard } from "./api";
+import { useEffect, useMemo, useState } from "react";
+import { fetchCurrentLoan } from "./api";
 import { ActionList } from "./ActionList";
 import { CheckoutCallToAction } from "./CheckoutCallToAction";
 import { Header } from "./Header";
@@ -7,32 +7,29 @@ import { InlineOverdueWarning } from "./InlineOverdueWarning";
 import { MyHardwareCard } from "./MyHardwareCard";
 import { OverdueWarningModal } from "./OverdueWarningModal";
 import { ProfileModal } from "./ProfileModal";
-import type { LoanSummary, MemberActionItem } from "./types";
+import type { LoanSummary } from "./types";
 import type { UserProfile } from "../../types";
+import { useAuth } from "../../context/AuthContext";
+import { memberActions } from "../../data/memberActions";
 
 export default function Home() {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const { profile, signOut } = useAuth();
   const [loan, setLoan] = useState<LoanSummary | null>(null);
-  const [hasOverdueLoan, setHasOverdueLoan] = useState(false);
-  const [actions, setActions] = useState<MemberActionItem[]>([]);
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isWarningOpen, setWarningOpen] = useState(false);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!profile) return;
     let cancelled = false;
 
-    Promise.all([fetchMemberDashboard(), fetchMemberActions()])
-      .then(([dashboard, actionsRes]) => {
-        if (cancelled) return;
-        setUser(dashboard.user);
-        setLoan(dashboard.loan);
-        setHasOverdueLoan(dashboard.hasOverdueLoan);
-        setActions(actionsRes.items);
+    fetchCurrentLoan(profile.id)
+      .then((currentLoan) => {
+        if (!cancelled) setLoan(currentLoan);
       })
       .catch(() => {
-        if (!cancelled) setError("Couldn't load the dashboard. Check that the API server is running.");
+        if (!cancelled) setError("Couldn't load your hardware loan.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -41,7 +38,20 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profile]);
+
+  const user = useMemo<UserProfile | null>(() => {
+    if (!profile) return null;
+    return {
+      name: `${profile.first_name} ${profile.last_name}`,
+      role: profile.role === "admin" ? "ADMINISTRATOR" : "MEMBER",
+      email: profile.uw_email,
+      handle: profile.discord,
+      location: profile.address,
+    };
+  }, [profile]);
+
+  const hasOverdueLoan = loan?.status === "OVERDUE";
 
   const handleCheckoutClick = () => {
     if (hasOverdueLoan) {
@@ -67,9 +77,7 @@ export default function Home() {
 
   const handleLogOut = () => {
     setProfileOpen(false);
-    // Placeholder for real auth/session teardown.
-    // eslint-disable-next-line no-console
-    console.log("User logged out");
+    signOut();
   };
 
   if (isLoading) {
@@ -101,7 +109,7 @@ export default function Home() {
             {hasOverdueLoan && <InlineOverdueWarning onDismiss={() => setWarningOpen(false)} />}
           </div>
           <div className="app-main__body app-main__body--actions">
-            <ActionList items={actions} onSelect={handleAction} />
+            <ActionList items={memberActions} onSelect={handleAction} />
           </div>
         </div>
       </main>
