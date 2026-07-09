@@ -1,32 +1,63 @@
-# React + TypeScript + Vite
+# Synaptech HMS
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Synaptech HMS is a hardware management system for Synaptech that helps the club track and organize its equipment. The platform is designed to support both an admin experience and a user experience so inventory can be managed efficiently while members can check out hardware when needed.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Admin-side dashboard for managing hardware inventory and club operations
+- User-side experience for browsing available equipment and requesting checkouts
+- Centralized views for inventory status and actions
+- Simple API-backed frontend for rapid development and iteration
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `backend/` contains the Express API server
+- `frontend/` contains the React + Vite client application
 
-## Expanding the Oxlint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- Frontend: React, TypeScript, Vite
+- Backend: Express, TypeScript
+- Styling: custom CSS in the frontend
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Getting Started
+
+### Prerequisites
+
+- Node.js
+- npm
+
+### Install dependencies
+
+```bash
+cd backend
+npm install
+
+cd ../frontend
+npm install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### Run the backend
+
+```bash
+cd backend
+npm run dev
+```
+
+### Run the frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend is configured to proxy API requests to the backend during local development.
+
+## Development Notes
+
+- The backend serves mock and structured data for dashboard and action endpoints.
+- The frontend currently focuses on the admin dashboard experience, with room to expand into full user workflows.
+
+## License
+
+This project is for Synaptech club use and is intended for internal development and demonstration.
