@@ -1,0 +1,73 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+
+.modal {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 2.5rem 2.25rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.iconWrap {
+  margin-bottom: 1.125rem;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--black);
+  margin-bottom: 1.25rem;
+}
+
+.headingError {
+  color: #dc2626;
+}
+
+.body {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--gray-600);
+  margin-bottom: 2rem;
+}
+
+.button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.875rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease;
+}
+
+.button:hover {
+  background: #1f2937;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
