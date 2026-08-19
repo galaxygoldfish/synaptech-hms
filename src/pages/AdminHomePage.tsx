@@ -1,7 +1,8 @@
 import '../styles.css'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { bucketForLoanItem, fetchAllLoanRequestItems } from '../lib/loanRequests'
 import { actionGroups } from '../data/actions'
 import { ActionList } from '../components/admin-dashboard/ActionList'
 import { Header } from '../components/admin-dashboard/Header'
@@ -9,8 +10,10 @@ import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { SearchBar } from '../components/admin-dashboard/SearchBar'
 import { StatCards } from '../components/admin-dashboard/StatCards'
 import type { DashboardStats, UserProfile } from '../types'
+import styles from '../components/admin-dashboard/AdminHome.module.css'
 
 export default function AdminHomePage() {
+  const navigate = useNavigate()
   const { profile, signOut } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [query, setQuery] = useState('')
@@ -21,24 +24,18 @@ export default function AdminHomePage() {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([
-      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'overdue'),
-      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'pending_checkout'),
-      supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'pending_return'),
-    ])
-      .then(([active, overdue, pendingReqs, pendingReturns]) => {
+    fetchAllLoanRequestItems()
+      .then((items) => {
         if (cancelled) return
-        if (active.error ?? overdue.error ?? pendingReqs.error ?? pendingReturns.error) {
-          setError("Couldn't load dashboard stats.")
-          return
+        const counts = { activeLoans: 0, overdueLoans: 0, pendingRequests: 0, pendingReturns: 0 }
+        for (const item of items) {
+          const bucket = bucketForLoanItem(item)
+          if (bucket === 'active') counts.activeLoans += 1
+          else if (bucket === 'overdue') counts.overdueLoans += 1
+          else if (bucket === 'requests') counts.pendingRequests += 1
+          else if (bucket === 'returns') counts.pendingReturns += 1
         }
-        setStats({
-          activeLoans:     active.count        ?? 0,
-          overdueLoans:    overdue.count       ?? 0,
-          pendingRequests: pendingReqs.count   ?? 0,
-          pendingReturns:  pendingReturns.count ?? 0,
-        })
+        setStats(counts)
       })
       .catch(() => {
         if (!cancelled) setError("Couldn't load the dashboard.")
@@ -75,6 +72,26 @@ export default function AdminHomePage() {
   const isSearching = query.trim().length > 0
 
   const handleAction = (actionId: string) => {
+    if (actionId === 'manage-inventory') {
+      navigate('/adminHome/inventory')
+      return
+    }
+    if (actionId === 'add-item') {
+      navigate('/adminHome/add-item')
+      return
+    }
+    if (actionId === 'view-loans') {
+      navigate('/adminHome/loans')
+      return
+    }
+    if (actionId === 'view-members') {
+      navigate('/adminHome/members')
+      return
+    }
+    if (actionId === 'get-labels') {
+      navigate('/adminHome/get-labels')
+      return
+    }
     // eslint-disable-next-line no-console
     console.log('Navigate to action:', actionId)
   }
@@ -101,21 +118,19 @@ export default function AdminHomePage() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={styles.page}>
       <Header userName={user.name} onProfileClick={() => setProfileOpen(true)} />
 
-      <main className="app-main">
+      <main className={styles.main}>
         {!isSearching && <StatCards stats={stats} />}
 
         <SearchBar value={query} onChange={setQuery} />
 
-        <div className="app-main__body">
-          <ActionList
-            groups={visibleGroups}
-            showCategoryLabels={!isSearching}
-            onSelect={handleAction}
-          />
-        </div>
+        <ActionList
+          groups={visibleGroups}
+          showCategoryLabels={!isSearching}
+          onSelect={handleAction}
+        />
       </main>
 
       {isProfileOpen && (

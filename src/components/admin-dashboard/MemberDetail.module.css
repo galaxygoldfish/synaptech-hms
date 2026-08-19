@@ -1,0 +1,188 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: 100%;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ── Top row (back button + centered heading) ────────────────── */
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+
+  .heading {
+    font-size: 1.375rem;
+  }
+}
+
+/* ── Status ───────────────────────────────────────────────── */
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+/* ── Details card ─────────────────────────────────────────── */
+
+.card {
+  width: min(64rem, 100%);
+  margin: 0 auto;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: #f4f4f4;
+  border-radius: 0.75rem;
+}
+
+.rowLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+}
+
+.rowValue {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.privilegeBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5625rem 1.375rem;
+  border-radius: 999px;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.privilegeBadgeMember {
+  background: rgba(131, 156, 197, 0.17);
+  color: rgba(126, 149, 195, 0.93);
+}
+
+.privilegeBadgeAdmin {
+  background: rgba(197, 131, 131, 0.17);
+  color: rgba(195, 126, 126, 0.93);
+}
+
+@media (max-width: 640px) {
+  .row {
+    padding: 1.125rem 1.25rem;
+  }
+
+  .rowLabel,
+  .rowValue {
+    font-size: 1.0625rem;
+  }
+}
+
+/* ── Account actions ──────────────────────────────────────── */
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.deleteButton,
+.roleButton {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.625rem;
+  padding: 0.75rem 1.375rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+}
+
+.deleteButton {
+  background: rgba(197, 131, 131, 0.44);
+  border: 3px solid rgba(197, 131, 131, 0.44);
+}
+
+.deleteButton:hover {
+  background: rgba(197, 131, 131, 0.6);
+}
+
+.roleButton {
+  background: rgba(131, 156, 197, 0.44);
+  border: 3px solid rgba(131, 156, 197, 0.44);
+}
+
+.roleButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}

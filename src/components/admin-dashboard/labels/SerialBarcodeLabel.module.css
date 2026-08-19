@@ -1,0 +1,58 @@
+.label {
+  position: relative;
+  width: 581px;
+  height: 315px;
+  background: var(--white);
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  font-family: 'Rubik', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 39px;
+}
+
+.brainLogo {
+  height: 46px;
+  width: auto;
+  display: block;
+}
+
+.wordmark {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 40px;
+  color: var(--welcome-blue);
+  line-height: 1;
+}
+
+.barcode {
+  position: absolute;
+  left: 42px;
+  top: 105px;
+  right: 42px;
+  font-family: 'Libre Barcode 128', cursive;
+  font-size: 150px;
+  line-height: 1;
+  color: var(--black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
+}
+
+.serialText {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 230px;
+  font-size: 40px;
+  color: var(--black);
+  text-align: center;
+}

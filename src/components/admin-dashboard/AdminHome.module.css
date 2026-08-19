@@ -1,0 +1,246 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.75rem clamp(1.25rem, 4vw, 2.4375rem);
+}
+
+.profilePill {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: 2px solid rgba(0, 0, 0, 0.66);
+  border-radius: 1rem;
+  padding: 0.75rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+}
+
+.profilePill:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.profilePillIcon {
+  width: 0.9375rem;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.profilePillName {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+}
+
+@media (max-width: 640px) {
+  .profilePill {
+    gap: 0;
+    padding: 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .profilePillName {
+    display: none;
+  }
+}
+
+/* ── Main ─────────────────────────────────────────────────── */
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 80%;
+  margin: 0 auto;
+  padding: 0.5rem 0 0;
+}
+
+/* ── Stat cards ───────────────────────────────────────────── */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .statRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .statRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.statCard {
+  border-radius: 1.25rem;
+  border: 3px solid transparent;
+  padding: 1.75rem 1rem;
+  text-align: center;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.statCard:hover {
+  filter: brightness(0.97);
+}
+
+.statCardValue {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: clamp(2.25rem, 5vw, 3.75rem);
+  line-height: 1.1;
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+
+.statCardLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  opacity: 0.7;
+}
+
+.statCardBlue {
+  background: rgba(131, 171, 197, 0.44);
+  border-color: rgba(131, 171, 197, 0.86);
+  color: #103a66;
+}
+
+.statCardRed {
+  background: rgba(197, 131, 131, 0.44);
+  border-color: rgba(215, 160, 160, 0.86);
+  color: #b03838;
+}
+
+.statCardOlive {
+  background: rgba(187, 197, 131, 0.44);
+  border-color: rgba(187, 197, 131, 0.86);
+  color: #525712;
+}
+
+.statCardGreen {
+  background: rgba(132, 197, 131, 0.44);
+  border-color: rgba(132, 197, 131, 0.86);
+  color: #0b5b0a;
+}
+
+/* ── Search bar ───────────────────────────────────────────── */
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f7f7f7;
+  border: 3px solid rgba(0, 0, 0, 0.2);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.75rem;
+}
+
+.searchBarIcon {
+  width: 1.375rem;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.searchBarInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: var(--black);
+}
+
+.searchBarInput::placeholder {
+  color: #c4c4c4;
+}
+
+/* ── Action list ──────────────────────────────────────────── */
+
+.actionsCard {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+}
+
+.actionGroup + .actionGroup {
+  margin-top: 2rem;
+}
+
+.actionGroupTitle {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 400;
+  font-size: 0.9375rem;
+  color: #969696;
+  margin: 0 0 0.75rem;
+}
+
+.actionGroupItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.875rem 1.5rem;
+  text-align: left;
+}
+
+.actionRow:hover {
+  background: #ececec;
+}
+
+.actionRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.actionRowIconBox {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.actionRowIcon {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.actionRowLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: #474747;
+}
+
+.actionRowChevron {
+  width: 0.5625rem;
+  height: auto;
+  flex-shrink: 0;
+}

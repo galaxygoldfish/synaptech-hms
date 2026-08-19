@@ -1,0 +1,65 @@
+.headerActions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.saveButton,
+.deleteButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.saveButton {
+  background: rgba(161, 208, 167, 0.5);
+}
+
+.saveButton:hover:not(:disabled) {
+  background: rgba(161, 208, 167, 0.7);
+}
+
+.deleteButton {
+  background: rgba(208, 161, 161, 0.5);
+}
+
+.deleteButton:hover:not(:disabled) {
+  background: rgba(208, 161, 161, 0.7);
+}
+
+.saveButton:disabled,
+.deleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .headerActions {
+    gap: 0.5rem;
+  }
+
+  .saveButton,
+  .deleteButton {
+    padding: 0.8125rem;
+  }
+
+  .saveButton span,
+  .deleteButton span {
+    display: none;
+  }
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 4rem 0;
+}

@@ -1,0 +1,251 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 4rem;
+}
+
+/* ── Top row (back button + centered heading) ────────────────── */
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  margin-bottom: 1rem;
+}
+
+.topBackButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.topBackButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: rgba(0, 0, 0, 0.98);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .topRow {
+    margin-bottom: 0.75rem;
+  }
+
+  .topBackButton {
+    padding: 0.8125rem;
+  }
+
+  .topBackButton span {
+    display: none;
+  }
+
+  .heading {
+    font-size: 1.375rem;
+  }
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+
+.main {
+  padding: 0 clamp(1.25rem, 4vw, 2.4375rem);
+}
+
+.subtext {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: center;
+  margin: 0 auto 2.5rem;
+  max-width: 42rem;
+}
+
+@media (max-width: 640px) {
+  .subtext {
+    font-size: 1rem;
+    margin-bottom: 1.75rem;
+  }
+}
+
+/* ── Serial number input ──────────────────────────────────── */
+
+.searchBox {
+  width: min(28.5rem, 100%);
+  margin: 0 auto;
+}
+
+.serialField {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.9375rem 1.25rem;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1.25rem;
+  background: var(--white);
+  transition: border-color 0.15s ease;
+}
+
+.serialFieldError {
+  border-color: rgba(255, 0, 0, 0.5);
+}
+
+.serialPrefix {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: var(--black);
+  white-space: nowrap;
+}
+
+.serialInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: var(--black);
+  text-transform: uppercase;
+}
+
+.errorText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: #b40000;
+  text-align: center;
+  margin: 0.75rem 0 0;
+}
+
+/* ── Result card ───────────────────────────────────────────── */
+
+.card {
+  width: min(69.5rem, 100%);
+  margin: 0 auto;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: #f3f3f3;
+  border-radius: 0.9375rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.itemThumb {
+  width: 4.75rem;
+  height: 3.5rem;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.5625rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0 0 0.25rem;
+}
+
+.itemSerial {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+.itemActions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.itemActionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #616161;
+  padding: 0.25rem;
+}
+
+.itemActionButton:hover {
+  color: #373737;
+}
+
+.itemActionButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .itemRow {
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .itemName {
+    font-size: 1.125rem;
+  }
+
+  .itemSerial {
+    font-size: 0.9375rem;
+  }
+
+  .itemActions {
+    gap: 0.75rem;
+  }
+}
+
+/* ── Footer action ─────────────────────────────────────────── */
+
+.footerActions {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.5rem;
+}
+
+.nextButton {
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 3.25rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.nextButton:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.nextButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

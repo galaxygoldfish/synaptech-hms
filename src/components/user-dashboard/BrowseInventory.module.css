@@ -1,0 +1,56 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: min(78rem, 92%);
+  margin: 0 auto;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ── Back + search row ────────────────────────────────────── */
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  color: rgba(0, 0, 0, 0.66);
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.backButtonLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.66);
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.9375rem;
+    border-radius: 0.875rem;
+  }
+
+  .backButtonLabel {
+    display: none;
+  }
+}

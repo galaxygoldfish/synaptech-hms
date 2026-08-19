@@ -1,5 +1,6 @@
 import type { LoanSummary } from "./types";
-import { BrainOutlineIcon, DeviceIcon } from "./icons";
+import { CognitiveBrainIconFilled, DeviceIcon } from "./icons";
+import styles from "./Home.module.css";
 
 interface MyHardwareCardProps {
   loan: LoanSummary | null;
@@ -18,13 +19,13 @@ const statusClass: Record<LoanSummary["status"], string> = {
 
 export function MyHardwareCard({ loan, onMoreDetails }: MyHardwareCardProps) {
   return (
-    <section className="hardware-section">
-      <h2 className="action-group__title">My hardware</h2>
+    <section className={styles.hardwareCard}>
+      <h2 className={styles.hardwareLabel}>My hardware</h2>
 
       {!loan && (
-        <div className="hardware-card hardware-card--empty">
-          <BrainOutlineIcon />
-          <p>You don't have any active hardware loans.</p>
+        <div className={styles.hardwareEmpty}>
+          <CognitiveBrainIconFilled size={104} className={styles.hardwareEmptyIcon} />
+          <p className={styles.hardwareEmptyText}>You don&rsquo;t have any active hardware loans</p>
         </div>
       )}
 

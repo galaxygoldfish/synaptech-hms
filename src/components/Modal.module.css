@@ -1,8 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,40 +9,66 @@
   padding: 1.5rem;
 }
 
+.overlayWelcome {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.overlayError {
+  background: rgba(25, 0, 0, 0.22);
+}
+
 .modal {
   background: var(--white);
-  border-radius: 12px;
-  padding: 2.5rem 2.25rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 2rem 2rem 1.75rem;
   width: 100%;
-  max-width: 420px;
+  max-width: 27rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 
-.iconWrap {
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
   margin-bottom: 1.125rem;
 }
 
+.headerIcon {
+  width: 1.625rem;
+  height: 1.625rem;
+  flex-shrink: 0;
+}
+
 .heading {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.375rem;
+  line-height: 1.1;
   color: var(--black);
-  margin-bottom: 1.25rem;
 }
 
 .headingError {
-  color: #dc2626;
+  color: #b80000;
+}
+
+.bodyGroup {
+  margin-bottom: 1.75rem;
 }
 
 .body {
+  font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  line-height: 1.75;
-  color: var(--gray-600);
-  margin-bottom: 2rem;
+  line-height: 1.55;
+  color: var(--welcome-text);
+  margin: 0 0 0.9em;
+}
+
+.body:last-child {
+  margin-bottom: 0;
 }
 
 .button {
@@ -52,14 +77,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: var(--black);
+  background: #000;
   color: var(--white);
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 999px;
   padding: 0.875rem;
+  font-family: 'Bungee', var(--display-font-fallback);
   font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
   transition: background 0.15s ease;
 }
 
@@ -68,6 +92,48 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--welcome-blue);
   outline-offset: 3px;
+}
+
+.button:disabled,
+.buttonSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonIcon {
+  width: 0.8125rem;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.buttonRow .button {
+  flex: 1;
+}
+
+.buttonSecondary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--black);
+  border: none;
+  border-radius: 999px;
+  padding: 0.875rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 0.9375rem;
+  transition: background 0.15s ease;
+}
+
+.buttonSecondary:hover {
+  background: rgba(0, 0, 0, 0.14);
 }
