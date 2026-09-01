@@ -1,0 +1,81 @@
+.carousel {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+  }
+}
+
+.slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 26rem;
+  animation: fadeIn 0.6s ease;
+}
+
+.image {
+  width: clamp(15rem, 24vw, 27rem);
+  height: clamp(11rem, 18vw, 20rem);
+  object-fit: contain;
+  margin-bottom: 1.75rem;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.dotActive {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.name {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: clamp(0.9375rem, 1.2vw, 1.125rem);
+  line-height: 1.1;
+  color: var(--gray-600);
+  margin: 0 0 0.625rem;
+}
+
+.description {
+  font-family: 'Rubik', sans-serif;
+  font-size: clamp(0.8125rem, 0.95vw, 0.9375rem);
+  line-height: 1.5;
+  color: var(--gray-600);
+  margin: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    animation: none;
+  }
+}

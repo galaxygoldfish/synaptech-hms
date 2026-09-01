@@ -1,0 +1,179 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: 100%;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Toolbar (back button + search) ──────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: 3px solid transparent;
+  border-radius: 1rem;
+  padding: 1.25rem 1.75rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.searchWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+
+.card {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1rem;
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+/* ── Member list ──────────────────────────────────────────── */
+
+.memberList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.memberItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.memberItem:hover {
+  background: #ececec;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.roleBadgeMember {
+  background: rgba(131, 156, 197, 0.44);
+  color: #3c5878;
+}
+
+.roleBadgeAdmin {
+  background: rgba(197, 131, 131, 0.44);
+  color: #a3453f;
+}
+
+.memberName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memberDetail {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.66);
+  overflow: hidden;
+}
+
+.memberDetail svg {
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.memberDetail span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memberJoined {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.66);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .memberItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.625rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 0.75rem;
+  }
+
+  .memberItem {
+    padding: 1rem;
+  }
+}

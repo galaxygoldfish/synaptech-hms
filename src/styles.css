@@ -62,243 +62,12 @@ button {
   color: var(--red-fg);
 }
 
-/* Header */
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 28px;
-}
-
-.app-header__brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.app-header__brand h1 {
-  font-size: 19px;
-  margin: 0;
-  letter-spacing: 0.02em;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.app-header__brand-strong {
-  color: var(--brand-blue);
-}
-
-.app-header__brand-muted {
-  color: #aab2bf;
-  font-weight: 700;
-}
-
-.app-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pill-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.pill-button:hover {
-  border-color: #c9cdd5;
-}
-
-.icon-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-primary);
-}
-
-.icon-button:hover {
-  border-color: #c9cdd5;
-}
-
-/* Stat cards */
-
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-top: 20px;
-  border-top: 2px dashed #c7ccd4;
-  position: relative;
-}
-
-.stat-row::before,
-.stat-row::after {
-  content: "";
-  position: absolute;
-  top: -5px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #b7bdc7;
-}
-
-.stat-row::before {
-  left: -24px;
-}
-
-.stat-row::after {
-  right: -24px;
-}
-
-.stat-card {
-  border-radius: var(--radius-lg);
-  padding: 20px 18px;
-  text-align: center;
-}
-
-.stat-card__value {
-  font-size: 34px;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 8px;
-}
-
-.stat-card__label {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.stat-card--blue {
-  background: var(--blue-bg);
-  color: var(--blue-fg);
-}
-
-.stat-card--red {
-  background: var(--red-bg);
-  color: var(--red-fg);
-}
-
-.stat-card--olive {
-  background: var(--olive-bg);
-  color: var(--olive-fg);
-}
-
-.stat-card--green {
-  background: var(--green-bg);
-  color: var(--green-fg);
-}
-
-/* Search */
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 13px 16px;
-  margin-bottom: 20px;
-  color: var(--text-muted);
-}
-
-.search-bar input {
-  border: none;
-  outline: none;
-  font-size: 14px;
-  width: 100%;
-  background: transparent;
-  color: var(--text-primary);
-}
-
-.search-bar input::placeholder {
-  color: #adb3bd;
-}
-
 /* Action list */
-
-.app-main__body {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-}
 
 .action-list__empty {
   color: var(--text-muted);
   font-size: 14px;
   padding: 12px 4px;
-}
-
-.action-group + .action-group {
-  margin-top: 18px;
-}
-
-.action-group__title {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-muted);
-  margin: 0 0 8px 2px;
-}
-
-.action-group__items {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.action-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  background: var(--row-bg);
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  text-align: left;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 120ms ease;
-}
-
-.action-row:hover {
-  background: var(--row-bg-hover);
-}
-
-.action-row__icon {
-  display: flex;
-  color: #5b6472;
-  flex-shrink: 0;
-}
-
-.action-row__label {
-  flex: 1;
-}
-
-.action-row__label-mobile {
-  display: none;
-}
-
-.action-row__chevron {
-  display: flex;
-  color: #9aa1ac;
-  flex-shrink: 0;
 }
 
 /* Profile modal */
@@ -415,14 +184,6 @@ button {
 
 /* My hardware card (user dashboard) */
 
-.hardware-section {
-  margin-bottom: 20px;
-}
-
-.hardware-section .action-group__title {
-  margin-bottom: 12px;
-}
-
 .hardware-card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -522,71 +283,18 @@ button {
 
 /* Checkout CTA + action list row */
 
-.app-main__row {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 16px;
-  align-items: stretch;
-}
-
 .checkout-cta-wrap {
   position: relative;
 }
 
-.checkout-cta {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 8px;
-  background: var(--blue-bg);
-  color: var(--blue-fg);
-  border: none;
-  border-radius: var(--radius-lg);
-  padding: 24px 20px;
-}
-
-.checkout-cta__icon {
-  display: flex;
-  margin-bottom: 4px;
-}
-
-.checkout-cta__title {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.checkout-cta__subtitle {
-  font-size: 12.5px;
-  font-weight: 500;
-  opacity: 0.85;
-}
-
-.checkout-cta--disabled {
-  background: var(--row-bg);
-  color: #aab2bf;
-  cursor: not-allowed;
-}
+/* Visual appearance for the checkout CTA button lives in Home.module.css —
+   the plain .checkout-cta class below is kept only as a stable hook for the
+   overdue-warning swap selectors further down this file. */
 
 /* Desktop-only inline warning that swaps in for the CTA card */
 
 .inline-warning {
   display: none;
-}
-
-.app-main__body--actions {
-  padding: 12px;
-  display: flex;
-  align-items: center;
-}
-
-.app-main__body--actions .action-group__items {
-  width: 100%;
 }
 
 /* Overdue warning modal (mobile only - see media query below) */
@@ -670,56 +378,10 @@ button {
 }
 
 @media (max-width: 640px) {
-  .app-header__brand-muted {
-    display: none;
-  }
-
-  .app-header__actions .pill-button {
-    padding: 8px;
-    width: 38px;
-    height: 38px;
-    justify-content: center;
-    border-radius: 999px;
-  }
-
-  .app-header__actions .pill-button span {
-    display: none;
-  }
-
-  .app-main__row {
-    grid-template-columns: 1fr;
-  }
-
-  .checkout-cta {
-    flex-direction: row;
-    justify-content: center;
-    padding: 14px;
-  }
-
-  .checkout-cta__icon {
-    margin-bottom: 0;
-  }
-
-  .checkout-cta__subtitle {
-    display: none;
-  }
-
   .hardware-card--active,
   .hardware-card--due-soon,
   .hardware-card--overdue {
     flex-direction: column;
-  }
-
-  .action-row__label-desktop {
-    display: none;
-  }
-
-  .action-row__label-mobile {
-    display: inline;
-  }
-
-  .app-header__brand h1 {
-    font-size: 15px;
   }
 }
 

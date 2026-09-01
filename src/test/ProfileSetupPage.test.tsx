@@ -45,7 +45,7 @@ describe('ProfileSetupPage — form validation', () => {
     expect(screen.getByText('First name is required.')).toBeInTheDocument()
     expect(screen.getByText('Last name is required.')).toBeInTheDocument()
     expect(screen.getByText('Phone number is required.')).toBeInTheDocument()
-    expect(screen.getByText('Student ID is required.')).toBeInTheDocument()
+    expect(screen.getByText('UW student ID is required.')).toBeInTheDocument()
     expect(screen.getByText('Home address is required.')).toBeInTheDocument()
     expect(screen.getByText('Discord username is required.')).toBeInTheDocument()
   })
@@ -64,10 +64,10 @@ describe('ProfileSetupPage — form validation', () => {
     const user = userEvent.setup()
     render(<ProfileSetupPage />)
 
-    await user.type(screen.getByLabelText(/student id number/i), 'abc123')
+    await user.type(screen.getByLabelText(/uw student id/i), 'abc123')
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
-    expect(screen.getByText('Student ID must contain only numbers.')).toBeInTheDocument()
+    expect(screen.getByText('UW student ID must contain only numbers.')).toBeInTheDocument()
   })
 
   it('clears a field error once the user starts correcting it', async () => {

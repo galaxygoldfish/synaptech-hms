@@ -1,0 +1,581 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 4rem;
+}
+
+.main {
+  width: min(50.6875rem, 90%);
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding-bottom: 6rem;
+  }
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  margin-bottom: 2rem;
+}
+
+.topBackButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.topBackButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: rgba(0, 0, 0, 0.98);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .topRow {
+    margin-bottom: 1.5rem;
+  }
+
+  .topBackButton {
+    padding: 0.8125rem;
+  }
+
+  .topBackButton span {
+    display: none;
+  }
+
+  .heading {
+    font-size: 1.375rem;
+  }
+}
+
+/* ── Image dropzone ───────────────────────────────────────── */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 17.5rem;
+  border: 3px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  background: none;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.dropzone:hover {
+  border-color: rgba(0, 0, 0, 0.45);
+}
+
+.dropzoneActive {
+  border-color: var(--welcome-blue);
+  background: rgba(29, 78, 137, 0.04);
+}
+
+.dropzoneIcon {
+  width: 4.6875rem;
+  height: auto;
+  margin-bottom: 0.5rem;
+}
+
+.dropzoneLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: #b2b2b2;
+}
+
+.dropzoneLabelMobile {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .dropzoneLabelDesktop {
+    display: none;
+  }
+
+  .dropzoneLabelMobile {
+    display: inline;
+  }
+}
+
+.dropzoneSubtext {
+  font-family: 'Rubik', sans-serif;
+  font-style: italic;
+  font-size: 1.125rem;
+  color: #b2b2b2;
+}
+
+.dropzonePreview {
+  width: 100%;
+  height: 100%;
+  max-height: 17.5rem;
+  object-fit: contain;
+  border-radius: 0.875rem;
+}
+
+.dropzoneReplaceHint {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* ── Fields ───────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.input {
+  width: 100%;
+  padding: 0.9375rem 1.25rem;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1.25rem;
+  font-size: 1rem;
+  font-family: 'Rubik', sans-serif;
+  color: var(--black);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--gray-400);
+}
+
+.input:focus {
+  border-color: var(--welcome-blue);
+}
+
+.textarea {
+  composes: input;
+  resize: none;
+  min-height: 6.5625rem;
+}
+
+.select {
+  composes: input;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(0,0,0,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.25rem center;
+  background-size: 0.875rem;
+}
+
+.select:invalid {
+  color: var(--gray-400);
+}
+
+.currencyField {
+  composes: input;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.9375rem 1.25rem;
+}
+
+.currencyPrefix {
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.currencyInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: var(--black);
+}
+
+/* ── Quantity stepper ─────────────────────────────────────── */
+
+.quantityRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.quantityLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: var(--black);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f5f5f5;
+  border: 3px solid #cbcbcb;
+  border-radius: 1.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.stepperButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3125rem;
+  height: 2.3125rem;
+  border-radius: 1.25rem;
+  border: none;
+  background: none;
+}
+
+.stepperButton:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.stepperButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepperValue {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: var(--black);
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* ── Product type toggle ──────────────────────────────────── */
+
+.typeToggle {
+  display: flex;
+  gap: 0.25rem;
+  width: 100%;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1.25rem;
+  padding: 0.5625rem;
+  margin-bottom: 1.5rem;
+}
+
+.typeOption {
+  flex: 1;
+  border: none;
+  background: none;
+  border-radius: 1.25rem;
+  padding: 0.875rem;
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.typeOptionActive {
+  background: rgba(131, 156, 197, 0.17);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+@media (max-width: 640px) {
+  .typeToggle {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* ── Yes/No rows ──────────────────────────────────────────── */
+
+.yesNoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.yesNoLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: var(--black);
+}
+
+.yesNoToggle {
+  display: flex;
+  gap: 0.25rem;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1.25rem;
+  padding: 0.5625rem;
+}
+
+.yesNoOption {
+  border: none;
+  background: none;
+  border-radius: 0.5rem;
+  padding: 0.6875rem 1.125rem;
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.yesNoOptionActive {
+  background: rgba(131, 156, 197, 0.17);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+@media (max-width: 640px) {
+  .yesNoRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .yesNoLabel {
+    text-align: center;
+  }
+
+  .yesNoToggle {
+    width: 100%;
+  }
+
+  .yesNoOption {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+/* ── Add-ons card (shown when a Yes/No toggle above is YES) ──── */
+
+.addonCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 14.9375rem;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.875rem;
+  margin-top: -0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.addonCardLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: #969696;
+}
+
+.addonCardBody {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addonAddButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(131, 156, 197, 0.17);
+  border: 3px solid rgba(131, 156, 197, 0.17);
+  border-radius: 0.9375rem;
+  padding: 1rem 1.5rem;
+  color: #4a647f;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.addonAddButton:hover {
+  background: rgba(131, 156, 197, 0.28);
+}
+
+.addonList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.875rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.addonItem {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+  background: #f3f3f3;
+  border-radius: 0.9375rem;
+  padding: 0.9375rem 1.25rem;
+}
+
+.addonItemThumb {
+  flex-shrink: 0;
+  width: 4.3125rem;
+  height: 3.9375rem;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+.addonItemInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.addonItemName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.93);
+}
+
+.addonItemDescription {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.93);
+}
+
+.addonRemoveButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  opacity: 0.6;
+  padding: 0.5rem;
+}
+
+.addonRemoveButton:hover {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .addonCard {
+    padding: 1.1875rem 1.4375rem;
+  }
+
+  .addonCardLabel {
+    font-size: 0.8125rem;
+  }
+
+  .addonItem {
+    gap: 0.875rem;
+    padding: 0.75rem 0.875rem;
+  }
+
+  .addonItemThumb {
+    width: 3.4375rem;
+    height: 3.125rem;
+  }
+}
+
+.submitError {
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin: 1.5rem 0 0;
+}
+
+/* ── Footer actions ───────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 3rem;
+}
+
+@media (max-width: 640px) {
+  .actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    gap: 0.75rem;
+    margin-top: 0;
+    padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    background: var(--white);
+  }
+
+  .actions::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 2.5rem;
+    background: linear-gradient(to top, var(--white), rgba(255, 255, 255, 0));
+    pointer-events: none;
+  }
+
+  .backButton,
+  .nextButton {
+    flex: 1;
+  }
+}
+
+.backButton {
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(55, 55, 55, 0.51);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.backButton:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.nextButton {
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.nextButton:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.nextButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

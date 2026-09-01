@@ -1,5 +1,6 @@
 import type { UserProfile } from "../../types";
 import { CloseIcon, HandleIcon, MailIcon, PersonIcon, PinIcon } from "./icons";
+import styles from "./ProfileModal.module.css";
 
 interface ProfileModalProps {
   user: UserProfile;
@@ -9,38 +10,36 @@ interface ProfileModalProps {
 
 export function ProfileModal({ user, onClose, onLogOut }: ProfileModalProps) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="profile-modal" onClick={(event) => event.stopPropagation()}>
-        <button className="profile-modal__close" onClick={onClose} type="button" aria-label="Close profile">
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+        <button className={styles.close} onClick={onClose} type="button" aria-label="Close profile">
           <CloseIcon />
         </button>
 
-        <div className="profile-modal__identity">
-          <span className="profile-modal__avatar">
-            <PersonIcon size={26} />
-          </span>
+        <div className={styles.identity}>
+          <PersonIcon className={styles.avatarIcon} />
           <div>
-            <div className="profile-modal__name">{user.name}</div>
-            <span className="profile-modal__badge profile-modal__badge--member">{user.role}</span>
+            <div className={styles.name}>{user.name}</div>
+            <span className={styles.badge}>{user.role}</span>
           </div>
         </div>
 
-        <ul className="profile-modal__details">
+        <ul className={styles.details}>
           <li>
-            <MailIcon />
+            <MailIcon className={styles.detailIcon} />
             <span>{user.email}</span>
           </li>
           <li>
-            <HandleIcon />
+            <HandleIcon className={styles.detailIcon} />
             <span>{user.handle}</span>
           </li>
           <li>
-            <PinIcon />
+            <PinIcon className={styles.detailIcon} />
             <span>{user.location}</span>
           </li>
         </ul>
 
-        <button className="profile-modal__logout" onClick={onLogOut} type="button">
+        <button className={styles.logout} onClick={onLogOut} type="button">
           Log out
         </button>
       </div>

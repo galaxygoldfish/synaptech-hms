@@ -8,6 +8,12 @@
   --gray-200: #e5e7eb;
   --white: #ffffff;
 
+  --welcome-blue: #105692;
+  --welcome-heading: rgba(0, 0, 0, 0.81);
+  --welcome-text: #000000;
+  --welcome-text-muted: rgba(0, 0, 0, 0.54);
+  --display-font-fallback: 'Arial Black', sans-serif;
+
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.5;

@@ -2,23 +2,8 @@ import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import type { Profile } from '../types/index'
+import { BrandWordmark } from '../components/BrandWordmark'
 import styles from './ProfileSetupPage.module.css'
-
-function NeuronIcon() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-      <circle cx="13" cy="13" r="3.5" fill="var(--blue)" />
-      <circle cx="5"  cy="7"  r="2.25" fill="var(--blue-100)" stroke="var(--blue)" strokeWidth="1" />
-      <circle cx="21" cy="7"  r="2.25" fill="var(--blue-100)" stroke="var(--blue)" strokeWidth="1" />
-      <circle cx="4"  cy="18" r="2.25" fill="var(--blue-100)" stroke="var(--blue)" strokeWidth="1" />
-      <circle cx="22" cy="18" r="2.25" fill="var(--blue-100)" stroke="var(--blue)" strokeWidth="1" />
-      <line x1="13" y1="9.5"  x2="5"  y2="7"  stroke="var(--blue)" strokeWidth="1.25" />
-      <line x1="13" y1="9.5"  x2="21" y2="7"  stroke="var(--blue)" strokeWidth="1.25" />
-      <line x1="13" y1="16.5" x2="4"  y2="18" stroke="var(--blue)" strokeWidth="1.25" />
-      <line x1="13" y1="16.5" x2="22" y2="18" stroke="var(--blue)" strokeWidth="1.25" />
-    </svg>
-  )
-}
 
 interface FormState {
   first_name: string
@@ -56,9 +41,9 @@ function validate(form: FormState): FieldErrors {
   }
 
   if (!form.student_id.trim()) {
-    errors.student_id = 'Student ID is required.'
+    errors.student_id = 'UW student ID is required.'
   } else if (!/^\d+$/.test(form.student_id.trim())) {
-    errors.student_id = 'Student ID must contain only numbers.'
+    errors.student_id = 'UW student ID must contain only numbers.'
   }
 
   if (!form.address.trim()) errors.address = 'Home address is required.'
@@ -166,8 +151,7 @@ export default function ProfileSetupPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <NeuronIcon />
-        <span className={styles.logoText}>Synaptech Hardware</span>
+        <BrandWordmark />
       </header>
 
       <main className={styles.main}>
@@ -206,38 +190,44 @@ export default function ProfileSetupPage() {
               placeholder="(206) 555-0000"
               inputMode="tel"
             />
+          </div>
+
+          <div className={styles.row}>
             <Field
-              label="Student ID number"
+              label="UW student ID #"
               value={form.student_id}
               onChange={handleChange('student_id')}
               error={errors.student_id}
               placeholder="1234567"
               inputMode="numeric"
             />
+            <Field
+              label="UW email address"
+              value={form.uw_email}
+              onChange={() => {}}
+              locked
+            />
           </div>
 
-          <Field
-            label="UW email address"
-            value={form.uw_email}
-            onChange={() => {}}
-            locked
-          />
+          <div className={styles.row}>
+            <Field
+              label="Home address"
+              value={form.address}
+              onChange={handleChange('address')}
+              error={errors.address}
+              placeholder="123 Main St, Seattle, WA 98101"
+            />
+          </div>
 
-          <Field
-            label="Home address"
-            value={form.address}
-            onChange={handleChange('address')}
-            error={errors.address}
-            placeholder="123 Main St, Seattle, WA 98101"
-          />
-
-          <Field
-            label="Discord username"
-            value={form.discord}
-            onChange={handleChange('discord')}
-            error={errors.discord}
-            placeholder="username"
-          />
+          <div className={styles.row}>
+            <Field
+              label="Discord username"
+              value={form.discord}
+              onChange={handleChange('discord')}
+              error={errors.discord}
+              placeholder="username"
+            />
+          </div>
 
           {submitError && <p className={styles.submitError}>{submitError}</p>}
 
@@ -254,7 +244,8 @@ export default function ProfileSetupPage() {
 
         <p className={styles.footer}>
           We require this information for record-keeping purposes for users of
-          Synaptech hardware in accordance with our Hardware Checkout &amp; Usage Policy.
+          Synaptech hardware in accordance with our{' '}
+          <span className={styles.footerLink}>Hardware Checkout &amp; Usage Policy</span>.
         </p>
       </main>
     </div>

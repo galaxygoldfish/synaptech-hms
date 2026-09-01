@@ -1,4 +1,6 @@
-import { BrainLogoIcon, ClockIcon, PersonIcon } from "./icons";
+import { UserIconFilled } from "./icons";
+import { BrandWordmark } from "../BrandWordmark";
+import styles from "./AdminHome.module.css";
 
 interface HeaderProps {
   userName: string;
@@ -7,23 +9,12 @@ interface HeaderProps {
 
 export function Header({ userName, onProfileClick }: HeaderProps) {
   return (
-    <header className="app-header">
-      <div className="app-header__brand">
-        <BrainLogoIcon />
-        <h1>
-          <span className="app-header__brand-strong">Synaptech</span>{" "}
-          <span className="app-header__brand-muted">Hardware Management</span>
-        </h1>
-      </div>
-      <div className="app-header__actions">
-        <button className="pill-button" onClick={onProfileClick} type="button">
-          <PersonIcon />
-          <span>{userName}</span>
-        </button>
-        <button className="icon-button" type="button" aria-label="Recent activity">
-          <ClockIcon />
-        </button>
-      </div>
+    <header className={styles.header}>
+      <BrandWordmark mutedText="Hardware Management" hideHardwareOnMobile compact />
+      <button className={styles.profilePill} onClick={onProfileClick} type="button">
+        <UserIconFilled size={15} className={styles.profilePillIcon} />
+        <span className={styles.profilePillName}>{userName}</span>
+      </button>
     </header>
   );
 }

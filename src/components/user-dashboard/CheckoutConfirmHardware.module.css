@@ -1,0 +1,358 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(78rem, 92%);
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem;
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+/* ── Layout ───────────────────────────────────────────────── */
+
+.layoutCentered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  max-width: 48rem;
+  margin: 2rem auto 0;
+}
+
+.layoutWithAddons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  align-items: stretch;
+  gap: 2.5rem;
+  margin-top: 1.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.layoutWithAddons .linkRows {
+  max-width: 28rem;
+}
+
+@media (max-width: 900px) {
+  .layoutWithAddons {
+    grid-template-columns: 1fr;
+    flex: initial;
+  }
+
+  .layoutWithAddons .linkRows {
+    max-width: none;
+  }
+
+  .addonPanels {
+    height: auto;
+  }
+
+  .addonPanel {
+    flex: initial;
+  }
+}
+
+.itemColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* ── Item info ────────────────────────────────────────────── */
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  text-align: center;
+}
+
+.itemImage {
+  width: min(20rem, 100%);
+  max-height: 15rem;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+
+.itemName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.875rem;
+  color: rgba(0, 0, 0, 0.8);
+  margin: 0;
+}
+
+.itemDescription {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+  max-width: 30rem;
+}
+
+.itemAvailable {
+  font-family: 'Rubik', sans-serif;
+  font-style: italic;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+/* ── Documentation / help links ──────────────────────────────── */
+
+.linkRows {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  background: #f4f4f4;
+  border: none;
+  padding: 1rem 1.125rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: #474747;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.linkRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.linkRowTop {
+  border-radius: 0.625rem 0.625rem 0.3125rem 0.3125rem;
+}
+
+.linkRowBottom {
+  border-radius: 0.3125rem 0.3125rem 0.625rem 0.625rem;
+}
+
+.linkRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.0625rem;
+}
+
+/* ── Add-on panels ────────────────────────────────────────── */
+
+.addonPanels {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.addonPanel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.5625rem;
+}
+
+.addonPanelTitle {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: #969696;
+  margin: 0 0 1.25rem;
+}
+
+.addonList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.addonCard {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f3f3f3;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-radius 0.15s ease;
+}
+
+.addonCard:hover:not(:disabled) {
+  background: #ececec;
+}
+
+.addonCardSelected {
+  background: rgba(16, 86, 146, 0.2);
+  border-radius: 4.0625rem;
+}
+
+.addonCardSelected:hover:not(:disabled) {
+  background: rgba(16, 86, 146, 0.28);
+}
+
+.addonCardOutOfStock {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.addonThumb {
+  flex-shrink: 0;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+.addonInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.addonName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+}
+
+.addonDescription {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.93);
+}
+
+.addonAvailable {
+  font-family: 'Rubik', sans-serif;
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.addonIcon {
+  flex-shrink: 0;
+}
+
+/* ── Footer actions ───────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 3rem;
+}
+
+.backButton {
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(55, 55, 55, 0.51);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.backButton:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.nextButton {
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.nextButton:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.nextButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding-bottom: 6rem;
+  }
+
+  .layoutCentered {
+    margin-top: 1rem;
+    gap: 1.5rem;
+  }
+
+  .itemName {
+    font-size: 1.5rem;
+  }
+
+  .addonPanel {
+    padding: 1.125rem;
+  }
+
+  .actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    gap: 0.75rem;
+    margin-top: 0;
+    padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    background: var(--white);
+  }
+
+  .actions::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 2.5rem;
+    background: linear-gradient(to top, var(--white), rgba(255, 255, 255, 0));
+    pointer-events: none;
+  }
+
+  .backButton,
+  .nextButton {
+    flex: 1;
+  }
+}

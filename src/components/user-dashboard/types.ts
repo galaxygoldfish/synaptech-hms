@@ -16,4 +16,6 @@ export interface MemberActionItem {
   /** Shown instead of `label` at mobile widths, e.g. "My hardware loans" -> "My loan history" */
   mobileLabel?: string;
   icon: MemberIconKey;
+  /** External URL — when set, the row renders as a link (opens in a new tab) instead of a button. */
+  href?: string;
 }

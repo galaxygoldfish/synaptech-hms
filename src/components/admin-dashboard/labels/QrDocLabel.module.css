@@ -1,0 +1,80 @@
+.label {
+  position: relative;
+  width: 581px;
+  min-height: 636px;
+  box-sizing: border-box;
+  background: var(--white);
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  font-family: 'Rubik', sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 34px 22px 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.brainLogo {
+  height: 46px;
+  width: auto;
+  display: block;
+}
+
+.wordmark {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 40px;
+  color: var(--welcome-blue);
+  line-height: 1;
+}
+
+.productName {
+  font-weight: 500;
+  font-size: 50px;
+  color: var(--black);
+  line-height: 1.2;
+  margin: 0 0 35px;
+}
+
+.panel {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 15px 30px;
+  min-height: 204px;
+}
+
+.panel + .panel {
+  margin-top: 17px;
+}
+
+.panelDocs {
+  background: rgba(243, 209, 234, 0.57);
+}
+
+.panelPolicy {
+  background: rgba(217, 225, 254, 0.48);
+}
+
+.qrCode {
+  width: 173px;
+  height: 173px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.panelText {
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1.25;
+  color: var(--black);
+  margin: 0;
+}

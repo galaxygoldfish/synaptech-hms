@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchCurrentLoan } from "./api";
 import { ActionList } from "./ActionList";
 import { CheckoutCallToAction } from "./CheckoutCallToAction";
@@ -11,8 +12,10 @@ import type { LoanSummary } from "./types";
 import type { UserProfile } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { memberActions } from "../../data/memberActions";
+import styles from "./Home.module.css";
 
 export default function Home() {
+  const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const [loan, setLoan] = useState<LoanSummary | null>(null);
   const [isProfileOpen, setProfileOpen] = useState(false);
@@ -58,9 +61,7 @@ export default function Home() {
       setWarningOpen(true);
       return;
     }
-    // Placeholder: wire this up to the checkout request flow once it's built.
-    // eslint-disable-next-line no-console
-    console.log("Navigate to: request to check out hardware");
+    navigate("/home/checkout");
   };
 
   const handleMoreDetails = () => {
@@ -70,6 +71,14 @@ export default function Home() {
   };
 
   const handleAction = (actionId: string) => {
+    if (actionId === "browse-inventory") {
+      navigate("/home/browse");
+      return;
+    }
+    if (actionId === "my-hardware-loans") {
+      navigate("/home/loans");
+      return;
+    }
     // Placeholder: wire this up to routing / real screens as they're built.
     // eslint-disable-next-line no-console
     console.log("Navigate to action:", actionId);
@@ -97,18 +106,18 @@ export default function Home() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={styles.page}>
       <Header userName={user.name.split(" ")[0]} onProfileClick={() => setProfileOpen(true)} />
 
-      <main className="app-main">
+      <main className={styles.main}>
         <MyHardwareCard loan={loan} onMoreDetails={handleMoreDetails} />
 
-        <div className="app-main__row">
+        <div className={styles.row}>
           <div className={`checkout-cta-wrap${isWarningOpen ? " checkout-cta-wrap--warning" : ""}`}>
             <CheckoutCallToAction disabled={hasOverdueLoan} onClick={handleCheckoutClick} />
             {hasOverdueLoan && <InlineOverdueWarning onDismiss={() => setWarningOpen(false)} />}
           </div>
-          <div className="app-main__body app-main__body--actions">
+          <div className={styles.actionListCard}>
             <ActionList items={memberActions} onSelect={handleAction} />
           </div>
         </div>

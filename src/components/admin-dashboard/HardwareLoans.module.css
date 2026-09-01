@@ -1,0 +1,317 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: 100%;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Back button ──────────────────────────────────────────── */
+
+.backButton {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+
+.card {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.75rem 2rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.cardLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: #969696;
+}
+
+/* ── Filter chips ─────────────────────────────────────────── */
+
+.chipRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4375rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chipRow::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5625rem;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-radius: 1.25rem;
+  background: none;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.chipActive {
+  border-color: rgba(83, 106, 138, 0.7);
+  background: rgba(131, 156, 197, 0.44);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+  .chip {
+    height: 2.75rem;
+    padding: 0 1rem;
+    font-size: 0.9375rem;
+    border-width: 2px;
+  }
+}
+
+/* ── Status / empty state ─────────────────────────────────── */
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+/* ── Loan list ────────────────────────────────────────────── */
+
+.loanList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.loanItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto auto;
+  grid-template-areas: 'thumb info badge member date chevron';
+  align-items: center;
+  column-gap: 3rem;
+  row-gap: 0.5rem;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.loanItem:hover {
+  background: #ececec;
+}
+
+.loanThumb {
+  grid-area: thumb;
+  width: 5rem;
+  height: 3.5rem;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.loanInfo {
+  grid-area: info;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.loanName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.5625rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loanSerial {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+.loanBadgeWrap {
+  grid-area: badge;
+  width: 9.5rem;
+  flex-shrink: 0;
+}
+
+.statusBadge {
+  display: inline-block;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.7);
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.4375rem;
+  white-space: nowrap;
+}
+
+.badgeActive {
+  background: rgba(161, 208, 167, 0.44);
+}
+
+.badgeOverdue {
+  background: rgba(208, 161, 161, 0.44);
+}
+
+.badgeRequests {
+  background: rgba(208, 206, 161, 0.44);
+}
+
+.badgeReturns {
+  background: rgba(166, 161, 208, 0.44);
+}
+
+.loanMember {
+  grid-area: member;
+  width: 13rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.66);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loanMember span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loanMemberIcon {
+  flex-shrink: 0;
+}
+
+.loanDateWrap {
+  grid-area: date;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.66);
+  white-space: nowrap;
+}
+
+.loanDateIcon {
+  flex-shrink: 0;
+}
+
+.loanChevron {
+  grid-area: chevron;
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 900px) {
+  .loanItem {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'thumb info badge'
+      'member member member'
+      'date date date';
+  }
+
+  .loanMember,
+  .loanDateWrap {
+    width: auto;
+  }
+
+  .loanChevron {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1.5rem 1.25rem 1.75rem;
+  }
+
+  .loanItem {
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .loanThumb {
+    width: 4rem;
+    height: 3rem;
+  }
+
+  .loanName {
+    font-size: 1.1875rem;
+  }
+
+  .loanSerial,
+  .loanMember,
+  .loanDateWrap {
+    font-size: 1rem;
+  }
+}

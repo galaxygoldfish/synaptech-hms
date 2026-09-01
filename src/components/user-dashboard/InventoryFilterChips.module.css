@@ -1,0 +1,44 @@
+.chipRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.125rem;
+  scrollbar-width: none;
+}
+
+.chipRow::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-radius: 1.25rem;
+  padding: 0.875rem 1.5rem;
+  background: none;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.125rem;
+  text-transform: lowercase;
+  color: rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.chipActive {
+  border-color: rgba(83, 106, 138, 0.7);
+  background: rgba(131, 156, 197, 0.17);
+  color: #374151;
+}
+
+@media (max-width: 640px) {
+  .chip {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    border-width: 2px;
+  }
+}

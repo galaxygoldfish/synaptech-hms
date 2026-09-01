@@ -1,0 +1,44 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.25rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.checkmark {
+  width: clamp(5.5rem, 12vw, 8.875rem);
+  height: auto;
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+  color: rgba(0, 0, 0, 0.98);
+  margin: 0;
+}
+
+.doneButton {
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.doneButton:hover {
+  background: #1f2937;
+}
