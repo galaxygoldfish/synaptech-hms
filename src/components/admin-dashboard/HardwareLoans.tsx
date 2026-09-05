@@ -116,10 +116,8 @@ export default function HardwareLoans() {
     signOut()
   }
 
-  function handleRowClick() {
-    // Placeholder: wire this up to a loan detail/review screen once it's built.
-    // eslint-disable-next-line no-console
-    console.log('Navigate to: loan detail')
+  function handleRowClick(loanId: string) {
+    navigate(`/adminHome/loans/${loanId}`)
   }
 
   const emptyMessage =
@@ -167,7 +165,7 @@ export default function HardwareLoans() {
             <ul className={styles.loanList}>
               {visibleLoans.map(({ loan, bucket }) => (
                 <li key={loan.id}>
-                  <button type="button" className={styles.loanItem} onClick={handleRowClick}>
+                  <button type="button" className={styles.loanItem} onClick={() => handleRowClick(loan.id)}>
                     {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}
 
                     <div className={styles.loanInfo}>

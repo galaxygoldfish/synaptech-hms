@@ -44,3 +44,43 @@ export function useEdgeFade<T extends HTMLElement>() {
 
   return { ref, maskImage }
 }
+
+// Same idea as useEdgeFade, but for a vertically-scrollable element — used
+// alongside it (on the same DOM node) where a table scrolls in both
+// directions, so each axis gets its own independent fade.
+export function useVerticalEdgeFade<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [fadeTop, setFadeTop] = useState(false)
+  const [fadeBottom, setFadeBottom] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    function updateFade() {
+      if (!el) return
+      setFadeTop(el.scrollTop > 1)
+      setFadeBottom(el.scrollTop + el.clientHeight < el.scrollHeight - 1)
+    }
+
+    updateFade()
+    el.addEventListener('scroll', updateFade, { passive: true })
+    window.addEventListener('resize', updateFade)
+    document.fonts?.ready.then(updateFade)
+
+    const observer = new ResizeObserver(updateFade)
+    observer.observe(el)
+
+    return () => {
+      el.removeEventListener('scroll', updateFade)
+      window.removeEventListener('resize', updateFade)
+      observer.disconnect()
+    }
+  }, [])
+
+  const maskImage = `linear-gradient(to bottom, ${
+    fadeTop ? 'transparent 0%, black 6%' : 'black 0%'
+  }, ${fadeBottom ? 'black 92%, transparent 100%' : 'black 100%'})`
+
+  return { ref, maskImage }
+}

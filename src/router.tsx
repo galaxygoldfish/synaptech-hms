@@ -14,6 +14,7 @@ import CheckoutSuccessPage from './pages/CheckoutSuccessPage'
 import MyHardwareLoansPage from './pages/MyHardwareLoansPage'
 import AdminHomePage from './pages/AdminHomePage'
 import AdminHardwareLoansPage from './pages/AdminHardwareLoansPage'
+import AdminLoanDetailPage from './pages/AdminLoanDetailPage'
 import AdminViewMembersPage from './pages/AdminViewMembersPage'
 import AdminManageInventoryPage from './pages/AdminManageInventoryPage'
 import ManageInventoryItemPage from './pages/ManageInventoryItemPage'
@@ -104,6 +105,7 @@ export function AppRouter() {
         <Route path="/home/checkout/success" element={<PrivateRoute><CheckoutSuccessPage /></PrivateRoute>} />
           <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
           <Route path="/adminHome/loans" element={<AdminRoute><AdminHardwareLoansPage /></AdminRoute>} />
+          <Route path="/adminHome/loans/:id" element={<AdminRoute><AdminLoanDetailPage /></AdminRoute>} />
           <Route path="/adminHome/members" element={<AdminRoute><AdminViewMembersPage /></AdminRoute>} />
           <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />
           <Route path="/adminHome/inventory/:id" element={<AdminRoute><ManageInventoryItemPage /></AdminRoute>} />

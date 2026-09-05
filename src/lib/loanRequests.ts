@@ -152,6 +152,164 @@ export async function fetchLoanRequestItems(userId: string): Promise<LoanRequest
   return summaries.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
 }
 
+export interface AdminLoanRequestOtherItem {
+  itemName: string
+  itemRole: LoanRequestItemRole
+}
+
+export interface AdminLoanRequestDetail {
+  id: string // loan_request_items.id — matches AdminLoanRequestItemSummary.id
+  loanRequestId: string
+  equipmentId: string
+  itemName: string
+  itemDescription: string | null
+  imageUrl: string | null
+  serialNumber: string | null
+  itemRole: LoanRequestItemRole
+  status: LoanRequestStatus
+  requestedAt: string
+  returnDate: string | null
+  signedAgreementPath: string | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  memberId: string
+  memberName: string
+  memberEmail: string
+  reviewerName: string | null
+  otherItems: AdminLoanRequestOtherItem[]
+}
+
+// Full detail for a single loan request item, for the admin loan detail
+// screen reached by clicking a row in the "Hardware loans" list. Same
+// zipped-plain-queries approach as fetchAllLoanRequestItems, plus the
+// sibling items bundled into the same request (so the admin can see the
+// full checkout, not just the one item they clicked) and the reviewing
+// admin's name if this request has already been reviewed.
+export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminLoanRequestDetail> {
+  const { data: item, error: itemError } = await supabase
+    .from('loan_request_items')
+    .select('id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path')
+    .eq('id', itemId)
+    .single()
+  if (itemError) throw itemError
+
+  const { data: request, error: requestError } = await supabase
+    .from('loan_requests')
+    .select('id, user_id, status, requested_at, reviewed_at, reviewed_by, review_note')
+    .eq('id', item.loan_request_id)
+    .single()
+  if (requestError) throw requestError
+
+  const { data: equipment, error: equipmentError } = await supabase
+    .from('equipment')
+    .select('id, name, description, image_url')
+    .eq('id', item.equipment_id)
+    .single()
+  if (equipmentError) throw equipmentError
+
+  let serialNumber: string | null = null
+  if (item.equipment_unit_id) {
+    const { data: unit, error: unitError } = await supabase
+      .from('equipment_units')
+      .select('serial_number')
+      .eq('id', item.equipment_unit_id)
+      .maybeSingle()
+    if (unitError) throw unitError
+    serialNumber = unit?.serial_number ?? null
+  }
+
+  const { data: member, error: memberError } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name, uw_email')
+    .eq('id', request.user_id)
+    .single()
+  if (memberError) throw memberError
+
+  let reviewerName: string | null = null
+  if (request.reviewed_by) {
+    const { data: reviewer, error: reviewerError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', request.reviewed_by)
+      .maybeSingle()
+    if (reviewerError) throw reviewerError
+    if (reviewer) reviewerName = `${reviewer.first_name} ${reviewer.last_name}`
+  }
+
+  const { data: siblingItems, error: siblingsError } = await supabase
+    .from('loan_request_items')
+    .select('equipment_id, item_role')
+    .eq('loan_request_id', item.loan_request_id)
+    .neq('id', itemId)
+  if (siblingsError) throw siblingsError
+
+  let otherItems: AdminLoanRequestOtherItem[] = []
+  if (siblingItems && siblingItems.length > 0) {
+    const siblingEquipmentIds = [...new Set(siblingItems.map((sibling) => sibling.equipment_id))]
+    const { data: siblingEquipment, error: siblingEquipmentError } = await supabase
+      .from('equipment')
+      .select('id, name')
+      .in('id', siblingEquipmentIds)
+    if (siblingEquipmentError) throw siblingEquipmentError
+
+    const nameById = new Map((siblingEquipment ?? []).map((equipmentRow) => [equipmentRow.id, equipmentRow.name]))
+    otherItems = siblingItems.flatMap((sibling) => {
+      const itemName = nameById.get(sibling.equipment_id)
+      return itemName ? [{ itemName, itemRole: sibling.item_role as LoanRequestItemRole }] : []
+    })
+  }
+
+  return {
+    id: item.id,
+    loanRequestId: item.loan_request_id,
+    equipmentId: item.equipment_id,
+    itemName: equipment.name,
+    itemDescription: equipment.description,
+    imageUrl: equipment.image_url,
+    serialNumber,
+    itemRole: item.item_role as LoanRequestItemRole,
+    status: request.status as LoanRequestStatus,
+    requestedAt: request.requested_at,
+    returnDate: item.return_date,
+    signedAgreementPath: item.signed_agreement_path,
+    reviewedAt: request.reviewed_at,
+    reviewNote: request.review_note,
+    memberId: member.id,
+    memberName: `${member.first_name} ${member.last_name}`,
+    memberEmail: member.uw_email,
+    reviewerName,
+    otherItems,
+  }
+}
+
+// Short-lived signed URL for a private loan-agreements bucket object, for
+// the "download signed agreement" action on the loan detail screen.
+export async function fetchSignedAgreementUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(LOAN_AGREEMENTS_BUCKET).createSignedUrl(path, 60 * 5)
+  if (error) throw error
+  return data.signedUrl
+}
+
+export interface AvailabilitySlot {
+  date: string // ISO date
+  hour: number // 0-23
+}
+
+// The pickup-availability grid a member filled out at checkout submission,
+// for the admin "view availability" action on a checkout/return-requested
+// loan — this is what an admin uses to schedule the hand-off or return.
+export async function fetchLoanRequestAvailability(loanRequestId: string): Promise<AvailabilitySlot[]> {
+  const { data, error } = await supabase
+    .from('loan_request_availability')
+    .select('available_date, available_hour')
+    .eq('loan_request_id', loanRequestId)
+    .order('available_date')
+    .order('available_hour')
+
+  if (error) throw error
+  return (data ?? []).map((row) => ({ date: row.available_date, hour: row.available_hour }))
+}
+
 export interface AdminLoanRequestItemSummary {
   id: string
   equipmentId: string
