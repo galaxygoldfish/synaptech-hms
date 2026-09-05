@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { AddOnPickerModal } from '../components/admin-dashboard/AddOnPickerModal'
+import { EquipmentUnitsTable } from '../components/admin-dashboard/EquipmentUnitsTable'
 import ConfirmActionModal from '../components/ConfirmActionModal'
 import {
   ArrowLeftIcon,
@@ -231,6 +232,15 @@ export default function ManageInventoryItemPage() {
       return
     }
     setQuantity(next)
+  }
+
+  // Hardware quantity is now derived from the units table itself: adding
+  // or deleting a unit persists quantity_total immediately, so keep local
+  // state (and the dirty-check snapshot) in sync rather than treating it
+  // as a pending edit that Save would need to commit.
+  function handleUnitCountChange(count: number) {
+    setQuantity(count)
+    setSnapshot((current) => (current ? { ...current, quantity: count } : current))
   }
 
   const isDirty = useMemo(() => {
@@ -475,29 +485,35 @@ export default function ManageInventoryItemPage() {
           </div>
         )}
 
-        <div className={formStyles.quantityRow}>
-          <span className={formStyles.quantityLabel}>Total quantity of product</span>
-          <div className={formStyles.stepper}>
-            <button
-              type="button"
-              className={formStyles.stepperButton}
-              onClick={handleDecreaseQuantity}
-              disabled={quantity <= 1}
-              aria-label="Decrease quantity"
-            >
-              <StepperSubtractIconFilled size={16} />
-            </button>
-            <span className={formStyles.stepperValue}>{quantity}</span>
-            <button
-              type="button"
-              className={formStyles.stepperButton}
-              onClick={() => setQuantity((current) => current + 1)}
-              aria-label="Increase quantity"
-            >
-              <StepperAddIconFilled size={16} />
-            </button>
+        {isConsumable && (
+          <div className={formStyles.quantityRow}>
+            <span className={formStyles.quantityLabel}>Total quantity of product</span>
+            <div className={formStyles.stepper}>
+              <button
+                type="button"
+                className={formStyles.stepperButton}
+                onClick={handleDecreaseQuantity}
+                disabled={quantity <= 1}
+                aria-label="Decrease quantity"
+              >
+                <StepperSubtractIconFilled size={16} />
+              </button>
+              <span className={formStyles.stepperValue}>{quantity}</span>
+              <button
+                type="button"
+                className={formStyles.stepperButton}
+                onClick={() => setQuantity((current) => current + 1)}
+                aria-label="Increase quantity"
+              >
+                <StepperAddIconFilled size={16} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {!isConsumable && id && (
+          <EquipmentUnitsTable equipmentId={id} productName={productName} onCountChange={handleUnitCountChange} />
+        )}
 
         <div className={formStyles.field}>
           <label className={formStyles.label}>Product type</label>

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { generateSerialNumbers } from './serialNumber'
 import type { Equipment, EquipmentAddon, EquipmentCategory, EquipmentProductType, EquipmentUnit } from '../types'
 
 const EQUIPMENT_IMAGES_BUCKET = 'equipment-images'
@@ -75,6 +76,14 @@ export async function deleteEquipment(equipmentId: string): Promise<void> {
   if (error) throw error
 }
 
+// Updates just the denormalized unit count on a product — used when a
+// single equipment_units row is added or removed, where re-sending the
+// whole equipment record (as updateEquipment does) would be overkill.
+export async function setEquipmentQuantityTotal(equipmentId: string, quantityTotal: number): Promise<void> {
+  const { error } = await supabase.from('equipment').update({ quantity_total: quantityTotal }).eq('id', equipmentId)
+  if (error) throw error
+}
+
 // Every unit of this equipment currently out on an approved (not yet
 // returned) loan — see fetchEquipmentInventorySummary for why "approved"
 // alone is the right check.
@@ -114,6 +123,71 @@ export async function createEquipmentUnits(
 
   if (error) throw error
   return data as EquipmentUnit[]
+}
+
+// Creates a single new equipment_units row with a freshly generated
+// serial number, for the "add item" action on the manage-inventory-item
+// units table — one physical unit added to an existing hardware product.
+export async function addEquipmentUnit(equipmentId: string): Promise<EquipmentUnit> {
+  const [serialNumber] = generateSerialNumbers(1)
+  const [unit] = await createEquipmentUnits(equipmentId, [serialNumber])
+  return unit
+}
+
+export async function deleteEquipmentUnit(unitId: string): Promise<void> {
+  const { error } = await supabase.from('equipment_units').delete().eq('id', unitId)
+  if (error) throw error
+}
+
+export type EquipmentUnitStatus = 'available' | 'checked_out'
+
+export interface EquipmentUnitWithStatus {
+  unit: EquipmentUnit
+  status: EquipmentUnitStatus
+}
+
+// Every physical unit of a hardware product, each labeled available or
+// checked out based on whether it's reserved on an approved (not yet
+// returned) loan — the same "approved == still out" rule as
+// fetchEquipmentCheckedOutCount, just resolved down to the individual
+// unit via loan_request_items.equipment_unit_id instead of counted in
+// aggregate.
+export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promise<EquipmentUnitWithStatus[]> {
+  const { data: units, error: unitsError } = await supabase
+    .from('equipment_units')
+    .select()
+    .eq('equipment_id', equipmentId)
+    .order('created_at')
+
+  if (unitsError) throw unitsError
+  if (!units || units.length === 0) return []
+
+  const { data: approvedRequests, error: requestsError } = await supabase
+    .from('loan_requests')
+    .select('id')
+    .eq('status', 'approved')
+
+  if (requestsError) throw requestsError
+  const approvedRequestIds = (approvedRequests ?? []).map((request) => request.id)
+
+  const checkedOutUnitIds = new Set<string>()
+  if (approvedRequestIds.length > 0) {
+    const { data: items, error: itemsError } = await supabase
+      .from('loan_request_items')
+      .select('equipment_unit_id')
+      .eq('equipment_id', equipmentId)
+      .in('loan_request_id', approvedRequestIds)
+
+    if (itemsError) throw itemsError
+    for (const item of items ?? []) {
+      if (item.equipment_unit_id) checkedOutUnitIds.add(item.equipment_unit_id)
+    }
+  }
+
+  return (units as EquipmentUnit[]).map((unit) => ({
+    unit,
+    status: checkedOutUnitIds.has(unit.id) ? ('checked_out' as const) : ('available' as const),
+  }))
 }
 
 // All existing catalog entries, for the add-on picker to search/link
