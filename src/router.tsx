@@ -4,6 +4,7 @@ import WelcomePage from './pages/WelcomePage'
 import ProfileSetupPage from './pages/ProfileSetupPage'
 import HomePage from './pages/HomePage'
 import AdminHomePage from './pages/AdminHomePage'
+import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 
 function LoadingScreen() {
   return <div>Loading…</div>
@@ -76,6 +77,10 @@ export function AppRouter() {
         <Route path="/setup" element={<SetupRoute><ProfileSetupPage /></SetupRoute>} />
         <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
         <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
+        <Route
+          path="/adminHome/return"
+          element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

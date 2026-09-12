@@ -1,5 +1,6 @@
 import '../styles.css'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { actionGroups } from '../data/actions'
@@ -12,6 +13,7 @@ import type { DashboardStats, UserProfile } from '../types'
 
 export default function AdminHomePage() {
   const { profile, signOut } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [query, setQuery] = useState('')
   const [isProfileOpen, setProfileOpen] = useState(false)
@@ -75,6 +77,12 @@ export default function AdminHomePage() {
   const isSearching = query.trim().length > 0
 
   const handleAction = (actionId: string) => {
+    // NOTE: confirm this matches the actual id used for the "Return
+    // hardware" entry in src/data/actions.ts — swap the string if it differs.
+    if (actionId === 'return-hardware') {
+      navigate('/adminHome/return')
+      return
+    }
     // eslint-disable-next-line no-console
     console.log('Navigate to action:', actionId)
   }
