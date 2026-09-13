@@ -23,6 +23,9 @@ import AddInventoryItemPage from './pages/AddInventoryItemPage'
 import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
 import AddInventoryItemDonePage from './pages/AddInventoryItemDonePage'
 import GetReplacementLabelPage from './pages/GetReplacementLabelPage'
+import AdminManageUserEmailsPage from './pages/AdminManageUserEmailsPage'
+import AdminManageAdminEmailsPage from './pages/AdminManageAdminEmailsPage'
+import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
 
 function LoadingScreen() {
   return <div>Loading…</div>
@@ -114,6 +117,9 @@ export function AppRouter() {
           <Route path="/adminHome/add-item/labels" element={<AdminRoute><AddInventoryItemLabelsPage /></AdminRoute>} />
           <Route path="/adminHome/add-item/done" element={<AdminRoute><AddInventoryItemDonePage /></AdminRoute>} />
           <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/user" element={<AdminRoute><AdminManageUserEmailsPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/admin" element={<AdminRoute><AdminManageAdminEmailsPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </PageTransition>
