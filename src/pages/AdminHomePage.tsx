@@ -15,6 +15,7 @@ import styles from '../components/admin-dashboard/AdminHome.module.css'
 export default function AdminHomePage() {
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [query, setQuery] = useState('')
   const [isProfileOpen, setProfileOpen] = useState(false)
@@ -90,6 +91,10 @@ export default function AdminHomePage() {
     }
     if (actionId === 'get-labels') {
       navigate('/adminHome/get-labels')
+      return
+    }
+    if (actionId === 'return-hardware') {
+      navigate('/adminHome/return')
       return
     }
     // eslint-disable-next-line no-console

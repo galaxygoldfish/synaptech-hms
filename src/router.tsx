@@ -22,6 +22,7 @@ import AddInventoryItemPage from './pages/AddInventoryItemPage'
 import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
 import AddInventoryItemDonePage from './pages/AddInventoryItemDonePage'
 import GetReplacementLabelPage from './pages/GetReplacementLabelPage'
+import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 
 function LoadingScreen() {
   return <div>Loading…</div>
@@ -112,6 +113,7 @@ export function AppRouter() {
           <Route path="/adminHome/add-item/labels" element={<AdminRoute><AddInventoryItemLabelsPage /></AdminRoute>} />
           <Route path="/adminHome/add-item/done" element={<AdminRoute><AddInventoryItemDonePage /></AdminRoute>} />
           <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
+          <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </PageTransition>
