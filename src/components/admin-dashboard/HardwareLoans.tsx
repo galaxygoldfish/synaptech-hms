@@ -3,12 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
-import ConfirmActionModal from '../ConfirmActionModal'
 import { ArrowLeftIcon, CalendarIcon, ChevronRightIcon, PersonIcon } from './icons'
 import {
   bucketForLoanItem,
   fetchAllLoanRequestItems,
-  checkoutLoanRequestItem,
   type AdminLoanRequestItemSummary,
   type LoanBucket,
 } from '../../lib/loanRequests'
@@ -71,8 +69,6 @@ export default function HardwareLoans() {
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<LoanFilter>(() => parseFilter(searchParams.get('filter')))
-  const [selectedRequest, setSelectedRequest] = useState<AdminLoanRequestItemSummary | null>(null)
-  const [isApproving, setApproving] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -122,26 +118,7 @@ export default function HardwareLoans() {
 
   function handleRowClick(loan: AdminLoanRequestItemSummary, bucket: LoanBucket) {
     if (bucket !== 'requests' || !profile) return
-    setSelectedRequest(loan)
-  }
-
-  async function handleConfirmApproval() {
-    if (!selectedRequest || !profile || isApproving) return
-
-    setError(null)
-    setApproving(true)
-    try {
-      await checkoutLoanRequestItem(selectedRequest.id, profile.id)
-      const refreshedLoans = await fetchAllLoanRequestItems()
-      setLoans(refreshedLoans)
-      setSelectedRequest(null)
-    } catch (checkoutError) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to check out requested hardware:', checkoutError)
-      setError('Could not check out this request. Please try again.')
-    } finally {
-      setApproving(false)
-    }
+    navigate('/adminHome/checkout', { state: { requestItemId: loan.id } })
   }
 
   const emptyMessage =
@@ -230,17 +207,6 @@ export default function HardwareLoans() {
         <ProfileModal user={user} onClose={() => setProfileOpen(false)} onLogOut={handleLogOut} />
       )}
 
-      <ConfirmActionModal
-        isOpen={selectedRequest !== null}
-        heading="Approve hardware request?"
-        body={[
-          `Are you sure you want to approve this request for ${selectedRequest?.itemName ?? 'this item'} made by ${selectedRequest?.memberName ?? 'this member'}.`,
-        ]}
-        confirmLabel={isApproving ? 'Approving…' : 'Approve'}
-        confirmDisabled={isApproving}
-        onConfirm={() => void handleConfirmApproval()}
-        onCancel={() => setSelectedRequest(null)}
-      />
     </div>
   )
 }
