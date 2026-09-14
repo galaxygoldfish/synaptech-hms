@@ -1,13 +1,15 @@
-/* Return-hardware flow (admin). Reuses the CSS variables and .app-header /
-   .pill-button / .status-text classes already defined in styles.css. */
+/* Checkout-hardware flow (admin). Reuses the CSS variables and .app-header /
+   .pill-button / .status-text classes already defined in styles.css.
+   Mirrors admin-return-hardware.css's structure under a "checkout-flow"
+   prefix — kept as its own file so the return flow is untouched. */
 
-.return-flow {
+.checkout-flow {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.return-flow__back {
+.checkout-flow__back {
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -22,28 +24,28 @@
   margin-bottom: 24px;
 }
 
-.return-flow__back:hover {
+.checkout-flow__back:hover {
   background: rgba(131, 156, 197, 0.6);
 }
 
 @media (max-width: 640px) {
-  .return-flow__back {
+  .checkout-flow__back {
     padding: 0.8125rem;
   }
 
-  .return-flow__back span {
+  .checkout-flow__back span {
     display: none;
   }
 }
 
-.return-flow__title {
+.checkout-flow__title {
   font-size: 26px;
   font-weight: 700;
   text-align: center;
   margin: 0 0 32px;
 }
 
-.return-flow__body {
+.checkout-flow__body {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -52,7 +54,7 @@
   max-width: 420px;
 }
 
-.return-flow__scan-frame {
+.checkout-flow__scan-frame {
   width: 100%;
   aspect-ratio: 4 / 3;
   border: 3px dashed #d5d8dd;
@@ -64,13 +66,13 @@
   background: var(--bg);
 }
 
-.return-flow__scan-video {
+.checkout-flow__scan-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.return-flow__scan-placeholder {
+.checkout-flow__scan-placeholder {
   color: #c3c9d3;
   font-weight: 600;
   text-align: center;
@@ -78,19 +80,14 @@
   margin: 0;
 }
 
-.return-flow__caption {
+.checkout-flow__caption {
   color: var(--text-muted);
   font-size: 14px;
   text-align: center;
   margin: 0;
 }
 
-.return-flow__caption--lead {
-  color: var(--text-primary);
-  font-size: 15px;
-}
-
-.return-flow__alt-button {
+.checkout-flow__alt-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -105,44 +102,17 @@
   font-weight: 600;
 }
 
-.return-flow__alt-button:hover {
+.checkout-flow__alt-button:hover {
   filter: brightness(0.97);
 }
 
-.return-flow__alt-button-label {
+.checkout-flow__alt-button-label {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.return-flow__serial-input-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-}
-
-.return-flow__serial-prefix {
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.return-flow__serial-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 15px;
-  color: var(--text-primary);
-  text-transform: uppercase;
-}
-
-.return-flow__primary-button {
+.checkout-flow__primary-button {
   width: 100%;
   background: var(--text-primary);
   color: white;
@@ -155,38 +125,50 @@
   text-transform: uppercase;
 }
 
-.return-flow__primary-button:hover:not(:disabled) {
+.checkout-flow__primary-button:hover {
   filter: brightness(1.1);
 }
 
-.return-flow__primary-button:disabled {
-  background: #c9cdd5;
-  cursor: not-allowed;
-}
-
-.return-flow__spinner {
+.checkout-flow__spinner {
   width: 56px;
   height: 56px;
   border-radius: 999px;
   border: 5px solid var(--border);
   border-top-color: var(--brand-blue);
-  animation: return-flow-spin 0.8s linear infinite;
-  margin: 40px 0;
+  animation: checkout-flow-spin 0.8s linear infinite;
+  margin: 40px 0 0;
 }
 
-@keyframes return-flow-spin {
+@keyframes checkout-flow-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-.return-flow__status-title {
+.checkout-flow__cancel-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-muted);
+}
+
+.checkout-flow__cancel-button:hover {
+  border-color: #c9cdd5;
+  color: var(--text-primary);
+}
+
+.checkout-flow__status-title {
   font-size: 22px;
   font-weight: 700;
   margin: 12px 0 0;
 }
 
-.return-flow__status-icon {
+.checkout-flow__status-icon {
   width: 64px;
   height: 64px;
   border-radius: 999px;
@@ -195,17 +177,17 @@
   justify-content: center;
 }
 
-.return-flow__status-icon--success {
+.checkout-flow__status-icon--success {
   background: var(--green-bg);
   color: var(--green-fg);
 }
 
-.return-flow__status-icon--error {
+.checkout-flow__status-icon--error {
   background: var(--red-bg);
   color: var(--red-fg);
 }
 
-.return-flow__status-message {
+.checkout-flow__status-message {
   color: var(--text-primary);
   text-align: center;
   margin: 0;

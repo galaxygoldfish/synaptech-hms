@@ -47,12 +47,12 @@ const BADGE_LABEL: Record<LoanBucket, string> = {
 
 function formatTimestampDate(iso: string): string {
   const date = new Date(iso)
-  return `${date.toLocaleDateString(undefined, { month: 'long' })} ${date.getDate()} ${date.getFullYear()}`
+  return `${date.toLocaleDateString(undefined, { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 
 function formatCalendarDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`)
-  return `${date.toLocaleDateString(undefined, { month: 'long' })} ${date.getDate()} ${date.getFullYear()}`
+  return `${date.toLocaleDateString(undefined, { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 
 function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanBucket | null): string {
