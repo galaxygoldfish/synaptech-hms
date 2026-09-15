@@ -322,6 +322,30 @@ export interface AdminLoanRequestItemSummary {
   memberName: string
 }
 
+// Completes an admin pickup without requiring the physical unit barcode. The
+// request item identifies the parent request, whose approved status is what
+// the member dashboard uses to show the hardware as checked out.
+export async function checkoutLoanRequestItem(itemId: string, adminId: string): Promise<void> {
+  const { data: item, error: itemError } = await supabase
+    .from('loan_request_items')
+    .select('loan_request_id')
+    .eq('id', itemId)
+    .single()
+
+  if (itemError) throw itemError
+
+  const { error: updateError } = await supabase
+    .from('loan_requests')
+    .update({
+      status: 'approved',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: adminId,
+    })
+    .eq('id', item.loan_request_id)
+
+  if (updateError) throw updateError
+}
+
 export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns'
 
 // Shared by the admin "Hardware loans" list and the dashboard stat cards so

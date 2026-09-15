@@ -98,6 +98,12 @@ export default function AdminHomePage() {
     }
     if (actionId === 'configure-admin-emails') {
       navigate('/adminHome/emails/admin')
+    if (actionId === 'return-hardware') {
+      navigate('/adminHome/return')
+      return
+    }
+    if (actionId === 'checkout-hardware') {
+      navigate('/adminHome/checkout')
       return
     }
     // eslint-disable-next-line no-console

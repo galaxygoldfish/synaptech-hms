@@ -45,12 +45,12 @@ const BADGE_LABEL: Record<LoanBucket, string> = {
 
 function formatTimestampDate(iso: string): string {
   const date = new Date(iso)
-  return `${date.toLocaleDateString(undefined, { month: 'long' })} ${date.getDate()} ${date.getFullYear()}`
+  return `${date.toLocaleDateString(undefined, { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 
 function formatCalendarDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`)
-  return `${date.toLocaleDateString(undefined, { month: 'long' })} ${date.getDate()} ${date.getFullYear()}`
+  return `${date.toLocaleDateString(undefined, { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 
 function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanBucket | null): string {
@@ -116,8 +116,9 @@ export default function HardwareLoans() {
     signOut()
   }
 
-  function handleRowClick(loanId: string) {
-    navigate(`/adminHome/loans/${loanId}`)
+  function handleRowClick(loan: AdminLoanRequestItemSummary, bucket: LoanBucket) {
+    if (bucket !== 'requests' || !profile) return
+    navigate('/adminHome/checkout', { state: { requestItemId: loan.id } })
   }
 
   const emptyMessage =
@@ -165,7 +166,13 @@ export default function HardwareLoans() {
             <ul className={styles.loanList}>
               {visibleLoans.map(({ loan, bucket }) => (
                 <li key={loan.id}>
-                  <button type="button" className={styles.loanItem} onClick={() => handleRowClick(loan.id)}>
+                  <button
+                    type="button"
+                    className={styles.loanItem}
+                    onClick={() => void handleRowClick(loan, bucket)}
+                    disabled={bucket !== 'requests' || isLoading}
+                    aria-label={bucket === 'requests' ? `Check out ${loan.itemName}` : loan.itemName}
+                  >
                     {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}
 
                     <div className={styles.loanInfo}>
@@ -199,6 +206,7 @@ export default function HardwareLoans() {
       {isProfileOpen && user && (
         <ProfileModal user={user} onClose={() => setProfileOpen(false)} onLogOut={handleLogOut} />
       )}
+
     </div>
   )
 }

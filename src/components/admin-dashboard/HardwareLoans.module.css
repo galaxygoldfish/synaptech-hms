@@ -140,7 +140,7 @@
 .loanItem {
   width: 100%;
   display: grid;
-  grid-template-columns: auto 1fr auto auto auto auto;
+  grid-template-columns: 5rem minmax(0, 1fr) 9.5rem 13rem 17rem auto;
   grid-template-areas: 'thumb info badge member date chevron';
   align-items: center;
   column-gap: 3rem;
@@ -196,6 +196,7 @@
 .loanBadgeWrap {
   grid-area: badge;
   width: 9.5rem;
+  justify-self: start;
   flex-shrink: 0;
 }
 
@@ -228,6 +229,7 @@
 .loanMember {
   grid-area: member;
   width: 13rem;
+  justify-self: start;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -252,6 +254,7 @@
 
 .loanDateWrap {
   grid-area: date;
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 0.625rem;

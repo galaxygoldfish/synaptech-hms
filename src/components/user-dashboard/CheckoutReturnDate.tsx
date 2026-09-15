@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
@@ -12,10 +12,28 @@ import styles from './CheckoutReturnDate.module.css'
 const POLICY_URL = 'https://docs.google.com/document/d/11RSFuvvg1F4aM9V0znWw7wFn_MZMx95T7EdlblAyPfc/edit?tab=t.0'
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
-const MAX_LOAN_DAYS = 90 // "one quarter"
 
 function toISODate(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getQuarterEndDate(today: Date): string | null {
+  const month = today.getMonth()
+  const day = today.getDate()
+  const year = today.getFullYear()
+
+  if (month >= 8) return `${year}-12-15`
+  if (month <= 1 || (month === 2 && day <= 20)) return `${year}-03-20`
+  if ((month === 2 && day >= 21) || (month >= 3 && month <= 4) || (month === 5 && day <= 10)) {
+    return `${year}-06-10`
+  }
+  if ((month === 5 && day >= 15) || month === 6 || (month === 7 && day <= 20)) {
+    return `${year}-08-20`
+  }
+  return null
 }
 
 function formatDate(iso: string): string {
@@ -51,6 +69,16 @@ interface DateSelectButtonProps {
 }
 
 function DateSelectButton({ value, onChange, min, max }: DateSelectButtonProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function openPicker() {
+    const input = inputRef.current
+    if (!input) return
+    if (typeof input.showPicker === 'function') {
+      input.showPicker()
+    }
+  }
+
   return (
     <label className={styles.dateButton}>
       <CalendarIcon size={22} className={styles.dateButtonIcon} />
@@ -58,12 +86,17 @@ function DateSelectButton({ value, onChange, min, max }: DateSelectButtonProps) 
         {value ? formatDate(value) : 'Select'}
       </span>
       <input
+        ref={inputRef}
         type="date"
         className={styles.dateInput}
         value={value}
         min={min}
         max={max}
         onChange={(event) => onChange(event.target.value)}
+        onClick={(event) => {
+          event.stopPropagation()
+          openPicker()
+        }}
         aria-label="Select return date"
       />
     </label>
@@ -121,13 +154,18 @@ export default function CheckoutReturnDate() {
     const today = new Date()
     return {
       minDate: toISODate(new Date(today.getTime() + ONE_DAY_MS)),
-      maxDate: toISODate(new Date(today.getTime() + MAX_LOAN_DAYS * ONE_DAY_MS)),
+      maxDate: getQuarterEndDate(today),
     }
   }, [])
+  const isSessionActive = maxDate !== null
 
   const hardwareItems = useMemo(() => items.filter((item) => item.product_type === 'hardware'), [items])
   const canConfirm =
-    !isLoading && !error && items.length > 0 && hardwareItems.every((item) => Boolean(selectedDates[item.id]))
+    isSessionActive &&
+    !isLoading &&
+    !error &&
+    items.length > 0 &&
+    hardwareItems.every((item) => Boolean(selectedDates[item.id]))
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -165,10 +203,16 @@ export default function CheckoutReturnDate() {
           The maximum loan period is one quarter, which can be extended prior to the item return date as desired
         </p>
 
+        {!isSessionActive && (
+          <p className={styles.sessionMessage}>
+            UW is currently not in session. Please try again once the quarter resumes.
+          </p>
+        )}
+
         {isLoading && <p className={styles.status}>Loading…</p>}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
-        {!isLoading && !error && items.length > 0 && (
+        {isSessionActive && !isLoading && !error && items.length > 0 && maxDate && (
           <div className={styles.card}>
             <p className={styles.cardTitle}>Items to be checked out</p>
             <ul className={styles.itemList}>
