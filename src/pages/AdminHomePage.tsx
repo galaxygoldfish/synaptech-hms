@@ -92,6 +92,12 @@ export default function AdminHomePage() {
       navigate('/adminHome/get-labels')
       return
     }
+    if (actionId === 'configure-member-emails') {
+      navigate('/adminHome/emails/user')
+      return
+    }
+    if (actionId === 'configure-admin-emails') {
+      navigate('/adminHome/emails/admin')
     if (actionId === 'return-hardware') {
       navigate('/adminHome/return')
       return

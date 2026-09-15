@@ -14,6 +14,7 @@ import CheckoutSuccessPage from './pages/CheckoutSuccessPage'
 import MyHardwareLoansPage from './pages/MyHardwareLoansPage'
 import AdminHomePage from './pages/AdminHomePage'
 import AdminHardwareLoansPage from './pages/AdminHardwareLoansPage'
+import AdminLoanDetailPage from './pages/AdminLoanDetailPage'
 import AdminViewMembersPage from './pages/AdminViewMembersPage'
 import AdminManageInventoryPage from './pages/AdminManageInventoryPage'
 import ManageInventoryItemPage from './pages/ManageInventoryItemPage'
@@ -22,6 +23,9 @@ import AddInventoryItemPage from './pages/AddInventoryItemPage'
 import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
 import AddInventoryItemDonePage from './pages/AddInventoryItemDonePage'
 import GetReplacementLabelPage from './pages/GetReplacementLabelPage'
+import AdminManageUserEmailsPage from './pages/AdminManageUserEmailsPage'
+import AdminManageAdminEmailsPage from './pages/AdminManageAdminEmailsPage'
+import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
 import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 import AdminCheckoutHardwarePage from './pages/AdminCheckoutHardwarePage'
 
@@ -106,6 +110,7 @@ export function AppRouter() {
         <Route path="/home/checkout/success" element={<PrivateRoute><CheckoutSuccessPage /></PrivateRoute>} />
           <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
           <Route path="/adminHome/loans" element={<AdminRoute><AdminHardwareLoansPage /></AdminRoute>} />
+          <Route path="/adminHome/loans/:id" element={<AdminRoute><AdminLoanDetailPage /></AdminRoute>} />
           <Route path="/adminHome/members" element={<AdminRoute><AdminViewMembersPage /></AdminRoute>} />
           <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />
           <Route path="/adminHome/inventory/:id" element={<AdminRoute><ManageInventoryItemPage /></AdminRoute>} />
@@ -114,6 +119,9 @@ export function AppRouter() {
           <Route path="/adminHome/add-item/labels" element={<AdminRoute><AddInventoryItemLabelsPage /></AdminRoute>} />
           <Route path="/adminHome/add-item/done" element={<AdminRoute><AddInventoryItemDonePage /></AdminRoute>} />
           <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/user" element={<AdminRoute><AdminManageUserEmailsPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/admin" element={<AdminRoute><AdminManageAdminEmailsPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
           <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
           <Route path="/adminHome/checkout" element={<AdminRoute><AdminCheckoutHardwarePage /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

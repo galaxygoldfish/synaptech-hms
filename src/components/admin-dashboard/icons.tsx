@@ -91,6 +91,21 @@ export function CloseIcon({ size = 16 }: IconProps) {
   );
 }
 
+export function PencilIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        d="M14.5 4.5l5 5L8 21H3v-5L14.5 4.5z"
+        stroke={stroke}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M12.5 6.5l5 5" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function MailIcon({ size = 16 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
