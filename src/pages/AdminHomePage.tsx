@@ -98,6 +98,8 @@ export default function AdminHomePage() {
     }
     if (actionId === 'configure-admin-emails') {
       navigate('/adminHome/emails/admin')
+      return
+    }
     if (actionId === 'return-hardware') {
       navigate('/adminHome/return')
       return
