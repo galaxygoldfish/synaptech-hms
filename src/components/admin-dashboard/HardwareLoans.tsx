@@ -11,6 +11,7 @@ import {
   type LoanBucket,
 } from '../../lib/loanRequests'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HardwareLoans.module.css'
 
 type LoanFilter = 'all' | LoanBucket
@@ -155,7 +156,27 @@ export default function HardwareLoans() {
             </div>
           </div>
 
-          {isLoading && <p className={styles.status}>Loading…</p>}
+          {isLoading && (
+            <SkeletonScreen label="Loading hardware loans…">
+              <ul className={styles.loanList}>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <li key={index}>
+                    <div className={styles.skeletonRow}>
+                      <Skeleton width="5rem" height="3.5rem" radius="0.5rem" style={{ gridArea: 'thumb' }} />
+                      <div style={{ gridArea: 'info', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <Skeleton width="70%" height="1.5625rem" shape="pill" />
+                        <Skeleton width="45%" height="1.25rem" shape="pill" />
+                      </div>
+                      <Skeleton width="7.5rem" height="2rem" shape="pill" style={{ gridArea: 'badge' }} />
+                      <Skeleton width="10rem" height="1.25rem" shape="pill" style={{ gridArea: 'member' }} />
+                      <Skeleton width="13rem" height="1.25rem" shape="pill" style={{ gridArea: 'date' }} />
+                      <Skeleton width="1.25rem" height="1.25rem" shape="pill" style={{ gridArea: 'chevron' }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </SkeletonScreen>
+          )}
           {!isLoading && error && <p className={styles.status}>{error}</p>}
 
           {!isLoading && !error && visibleLoans.length === 0 && (

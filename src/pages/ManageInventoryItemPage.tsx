@@ -30,6 +30,7 @@ import {
 import { CATEGORY_OPTIONS } from '../lib/equipmentCategories'
 import type { Equipment, EquipmentCategory, UserProfile } from '../types'
 import formStyles from './AddInventoryItemPage.module.css'
+import { Skeleton, SkeletonScreen } from '../components/skeleton/Skeleton'
 import styles from './ManageInventoryItemPage.module.css'
 
 type ProductType = 'hardware' | 'consumable'
@@ -359,11 +360,42 @@ export default function ManageInventoryItemPage() {
     signOut()
   }
 
+  // Static chrome and field labels render for real; only the product's own
+  // image and values shimmer, so the form doesn't reflow when it arrives.
   if (isLoading) {
     return (
       <div className={formStyles.page}>
         <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
-        <p className={styles.status}>Loading…</p>
+
+        <div className={formStyles.topRow}>
+          <button type="button" className={formStyles.topBackButton} onClick={handleBackClick} aria-label="Back">
+            <ArrowLeftIcon size={20} />
+            <span>Back</span>
+          </button>
+          <h1 className={formStyles.heading}>Manage product details</h1>
+          <div />
+        </div>
+
+        <main className={formStyles.main}>
+          <SkeletonScreen label="Loading product details…">
+            <Skeleton height="17.5rem" radius="1.25rem" style={{ marginBottom: '1.5rem' }} />
+
+            <div className={formStyles.field}>
+              <span className={formStyles.label}>Product name (REQUIRED)</span>
+              <Skeleton height="3.25rem" radius="1.25rem" />
+            </div>
+
+            <div className={formStyles.field}>
+              <span className={formStyles.label}>One-sentence description of product (REQUIRED)</span>
+              <Skeleton height="6rem" radius="1.25rem" />
+            </div>
+
+            <div className={formStyles.field}>
+              <span className={formStyles.label}>Replacement value (REQUIRED)</span>
+              <Skeleton height="3.25rem" radius="1.25rem" />
+            </div>
+          </SkeletonScreen>
+        </main>
       </div>
     )
   }

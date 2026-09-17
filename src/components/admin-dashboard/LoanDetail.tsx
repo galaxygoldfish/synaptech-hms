@@ -13,6 +13,7 @@ import {
   type LoanBucket,
 } from '../../lib/loanRequests'
 import type { LoanRequestItemRole, UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './LoanDetail.module.css'
 
 const BADGE_CLASS: Record<LoanBucket, string> = {
@@ -49,6 +50,12 @@ interface DetailRowProps {
   label: string
   value: string
 }
+
+// The rows that are always present once the loan loads; the conditional
+// ones (return date, reviewer, note) are left out so the skeleton never
+// promises more than the record may hold.
+const LOAN_DETAIL_LABELS = ['Member', 'Member email', 'Requested'] as const
+const SKELETON_VALUE_WIDTHS = ['10rem', '14rem', '12rem']
 
 function DetailRow({ label, value }: DetailRowProps) {
   return (
@@ -152,7 +159,31 @@ export default function LoanDetail() {
           <div />
         </div>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading loan details…" className={styles.skeletonStack}>
+            <div className={styles.itemCard}>
+              <Skeleton width="6rem" height="4.5rem" radius="0.625rem" />
+              <div className={styles.itemInfo}>
+                <Skeleton width="45%" height="1.5625rem" shape="pill" />
+                <Skeleton width="30%" height="1.0625rem" shape="pill" />
+              </div>
+              <Skeleton width="7.5rem" height="2rem" shape="pill" />
+            </div>
+
+            <div className={styles.card}>
+              {LOAN_DETAIL_LABELS.map((label, index) => (
+                <div key={label} className={styles.row}>
+                  <span className={styles.rowLabel}>{label}</span>
+                  <Skeleton
+                    width={SKELETON_VALUE_WIDTHS[index % SKELETON_VALUE_WIDTHS.length]}
+                    height="1.25rem"
+                    shape="pill"
+                  />
+                </div>
+              ))}
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {!isLoading && !error && detail && bucket && (

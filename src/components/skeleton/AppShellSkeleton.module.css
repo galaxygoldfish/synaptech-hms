@@ -1,0 +1,38 @@
+/* Boot-time placeholder. At this point auth hasn't resolved, so we don't
+   yet know whether the welcome page, the member dashboard or the admin
+   dashboard is coming — this stays deliberately generic rather than
+   miming a layout the user may never see. */
+
+.page {
+  min-height: 100vh;
+  background: var(--white, #ffffff);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.75rem clamp(1.25rem, 4vw, 2.4375rem);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.main {
+  width: 80%;
+  margin: 0 auto;
+  padding: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}

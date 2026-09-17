@@ -57,6 +57,7 @@ export default function Home() {
   const hasOverdueLoan = loan?.status === "OVERDUE";
 
   const handleCheckoutClick = () => {
+    if (isLoading) return;
     if (hasOverdueLoan) {
       setWarningOpen(true);
       return;
@@ -89,14 +90,9 @@ export default function Home() {
     signOut();
   };
 
-  if (isLoading) {
-    return (
-      <div className="app-shell app-shell--centered">
-        <p className="status-text">Loading dashboard…</p>
-      </div>
-    );
-  }
-
+  // Only the current loan comes from the network. The header, checkout CTA
+  // and action list are all local, so the shell renders straight away and
+  // only the hardware card shimmers.
   if (error || !user) {
     return (
       <div className="app-shell app-shell--centered">
@@ -110,11 +106,14 @@ export default function Home() {
       <Header userName={user.name.split(" ")[0]} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <MyHardwareCard loan={loan} onMoreDetails={handleMoreDetails} />
+        <MyHardwareCard loan={loan} isLoading={isLoading} onMoreDetails={handleMoreDetails} />
 
         <div className={styles.row}>
           <div className={`checkout-cta-wrap${isWarningOpen ? " checkout-cta-wrap--warning" : ""}`}>
-            <CheckoutCallToAction disabled={hasOverdueLoan} onClick={handleCheckoutClick} />
+            {/* Stays disabled until the loan resolves: `hasOverdueLoan` is
+                false while loading, and an overdue member must not be able
+                to slip into checkout in that window. */}
+            <CheckoutCallToAction disabled={hasOverdueLoan || isLoading} onClick={handleCheckoutClick} />
             {hasOverdueLoan && <InlineOverdueWarning onDismiss={() => setWarningOpen(false)} />}
           </div>
           <div className={styles.actionListCard}>

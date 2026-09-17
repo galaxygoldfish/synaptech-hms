@@ -6,6 +6,7 @@ import { ProfileModal } from './ProfileModal'
 import { CalendarIcon } from './icons'
 import { fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutReturnDate.module.css'
 
 // The Synaptech Hardware Checkout & Usage Policy Google Doc.
@@ -209,7 +210,25 @@ export default function CheckoutReturnDate() {
           </p>
         )}
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading your checkout items…">
+            <div className={styles.card}>
+              <p className={styles.cardTitle}>Items to be checked out</p>
+              <ul className={styles.itemList}>
+                {Array.from({ length: 2 }, (_, index) => (
+                  <li key={index} className={styles.itemRow}>
+                    <Skeleton width="5.375rem" height="5.375rem" radius="0.625rem" />
+                    <div className={styles.itemInfo}>
+                      <Skeleton width="50%" height="1.375rem" shape="pill" />
+                      <Skeleton width="75%" height="1.0625rem" shape="pill" />
+                    </div>
+                    <Skeleton width="11rem" height="3rem" radius="0.9375rem" />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {isSessionActive && !isLoading && !error && items.length > 0 && maxDate && (

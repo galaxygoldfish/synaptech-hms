@@ -117,28 +117,23 @@ export default function AdminHomePage() {
     signOut()
   }
 
-  if (isLoading) {
+  // Only the stat counts come from the network — the header, search bar and
+  // action list are all local, so the shell renders immediately and just the
+  // numbers shimmer. No full-page swap, no layout shift when data lands.
+  if (error) {
     return (
       <div className="app-shell app-shell--centered">
-        <p className="status-text">Loading dashboard…</p>
-      </div>
-    )
-  }
-
-  if (error || !stats || !user) {
-    return (
-      <div className="app-shell app-shell--centered">
-        <p className="status-text status-text--error">{error ?? 'Something went wrong.'}</p>
+        <p className="status-text status-text--error">{error}</p>
       </div>
     )
   }
 
   return (
     <div className={styles.page}>
-      <Header userName={user.name} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        {!isSearching && <StatCards stats={stats} />}
+        {!isSearching && <StatCards stats={isLoading ? null : stats} />}
 
         <SearchBar value={query} onChange={setQuery} />
 
@@ -149,7 +144,7 @@ export default function AdminHomePage() {
         />
       </main>
 
-      {isProfileOpen && (
+      {isProfileOpen && user && (
         <ProfileModal user={user} onClose={() => setProfileOpen(false)} onLogOut={handleLogOut} />
       )}
     </div>

@@ -13,6 +13,7 @@ import {
 } from '../../lib/inventory'
 import { buildItemLabelsPdf, printLabelsPdf } from '../../lib/labelPdf'
 import type { EquipmentUnit } from '../../types'
+import { Skeleton, SkeletonLabel } from '../skeleton/Skeleton'
 import styles from './EquipmentUnitsTable.module.css'
 
 interface EquipmentUnitsTableProps {
@@ -128,7 +129,39 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
       <span className={styles.sectionLabel}>Individual units in inventory</span>
 
       <div className={styles.card}>
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <>
+            <SkeletonLabel label="Loading units…" />
+            <table className={styles.table} aria-busy="true">
+              <thead>
+                <tr>
+                  <th className={styles.thSerial}>Serial number</th>
+                  <th className={styles.thStatus}>Status</th>
+                  <th className={styles.thAction} aria-hidden="true" />
+                  <th className={styles.thAction} aria-hidden="true" />
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 4 }, (_, index) => (
+                  <tr key={index} className={styles.row} aria-hidden="true">
+                    <td className={styles.tdSerial}>
+                      <Skeleton width="10rem" height="1.125rem" shape="pill" />
+                    </td>
+                    <td className={styles.tdStatus}>
+                      <Skeleton width="6rem" height="1.75rem" shape="pill" />
+                    </td>
+                    <td className={styles.tdAction}>
+                      <Skeleton width="2rem" height="2rem" radius="0.5rem" />
+                    </td>
+                    <td className={styles.tdAction}>
+                      <Skeleton width="2rem" height="2rem" radius="0.5rem" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
         {!isLoading && loadError && <p className={styles.status}>{loadError}</p>}
 
         {!isLoading && !loadError && (

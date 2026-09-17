@@ -1,4 +1,5 @@
 import { ChevronRightFilled } from './icons'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { InventoryGroup } from '../../lib/useInventoryCatalog'
 import type { Equipment } from '../../types'
 import styles from './InventoryGroupedList.module.css'
@@ -19,7 +20,31 @@ export function InventoryGroupedList({
   emptyMessage = 'No items match your search.',
   onSelectItem,
 }: InventoryGroupedListProps) {
-  if (isLoading) return <p className={styles.status}>Loading inventory…</p>
+  // Two stand-in groups of three rows: enough to fill the fold without
+  // promising more items than a short catalogue actually has.
+  if (isLoading) {
+    return (
+      <SkeletonScreen label="Loading inventory…" className={styles.skeletonGroups}>
+        {Array.from({ length: 2 }, (_, groupIndex) => (
+          <section key={groupIndex} className={styles.group}>
+            <Skeleton width="9rem" height="1.25rem" shape="pill" />
+            <ul className={styles.itemList}>
+              {Array.from({ length: 3 }, (_, itemIndex) => (
+                <li key={itemIndex} className={styles.item}>
+                  <Skeleton width="6.5rem" height="6.5rem" radius="0.625rem" className={styles.itemThumb} />
+                  <div className={styles.itemInfo}>
+                    <Skeleton width="55%" height="1.5625rem" shape="pill" />
+                    <Skeleton width="85%" height="1.0625rem" shape="pill" />
+                    <Skeleton width="30%" height="1.0625rem" shape="pill" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </SkeletonScreen>
+    )
+  }
   if (error) return <p className={styles.status}>{error}</p>
   if (groups.length === 0) return <p className={styles.status}>{emptyMessage}</p>
 

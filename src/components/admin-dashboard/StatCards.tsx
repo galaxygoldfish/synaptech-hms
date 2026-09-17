@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
+import { Skeleton } from "../skeleton/Skeleton";
 import type { DashboardStats } from "../../types";
 import styles from "./AdminHome.module.css";
 
 interface StatCardsProps {
-  stats: DashboardStats;
+  /** `null` while the counts are still loading — the card renders its
+      label and colour immediately and shimmers only the number. */
+  stats: DashboardStats | null;
 }
 
 const cardConfig: {
@@ -27,17 +30,30 @@ const toneClass = {
 
 export function StatCards({ stats }: StatCardsProps) {
   const navigate = useNavigate();
+  const isLoading = stats === null;
 
   return (
-    <div className={styles.statRow}>
+    <div className={styles.statRow} aria-busy={isLoading}>
       {cardConfig.map((card) => (
         <button
           type="button"
           className={`${styles.statCard} ${toneClass[card.tone]}`}
           key={card.key}
+          disabled={isLoading}
           onClick={() => navigate(`/adminHome/loans?filter=${card.filter}`)}
         >
-          <div className={styles.statCardValue}>{stats[card.key]}</div>
+          <div className={styles.statCardValue}>
+            {isLoading ? (
+              <Skeleton
+                width="2ch"
+                height="1em"
+                radius="0.25em"
+                style={{ margin: "0 auto", opacity: 0.55 }}
+              />
+            ) : (
+              stats[card.key]
+            )}
+          </div>
           <div className={styles.statCardLabel}>{card.label}</div>
         </button>
       ))}

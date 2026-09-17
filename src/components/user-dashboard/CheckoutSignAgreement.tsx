@@ -7,6 +7,7 @@ import { CloudUploadIcon, DocumentIcon, DownloadIcon, TrashIcon } from './icons'
 import { fetchAvailableSerialNumber, fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
 import { buildLoanAgreementPdf, downloadLoanAgreementPdf } from '../../lib/loanAgreementPdf'
 import type { Equipment, UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutSignAgreement.module.css'
 
 function slugify(value: string): string {
@@ -223,7 +224,24 @@ export default function CheckoutSignAgreement() {
         <p className={styles.subtext}>Download the document, add your signature, then upload it to the corresponding item</p>
         <p className={`${styles.subtext} ${styles.subtextMobileOnly}`}>This might be easier to do on a computer</p>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading your checkout items…">
+            <div className={styles.card}>
+              <p className={styles.cardTitle}>Items to be checked out</p>
+              <ul className={styles.itemList}>
+                {Array.from({ length: 2 }, (_, index) => (
+                  <li key={index} className={styles.itemRow}>
+                    <div className={styles.itemMain}>
+                      <Skeleton width="45%" height="1.375rem" shape="pill" />
+                      <Skeleton width="60%" height="1.0625rem" shape="pill" />
+                    </div>
+                    <Skeleton width="10rem" height="3rem" radius="0.9375rem" />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {!isLoading && !error && items.length > 0 && (

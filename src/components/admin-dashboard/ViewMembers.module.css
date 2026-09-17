@@ -177,3 +177,15 @@
     padding: 1rem;
   }
 }
+
+/* Non-interactive twin of .memberItem used while the list loads. */
+.skeletonRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: #f4f4f4;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+}

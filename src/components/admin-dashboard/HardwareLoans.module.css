@@ -318,3 +318,18 @@
     font-size: 1rem;
   }
 }
+
+/* Non-interactive twin of .loanItem used while the list loads — same grid
+   so rows don't jump when the real data lands. */
+.skeletonRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 9.5rem 13rem 17rem auto;
+  grid-template-areas: 'thumb info badge member date chevron';
+  align-items: center;
+  column-gap: 3rem;
+  row-gap: 0.5rem;
+  background: #f4f4f4;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+}

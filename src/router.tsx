@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { PageTransition } from './components/PageTransition'
+import { AppShellSkeleton } from './components/skeleton/AppShellSkeleton'
 import WelcomePage from './pages/WelcomePage'
 import ProfileSetupPage from './pages/ProfileSetupPage'
 import HomePage from './pages/HomePage'
@@ -30,7 +31,7 @@ import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 import AdminCheckoutHardwarePage from './pages/AdminCheckoutHardwarePage'
 
 function LoadingScreen() {
-  return <div>Loading…</div>
+  return <AppShellSkeleton />
 }
 
 function ProfileFetchError() {

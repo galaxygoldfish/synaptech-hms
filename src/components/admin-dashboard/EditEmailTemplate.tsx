@@ -12,6 +12,7 @@ import {
   type EmailTemplate,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './EditEmailTemplate.module.css'
 
 const CLOSE_ICON_SVG =
@@ -203,12 +204,41 @@ export default function EditEmailTemplate() {
     }
   }
 
+  // The chrome (header, back button, field labels) is static, so it renders
+  // for real and only the template's own subject/body shimmer.
   if (isLoading) {
     return (
       <div className={styles.page}>
         <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
         <main className={styles.main}>
-          <p className={styles.status}>Loading…</p>
+          <div className={styles.topRow}>
+            <button type="button" className={styles.backButton} onClick={() => navigate(listPath)} aria-label="Back">
+              <ArrowLeftIcon size={20} />
+              <span>Back</span>
+            </button>
+            <SkeletonScreen label="Loading email template…">
+              <Skeleton width="16rem" height="1.75rem" shape="pill" />
+            </SkeletonScreen>
+            <div />
+          </div>
+
+          <div className={styles.formSection}>
+            <span className={styles.fieldLabel}>Subject line</span>
+            <div className={styles.subjectInput} aria-hidden="true">
+              <Skeleton width="65%" height="1rem" shape="pill" />
+            </div>
+          </div>
+
+          <div className={styles.formSection}>
+            <span className={styles.fieldLabel}>Email body</span>
+            <div className={styles.editorWrap} aria-hidden="true">
+              <Skeleton width="85%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="95%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="70%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="90%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="45%" height="1rem" shape="pill" />
+            </div>
+          </div>
         </main>
       </div>
     )

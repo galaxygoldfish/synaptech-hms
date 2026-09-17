@@ -328,3 +328,11 @@
   color: #b9433c;
   margin: 0;
 }
+
+/* The page's cards are direct children of the main flex column; the
+   skeleton needs one wrapper, so it re-creates that column's spacing. */
+.skeletonStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}

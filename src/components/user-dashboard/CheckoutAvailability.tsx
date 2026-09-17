@@ -7,6 +7,7 @@ import { useEdgeFade } from '../../lib/useEdgeFade'
 import { fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
 import { submitLoanRequest, type SubmitLoanRequestItemInput } from '../../lib/loanRequests'
 import type { Equipment, LoanRequestItemRole, UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutAvailability.module.css'
 
 const DAYS_COUNT = 14
@@ -235,7 +236,26 @@ export default function CheckoutAvailability() {
         <p className={styles.subtext}>Click all hours that you&rsquo;re available, even if only partially available during that hour</p>
         <p className={styles.subtext}>This information is collected to help our Hardware Managers schedule a pickup with you</p>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading your checkout items…">
+            <div className={styles.card}>
+              <div className={styles.tableScroll}>
+                {Array.from({ length: 6 }, (_, dayIndex) => (
+                  <div key={dayIndex} className={styles.dayColumn}>
+                    <p className={styles.dayLabel}>
+                      <Skeleton width="4.5rem" height="0.9375rem" shape="pill" style={{ margin: '0 auto' }} />
+                    </p>
+                    <div className={styles.slotList}>
+                      {Array.from({ length: 9 }, (_, slotIndex) => (
+                        <Skeleton key={slotIndex} height="2.25rem" radius="0.625rem" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && loadError && <p className={styles.status}>{loadError}</p>}
 
         {!isLoading && !loadError && (

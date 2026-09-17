@@ -8,6 +8,7 @@ import { ArrowLeftIcon, PersonIcon, TrashIconFilled } from './icons'
 import { fetchProfileById, updateMemberRole } from '../../lib/members'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MemberDetail.module.css'
 
 function formatRegistrationDate(iso: string): string {
@@ -18,6 +19,21 @@ interface DetailRowProps {
   label: string
   value: string
 }
+
+// Mirrors the rows rendered below once the member loads.
+const DETAIL_LABELS = [
+  'Name',
+  'UW Email',
+  'Student ID',
+  'Discord',
+  'Phone #',
+  'Address',
+  'Registration date',
+  'Privilege level',
+] as const
+
+// Varied widths so the placeholder reads as data rather than a bar chart.
+const SKELETON_VALUE_WIDTHS = ['9rem', '14rem', '7rem', '10rem', '8.5rem', '16rem', '11rem', '5rem']
 
 function DetailRow({ label, value }: DetailRowProps) {
   return (
@@ -134,7 +150,24 @@ export default function MemberDetail() {
           <div />
         </div>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {/* The field labels are static, so only the values shimmer — the
+            card keeps its exact final height and nothing shifts. */}
+        {isLoading && (
+          <SkeletonScreen label="Loading member details…">
+            <div className={styles.card}>
+              {DETAIL_LABELS.map((label, index) => (
+                <div key={label} className={styles.row}>
+                  <span className={styles.rowLabel}>{label}</span>
+                  <Skeleton
+                    width={SKELETON_VALUE_WIDTHS[index % SKELETON_VALUE_WIDTHS.length]}
+                    height="1.25rem"
+                    shape="pill"
+                  />
+                </div>
+              ))}
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {!isLoading && !error && member && (

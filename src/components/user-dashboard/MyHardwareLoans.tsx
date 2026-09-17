@@ -7,6 +7,7 @@ import { ArrowLeftIcon, ChevronRightIcon, CognitiveBrainIconFilled } from './ico
 import { fetchLoanRequestItems, type LoanRequestItemSummary } from '../../lib/loanRequests'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import type { LoanRequestStatus, UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MyHardwareLoans.module.css'
 
 type LoanFilter = 'all' | 'current' | 'past' | 'pending'
@@ -145,7 +146,25 @@ export default function MyHardwareLoans() {
             </div>
           </div>
 
-          {isLoading && <p className={styles.status}>Loading your loans…</p>}
+          {isLoading && (
+            <SkeletonScreen label="Loading your loans…">
+              <ul className={styles.loanList}>
+                {Array.from({ length: 4 }, (_, index) => (
+                  <li key={index}>
+                    <div className={styles.skeletonRow}>
+                      <Skeleton width="4.5rem" height="4.5rem" radius="0.625rem" />
+                      <div className={styles.loanInfo}>
+                        <Skeleton width="55%" height="1.5625rem" shape="pill" />
+                        <Skeleton width="7rem" height="1.5rem" shape="pill" />
+                        <Skeleton width="40%" height="0.9375rem" shape="pill" />
+                      </div>
+                      <Skeleton width="1.25rem" height="1.25rem" shape="pill" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </SkeletonScreen>
+          )}
           {!isLoading && error && <p className={styles.status}>{error}</p>}
 
           {!isLoading && !error && filteredLoans.length === 0 && (
