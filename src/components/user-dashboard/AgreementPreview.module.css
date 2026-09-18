@@ -1,178 +1,261 @@
+/* Styled to match the generated PDF (src/lib/loanAgreementPdf.ts), so the
+   agreement on screen and the agreement in the signed file are recognisably
+   the same document.
+   
+   The PDF is laid out in inches on an 8.5x11 page with type in points, so
+   this derives both units from the page width and sizes everything from
+   them: --in is one PDF inch, --pt is one PDF point. Change --doc-width and
+   the whole document scales like a zoom level, keeping every proportion.
+   
+   Exact line-for-line parity isn't achievable — browsers break lines and
+   kern differently from jsPDF — but every size, colour, margin and fill
+   below is the value the PDF uses. */
+
 .preview {
+  /* The viewer around the page, not the page itself: a tinted surround with
+     the sheet floating on it, the way a PDF reader presents one. */
   max-height: 32rem;
-  overflow-y: auto;
+  overflow: auto;
   margin-top: 1.75rem;
-  padding: 1.5rem 1.75rem;
+  padding: 1rem;
   border: 3px solid rgba(0, 0, 0, 0.12);
   border-radius: 1.25rem;
+  background: #eceef1;
+}
+
+.sheet {
+  --doc-width: 51rem; /* 8.5in at 96dpi, the PDF's page width */
+  --in: calc(var(--doc-width) / 8.5);
+  --pt: calc(var(--doc-width) / 612); /* 612pt to the page */
+
+  width: var(--doc-width);
+  margin: 0 auto;
+  padding: calc(0.75 * var(--in)); /* MARGIN_X / MARGIN_TOP */
   background: var(--white);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.12);
+  color: #1a1a1a; /* BODY */
+  font-family: 'Rubik', sans-serif;
+}
+
+/* ── Page header (logo + wordmark, drawn on every PDF page) ──── */
+
+.docHeader {
+  display: flex;
+  align-items: center;
+  gap: calc(0.1 * var(--in));
+  margin-bottom: calc(0.45 * var(--in));
+}
+
+.docLogo {
+  width: calc(0.32 * var(--in));
+  height: calc(0.26 * var(--in));
+  object-fit: contain;
+}
+
+.docWordmark {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: calc(13 * var(--pt));
+  color: #105692; /* BRAND_BLUE */
+  line-height: 1;
 }
 
 .title {
   font-family: 'Bungee', var(--display-font-fallback);
-  font-size: 1.125rem;
-  color: var(--welcome-blue);
-  margin: 0 0 0.75rem;
+  font-size: calc(20 * var(--pt));
+  color: #0b2a54; /* NAVY */
+  line-height: 1.1;
+  margin: 0 0 calc(0.26 * var(--in));
 }
 
 .sectionHeading {
   font-family: 'Rubik', sans-serif;
   font-weight: 500;
-  font-size: 1rem;
-  color: rgba(0, 0, 0, 0.85);
-  margin: 1.5rem 0 0.5rem;
+  font-size: calc(12.5 * var(--pt));
+  color: #1a1a1a;
+  margin: 0 0 calc(0.21 * var(--in));
 }
 
 .paragraph {
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: rgba(0, 0, 0, 0.75);
-  margin: 0 0 0.5rem;
+  font-size: calc(10.5 * var(--pt));
+  line-height: calc(0.185 * var(--in)); /* LINE_HEIGHT */
+  color: #1a1a1a;
+  margin: 0 0 calc(0.32 * var(--in)); /* the writer's default gapAfter */
 }
 
+/* numberedList: "1." at the margin, text indented 0.24in, no gap between
+   items and 0.32in after the list. */
 .list {
-  margin: 0 0 0.5rem;
-  padding-left: 1.25rem;
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: rgba(0, 0, 0, 0.75);
+  margin: 0 0 calc(0.32 * var(--in));
+  padding-left: calc(0.24 * var(--in));
+  font-size: calc(10.5 * var(--pt));
+  line-height: calc(0.185 * var(--in));
+  color: #1a1a1a;
 }
 
 .list li {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0;
 }
 
-/* ── Key/value rows (borrower + hardware info) ───────────────── */
+/* ── keyValueTable (sections 1, 2 and 10) ───────────────────── */
+/* Filled label cell, bordered value cell, 0.34in rows, 0.1in text inset. */
 
 .kv {
-  margin: 0 0 0.5rem;
+  margin: 0 0 calc(0.4 * var(--in));
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 0.625rem;
-  overflow: hidden;
+  border: 1px solid #000;
+  border-bottom: none;
 }
 
 .kvRow {
   display: flex;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.kvRow:first-child {
-  border-top: none;
+  min-height: calc(0.34 * var(--in));
+  border-bottom: 1px solid #000;
 }
 
 .kvLabel {
-  flex: 0 0 45%;
-  padding: 0.5rem 0.75rem;
-  background: #eef2f8;
-  font-family: 'Rubik', sans-serif;
+  flex: 0 0 30%; /* labelWidth 2.1in of the 7in content width */
+  display: flex;
+  align-items: center;
+  padding: 0 calc(0.1 * var(--in));
+  border-right: 1px solid #000;
+  background: #d6e5f8; /* TABLE_HEADER_FILL */
   font-weight: 500;
-  font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.7);
+  font-size: calc(10 * var(--pt));
+  color: #1a1a1a;
+}
+
+/* Sections 2 and 10 pass labelWidth 3.1in instead. */
+.kvWideLabel .kvLabel {
+  flex-basis: 44.3%;
 }
 
 .kvValue {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  padding: calc(0.06 * var(--in)) calc(0.1 * var(--in));
   margin: 0;
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.85);
-  overflow-wrap: break-word;
+  font-size: calc(10 * var(--pt));
+  color: #1a1a1a;
+  overflow-wrap: anywhere;
 }
 
-.kvMuted .kvLabel {
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.4);
-}
-
+/* Section 10 as the borrower sees it: the rows exist, the values don't. */
 .kvMuted .kvValue {
   color: rgba(0, 0, 0, 0.3);
 }
 
-/* ── Tables (e.g. section 6's liability cap grid) ─────────────── */
+/* ── gridTable (section 6's liability cap, section 9's signature) ── */
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin: 0 0 0.5rem;
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.8125rem;
+  margin: 0 0 calc(0.4 * var(--in));
+  font-size: calc(10 * var(--pt));
+  color: #1a1a1a;
 }
 
 .table th,
 .table td {
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  padding: 0.5rem 0.625rem;
+  border: 1px solid #000;
+  height: calc(0.34 * var(--in));
+  padding: calc(0.04 * var(--in)) calc(0.08 * var(--in));
   text-align: center;
+  vertical-align: middle;
 }
 
 .table th {
   background: #d6e5f8;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.75);
 }
 
-.table td {
-  color: rgba(0, 0, 0, 0.75);
+/* Section 9's signature row is drawn taller than the others (0.55in). */
+.signatureTable td {
+  height: calc(0.55 * var(--in));
 }
 
-/* ── Signature fields ─────────────────────────────────────────── */
+/* ── Fillable fields ─────────────────────────────────────────── */
+/* The PDF prints these as table cells because paper can't be typed into.
+   On screen they're real inputs, sized and coloured to sit in the document
+   rather than on top of it. */
 
 .signatureRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0.75rem 0 0.5rem;
+  gap: calc(0.18 * var(--in));
+  margin: 0 0 calc(0.32 * var(--in));
 }
 
 .field {
-  flex: 1 1 14rem;
+  flex: 1 1 calc(2.6 * var(--in));
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: calc(0.06 * var(--in));
 }
 
 .fieldLabel {
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.8125rem;
+  font-size: calc(9 * var(--pt));
   color: rgba(0, 0, 0, 0.6);
 }
 
 .fieldInput {
-  border: 2px solid rgba(0, 0, 0, 0.3);
-  border-radius: 0.625rem;
-  padding: 0.625rem 0.75rem;
+  border: 1px solid #000;
+  border-radius: 0;
+  padding: 0 calc(0.1 * var(--in));
+  height: calc(0.34 * var(--in));
   font-family: 'Rubik', sans-serif;
-  font-size: 0.9375rem;
-  color: var(--black);
+  font-size: calc(10 * var(--pt));
+  color: #1a1a1a;
   background: var(--white);
 }
 
 .fieldInput:focus {
   outline: none;
-  border-color: var(--welcome-blue);
+  border-color: #105692;
+  box-shadow: 0 0 0 2px rgba(16, 86, 146, 0.18);
+}
+
+/* A signed value read back rather than entered — the same cell the PDF
+   prints it in, tinted to show it's a record and not a control. */
+.fieldStatic {
+  display: flex;
+  align-items: center;
+  border: 1px solid #000;
+  padding: 0 calc(0.1 * var(--in));
+  min-height: calc(0.34 * var(--in));
+  font-size: calc(10 * var(--pt));
+  color: #1a1a1a;
+  background: #f6f7f9;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .internalNote {
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.8125rem;
-  font-style: italic;
-  color: rgba(0, 0, 0, 0.4);
-  margin: 0 0 0.5rem;
+  font-size: calc(10.5 * var(--pt));
+  line-height: calc(0.185 * var(--in));
+  color: #1a1a1a;
+  margin: 0 0 calc(0.1 * var(--in)); /* the writer passes gapAfter 0.1 here */
 }
 
-@media (max-width: 640px) {
+/* Below this the page can't both stay proportional and stay legible — at
+   phone width a faithful 8.5in sheet puts body text at about 6px. The
+   document keeps its proportions and the viewer pans instead, which is what
+   reading the PDF on a phone does too. */
+@media (max-width: 52rem) {
+  .sheet {
+    --doc-width: 44rem;
+  }
+}
+
+@media (max-width: 40rem) {
   .preview {
-    padding: 1.125rem 1.25rem;
+    padding: 0.625rem;
     max-height: 26rem;
   }
 
-  .kvLabel {
-    flex-basis: 55%;
+  .sheet {
+    --doc-width: 38rem;
   }
 }

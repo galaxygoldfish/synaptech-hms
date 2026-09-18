@@ -11,6 +11,9 @@ export interface SubmitLoanRequestItemInput {
   role: LoanRequestItemRole
   returnDate: string | null // ISO date; hardware only
   signedAgreementFile: File | null // hardware only
+  /** What the borrower typed into section 9 — hardware only. */
+  signatureName: string | null
+  signatureDate: string | null // ISO date
 }
 
 export interface AvailabilitySlotInput {
@@ -63,6 +66,8 @@ export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<
           item_role: item.role,
           return_date: item.isHardware ? item.returnDate : null,
           signed_agreement_path: signedAgreementPath,
+          signature_name: item.isHardware ? item.signatureName : null,
+          signature_date: item.isHardware ? item.signatureDate : null,
         }
       }),
     )
@@ -154,7 +159,11 @@ export async function fetchLoanRequestItems(userId: string): Promise<LoanRequest
 }
 
 export interface AdminLoanRequestOtherItem {
+  /** This sibling's own loan_request_items.id, so the detail screen can
+      link straight to it. */
+  id: string
   itemName: string
+  imageUrl: string | null
   itemRole: LoanRequestItemRole
 }
 
@@ -171,6 +180,10 @@ export interface AdminLoanRequestDetail {
   requestedAt: string
   returnDate: string | null
   signedAgreementPath: string | null
+  /** Section 9 as the borrower filled it in. Null for items submitted before
+      the signature was stored — see the 20260923000000 migration. */
+  signatureName: string | null
+  signatureDate: string | null
   reviewedAt: string | null
   reviewNote: string | null
   returnedAt: string | null
@@ -194,7 +207,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
     .select(
-      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, returned_at, returned_by',
+      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, signature_name, signature_date, returned_at, returned_by',
     )
     .eq('id', itemId)
     .single()
@@ -256,7 +269,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
 
   const { data: siblingItems, error: siblingsError } = await supabase
     .from('loan_request_items')
-    .select('equipment_id, item_role')
+    .select('id, equipment_id, item_role')
     .eq('loan_request_id', item.loan_request_id)
     .neq('id', itemId)
   if (siblingsError) throw siblingsError
@@ -266,14 +279,23 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     const siblingEquipmentIds = [...new Set(siblingItems.map((sibling) => sibling.equipment_id))]
     const { data: siblingEquipment, error: siblingEquipmentError } = await supabase
       .from('equipment')
-      .select('id, name')
+      .select('id, name, image_url')
       .in('id', siblingEquipmentIds)
     if (siblingEquipmentError) throw siblingEquipmentError
 
-    const nameById = new Map((siblingEquipment ?? []).map((equipmentRow) => [equipmentRow.id, equipmentRow.name]))
+    const equipmentById = new Map((siblingEquipment ?? []).map((equipmentRow) => [equipmentRow.id, equipmentRow]))
     otherItems = siblingItems.flatMap((sibling) => {
-      const itemName = nameById.get(sibling.equipment_id)
-      return itemName ? [{ itemName, itemRole: sibling.item_role as LoanRequestItemRole }] : []
+      const equipment = equipmentById.get(sibling.equipment_id)
+      return equipment
+        ? [
+            {
+              id: sibling.id,
+              itemName: equipment.name,
+              imageUrl: equipment.image_url,
+              itemRole: sibling.item_role as LoanRequestItemRole,
+            },
+          ]
+        : []
     })
   }
 
@@ -290,6 +312,8 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     requestedAt: request.requested_at,
     returnDate: item.return_date,
     signedAgreementPath: item.signed_agreement_path,
+    signatureName: item.signature_name,
+    signatureDate: item.signature_date,
     reviewedAt: request.reviewed_at,
     reviewNote: request.review_note,
     returnedAt: item.returned_at,
@@ -303,10 +327,23 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
   }
 }
 
-// Short-lived signed URL for a private loan-agreements bucket object, for
-// the "download signed agreement" action on the loan detail screen.
-export async function fetchSignedAgreementUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(LOAN_AGREEMENTS_BUCKET).createSignedUrl(path, 60 * 5)
+/**
+ * Short-lived signed URL for a private loan-agreements bucket object.
+ *
+ * `download` asks Storage to serve the object as an attachment rather than
+ * inline, which is what the loan detail screen's "Download hardware loan
+ * agreement" button wants — without it the browser previews the PDF in a
+ * tab, which isn't what the button says it does. It's off by default
+ * because handOffLoanRequestItem fetches the same URL to stamp the
+ * certificate onto, and that path only wants the bytes.
+ */
+export async function fetchSignedAgreementUrl(
+  path: string,
+  options: { download?: boolean } = {},
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(LOAN_AGREEMENTS_BUCKET)
+    .createSignedUrl(path, 60 * 5, options.download ? { download: true } : undefined)
   if (error) throw error
   return data.signedUrl
 }
@@ -349,6 +386,14 @@ export interface HandOffLoanRequestItemInput {
   adminId: string
   /** Printed on the approval certificate as who attested the agreement. */
   adminName: string
+  /**
+   * What the certificate records as the hand-off date. Defaults to now; the
+   * hand-off screen passes the date and time the admin typed into section 10
+   * of the agreement, which may be when they actually met the member rather
+   * than when they got round to recording it. `reviewed_at` stays the real
+   * database timestamp either way.
+   */
+  attestedAt?: Date
 }
 
 /**
@@ -393,7 +438,7 @@ export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput)
     itemName: equipment?.name ?? 'this hardware item',
     serialNumber: unit?.data?.serial_number ?? 'Not assigned',
     adminName: input.adminName,
-    approvedAt,
+    approvedAt: input.attestedAt ?? approvedAt,
   })
 
   const { error: itemUpdateError } = await supabase

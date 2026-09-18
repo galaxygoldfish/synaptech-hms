@@ -198,8 +198,18 @@ export default function CheckoutSignAgreement() {
         }),
       )
       const signedAgreements = Object.fromEntries(entries)
+      // Carried forward alongside the PDFs so the values behind them reach the
+      // database too — the admin hand-off screen shows section 9 back to
+      // whoever receives the hardware, and reading it out of the PDF isn't
+      // something the app can do.
+      const signedNames = Object.fromEntries(
+        Object.entries(signatures).map(([itemId, entry]) => [itemId, entry.name.trim()]),
+      )
+      const signedDates = Object.fromEntries(
+        Object.entries(signatures).map(([itemId, entry]) => [itemId, entry.date]),
+      )
       navigate('/home/checkout/availability', {
-        state: { ...checkoutState, signedAgreements },
+        state: { ...checkoutState, signedAgreements, signedNames, signedDates },
       })
     } catch (submitError) {
       // eslint-disable-next-line no-console

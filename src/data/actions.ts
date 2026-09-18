@@ -2,20 +2,20 @@ import type { ActionGroup } from '../types';
 
 export const actionGroups: ActionGroup[] = [
   {
+    category: 'Hardware loans',
+    items: [
+      { id: 'checkout-hardware', label: 'Check out hardware',    icon: 'checkout', category: 'Hardware loans' },
+      { id: 'return-hardware',   label: 'Return hardware',       icon: 'return',   category: 'Hardware loans' },
+      { id: 'view-loans',        label: 'View hardware loans',   icon: 'list',     category: 'Hardware loans' },
+    ],
+  },
+  {
     category: 'Inventory',
     items: [
       { id: 'manage-inventory', label: 'Manage hardware inventory', icon: 'inventory', category: 'Inventory' },
       { id: 'add-item',         label: 'Add a new item',             icon: 'add',       category: 'Inventory' },
       { id: 'get-labels',       label: 'Get hardware labels',        icon: 'label',     category: 'Inventory' },
       { id: 'inventory-audit',  label: 'Perform inventory audit',    icon: 'audit',     category: 'Inventory' },
-    ],
-  },
-  {
-    category: 'Hardware loans',
-    items: [
-      { id: 'checkout-hardware', label: 'Check out hardware',    icon: 'checkout', category: 'Hardware loans' },
-      { id: 'return-hardware',   label: 'Return hardware',       icon: 'return',   category: 'Hardware loans' },
-      { id: 'view-loans',        label: 'View hardware loans',   icon: 'list',     category: 'Hardware loans' },
     ],
   },
   {

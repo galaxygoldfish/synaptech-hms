@@ -153,15 +153,31 @@ This app has no server of its own — it's Vite + React talking directly to Supa
 
 The admin "Hardware loans" list (`/adminHome/loans`) searches by item name, serial number or member, filters by state, and opens each row into a loan detail screen at `/adminHome/loans/:id` — the hardware item and its serial, the member with their email and Discord handle, the signed agreement, and whatever action that loan is waiting for:
 
-| State | What the screen offers |
+| State | What the screen shows |
 | --- | --- |
-| Checkout requested | **Mark as handed off**, plus the member's checkout availability |
-| Active / Overdue | **Mark as returned** |
-| Return requested | **Mark as returned**, plus the member's return availability |
-| Returned | Nothing to do — shows when it came back and who received it |
-| Denied | Nothing to do — shows the review note |
+| Checkout requested | **Mark as handed off**, the member's checkout availability, and their signed agreement |
+| Active / Overdue | **Mark as returned**; the signed agreement, the loan's dates and who checked it out |
+| Return requested | **Mark as returned**, the member's return availability, and their signed agreement |
+| Returned | When it came back and who received it |
+| Denied | The review note |
 
-Both actions confirm against the **exact serial number** first, because several units of one product are indistinguishable on a shelf and handing over the wrong one puts the wrong hardware against someone's name. Confirming a hand-off also attests that the member signed the agreement correctly, and stamps a Certificate of Approval onto their signed PDF — the same `handOffLoanRequestItem` the barcode "check out hardware" flow calls, so approving in one place can't mean something different from approving in the other. Confirming a return sets `returned_at`, which frees the unit for checkout, closes the loan, and sends the member their return confirmation.
+**Mark as handed off** opens a two-step flow. Step 1 (`/adminHome/loans/:id/hand-off`) opens the camera and waits for the unit's barcode. Either way the result lands on the viewfinder — it blurs behind a green tick or a red cross — so the scan visibly registers rather than the screen just changing. A match holds the tick briefly and continues; a mismatch says why and resumes scanning, distinguishing a label from another unit ("Wrong serial number") from something that isn't club hardware at all ("Not recognised in inventory"). "Manually attest to serial number" is the way past it without a scan, behind a dialog that names the serial and asks the admin to own it. Step 2 is reached only with that verification in its route state — landing on it directly sends you back to step 1.
+
+Scanning uses the browser's `BarcodeDetector` where it exists (Chromium only) and lazily loads a WebAssembly polyfill where it doesn't, which covers Safari, Firefox and every browser on iPhone. The `.wasm` is served from the app's own bundle rather than the package's default CDN, so a strict CSP or a blocked CDN doesn't break it.
+
+For a scan to match, the printed label has to be readable in the first place. The barcode on `SerialBarcodeLabel` is drawn with the "Libre Barcode 128" webfont, which turns characters into bars and computes nothing else — a Code 128 symbol also needs a start character, a modulo-103 checksum and a stop character. [`src/lib/code128.ts`](src/lib/code128.ts) adds them; the human-readable line below the barcode still shows the plain serial. The font size is load-bearing too: the label's barcode box is 491px wide and clips, so the size is set to fit a full 16-character symbol with a quiet zone either side. Printed at 2.5in that gives an X-dimension of about 0.26mm, just above the practical Code 128 minimum — a longer serial format would need the font size reduced again, or a wider label.
+
+Step 2 (`/adminHome/loans/:id/hand-off/agreement`, "Loan agreement sign off") is the admin counterpart to the member's "Sign the Hardware Loan Agreement" step: the same agreement, rendered from the same [`AgreementPreview`](src/components/user-dashboard/AgreementPreview.tsx) in `review` mode, so the admin can check the borrower signed it and that the serial number matches the hardware in their hands. Section 9 reads the borrower's stored signature and date back in the same two-column table the PDF prints them in, and section 10 — which the borrower leaves blank — is where the receiving Hardware Manager types the received date, time and their own name. Confirming calls `handOffLoanRequestItem` with **the typed name**, not the signed-in account's, since section 10 asks who physically handed the hardware over; the typed date and time become the date on the Certificate of Approval, while `reviewed_at` stays the real database timestamp.
+
+Reading section 9 back needs the signature to exist. Until [`supabase/migrations/20260923000000_loan_item_signature.sql`](supabase/migrations/20260923000000_loan_item_signature.sql), the name and date the borrower typed went into the generated PDF and nowhere else; they're now stored on `loan_request_items` as `signature_name`/`signature_date`. Items submitted before that migration have a PDF but no stored values, and the screen shows "Not recorded" rather than deriving a plausible-looking signature from the profile.
+
+`AgreementPreview` is styled to match the generated PDF: an 8.5x11 sheet in a viewer surround, with the Synaptech logo header, the same Bungee/Rubik type at the PDF's point sizes, the same navy and brand blue, the same `#D6E5F8` table fills and hairline borders, and the same 0.75in margins. Both units come from one custom property each (`--in`, `--pt`) derived from the page width, so changing `--doc-width` scales the whole document like a zoom level. Exact line-for-line parity isn't achievable — browsers break lines and kern differently from jsPDF — but every size, colour and margin is the value [`loanAgreementPdf.ts`](src/lib/loanAgreementPdf.ts) uses. Below ~52rem the sheet steps down and the viewer pans, which is what reading the PDF on a phone does too; the member's signing step renders from the same component, so both sides of the hand-off see the same document.
+
+**Mark as returned** is still a placeholder — it renders with the down-and-in diagonal, but nothing is wired behind it yet.
+
+When a checkout bundles several items, each one is a loan in its own right — its own serial, return date and hand-off — so the "Also included in this request" list opens straight into them.
+
+Recording a hand-off happens in the barcode "Check out hardware" flow, which calls `handOffLoanRequestItem`: it stamps a Certificate of Approval onto the member's signed agreement and moves the request to `approved`. Recording a return means setting `loan_request_items.returned_at`, which frees the unit for checkout, closes the loan and sends the member their return confirmation — `markLoanRequestItemReturned` does exactly that, but **nothing in the UI calls it yet**, so the Returned state is currently only reachable by setting the column directly.
 
 ## App audit log
 
@@ -193,7 +209,7 @@ select public.prune_audit_log(12);  -- run it once, by hand
 
 ### Applying the migration
 
-Paste [`supabase/migrations/20260921000000_audit_log.sql`](supabase/migrations/20260921000000_audit_log.sql) into the Supabase SQL editor, the same way the other migrations in this repo have been applied, followed by [`supabase/migrations/20260922000000_loan_item_return.sql`](supabase/migrations/20260922000000_loan_item_return.sql) (which redefines one of the audit triggers, so it has to come second). Neither needs secrets, and both are safe to re-run.
+Paste these into the Supabase SQL editor in order, the same way the other migrations in this repo have been applied — [`20260921000000_audit_log.sql`](supabase/migrations/20260921000000_audit_log.sql), then [`20260922000000_loan_item_return.sql`](supabase/migrations/20260922000000_loan_item_return.sql) (which redefines one of the audit triggers, so it has to come second), then [`20260923000000_loan_item_signature.sql`](supabase/migrations/20260923000000_loan_item_signature.sql). None needs secrets, and all are safe to re-run.
 
 `supabase db push` is **not** interchangeable here: it applies every local migration the remote `supabase_migrations.schema_migrations` table has no record of, and since this project's migrations were run by hand in the SQL editor, that table doesn't know about them — so a push would attempt to replay all of them, not just this one. Check with `supabase migration list` (read-only) before pushing anything. To move to CLI-managed migrations, mark the already-applied ones with `supabase migration repair --status applied <version>` for each, then `supabase db push` handles this and future migrations normally.
 

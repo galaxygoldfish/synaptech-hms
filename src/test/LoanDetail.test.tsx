@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
@@ -6,8 +6,6 @@ import { useAuth } from '../context/AuthContext'
 import {
   fetchAllLoanRequestItems,
   fetchLoanRequestItemDetail,
-  handOffLoanRequestItem,
-  markLoanRequestItemReturned,
   type AdminLoanRequestDetail,
 } from '../lib/loanRequests'
 import LoanDetail from '../components/admin-dashboard/LoanDetail'
@@ -25,8 +23,6 @@ vi.mock('../lib/loanRequests', async () => {
     fetchLoanRequestItemDetail: vi.fn(),
     fetchLoanRequestAvailability: vi.fn().mockResolvedValue([]),
     fetchSignedAgreementUrl: vi.fn(),
-    handOffLoanRequestItem: vi.fn(),
-    markLoanRequestItemReturned: vi.fn(),
   }
 })
 
@@ -56,6 +52,8 @@ function detail(overrides: Partial<AdminLoanRequestDetail> = {}): AdminLoanReque
     requestedAt: '2026-09-08T17:30:00Z',
     returnDate: null,
     signedAgreementPath: 'bob/req-1/eq-1.pdf',
+    signatureName: 'Bob Reyes',
+    signatureDate: '2026-09-08',
     reviewedAt: null,
     reviewNote: null,
     returnedAt: null,
@@ -72,6 +70,21 @@ function detail(overrides: Partial<AdminLoanRequestDetail> = {}): AdminLoanReque
 
 const activeLoan = detail({ status: 'approved', returnDate: '2099-10-08', reviewedAt: '2026-09-10T18:00:00Z' })
 const overdueLoan = detail({ status: 'approved', returnDate: '2020-01-01', reviewedAt: '2019-12-01T18:00:00Z' })
+const bundledRequest = detail({
+  otherItems: [
+    { id: 'item-2', itemName: 'Oculus VR', imageUrl: 'https://example.test/oculus.png', itemRole: 'optional_addon' },
+  ],
+})
+
+const siblingItem = detail({
+  id: 'item-2',
+  itemName: 'Oculus VR',
+  serialNumber: 'SYN-VR9087',
+  itemRole: 'optional_addon',
+  // No photo on this one — the row still has to line up with the others.
+  otherItems: [{ id: 'item-1', itemName: 'Muse 2', imageUrl: null, itemRole: 'primary' }],
+})
+
 const returnedLoan = detail({
   status: 'approved',
   returnDate: '2026-09-01',
@@ -84,8 +97,6 @@ const deniedRequest = detail({ status: 'denied', reviewNote: 'Already on loan.' 
 beforeEach(() => {
   vi.mocked(fetchLoanRequestItemDetail).mockReset()
   vi.mocked(fetchAllLoanRequestItems).mockReset()
-  vi.mocked(handOffLoanRequestItem).mockReset().mockResolvedValue(undefined)
-  vi.mocked(markLoanRequestItemReturned).mockReset().mockResolvedValue(undefined)
   vi.mocked(useAuth).mockReturnValue({
     session: mockSession,
     profile: mockProfile,
@@ -106,43 +117,79 @@ function renderDetail() {
 }
 
 describe('LoanDetail — what each state offers', () => {
-  it('offers the hand-off on a pending checkout request, with the checkout availability', async () => {
+  it('offers the hand-off and the checkout availability on a pending request', async () => {
     vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
 
     renderDetail()
 
-    expect(await screen.findByRole('button', { name: 'Mark as handed off' })).toBeInTheDocument()
+    expect(await screen.findByText('Checkout requested')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mark as handed off' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /view checkout availability/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /download hardware loan agreement/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mark as returned' })).not.toBeInTheDocument()
   })
 
-  it('offers the return on an active loan', async () => {
+  // Availability is captured for a meeting that hasn't happened yet, so it's
+  // offered while one is pending and not once the hardware has changed hands.
+  it('drops the availability once the hardware is out', async () => {
     vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(activeLoan)
 
     renderDetail()
 
-    expect(await screen.findByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mark as handed off' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Active')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /availability/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /download hardware loan agreement/i })).toBeInTheDocument()
   })
 
-  it('offers the return on an overdue loan too — it still has to come back', async () => {
+
+  it('opens the hand-off screen for this loan', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
+
+    const router = createMemoryRouter(
+      [
+        { path: '/adminHome/loans/:id', element: <LoanDetail /> },
+        { path: '/adminHome/loans/:id/hand-off', element: <p>Hand off item-1</p> },
+      ],
+      { initialEntries: ['/adminHome/loans/item-1'] },
+    )
+    render(<RouterProvider router={router} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Mark as handed off' }))
+
+    expect(await screen.findByText('Hand off item-1')).toBeInTheDocument()
+  })
+
+  // Which way the hardware is about to move decides the label: out on a
+  // request, back on anything already in someone's hands.
+  it('offers the return on an active loan, and on an overdue one', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(activeLoan)
+    const { unmount } = renderDetail()
+    expect(await screen.findByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mark as handed off' })).not.toBeInTheDocument()
+    unmount()
+
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(overdueLoan)
+    renderDetail()
+    expect(await screen.findByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
+  })
+
+  it('marks an overdue loan as overdue', async () => {
     vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(overdueLoan)
 
     renderDetail()
 
     expect(await screen.findByText('Overdue')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
   })
 
-  it('offers nothing on a returned loan, and says who received it', async () => {
+  it('says when a returned loan came back and who received it', async () => {
     vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(returnedLoan)
 
     renderDetail()
 
     expect(await screen.findByText('Returned')).toBeInTheDocument()
     expect(screen.getByText('Received by')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mark as returned' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mark as handed off' })).not.toBeInTheDocument()
+    // Nothing left to move, either way.
+    expect(screen.queryByRole('button', { name: /^Mark as/ })).not.toBeInTheDocument()
   })
 
   // Denied requests are kept out of the list and the stat cards, so this is
@@ -155,88 +202,16 @@ describe('LoanDetail — what each state offers', () => {
 
     expect(await screen.findByText('Denied')).toBeInTheDocument()
     expect(screen.getByText('Already on loan.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mark as handed off' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Mark as/ })).not.toBeInTheDocument()
   })
 
-  it('blocks the hand-off, with a reason, when no signed agreement is on file', async () => {
+  it('offers no agreement to download when none is on file', async () => {
     vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail({ signedAgreementPath: null }))
 
     renderDetail()
 
-    expect(await screen.findByRole('button', { name: 'Mark as handed off' })).toBeDisabled()
-    expect(screen.getByText(/no signed agreement on file/i)).toBeInTheDocument()
-  })
-})
-
-describe('LoanDetail — confirming an action', () => {
-  it('names the exact serial before handing hardware over', async () => {
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
-
-    renderDetail()
-    await userEvent.click(await screen.findByRole('button', { name: 'Mark as handed off' }))
-
-    // Several units of one product are indistinguishable on the shelf, so the
-    // serial is the thing the admin is being asked to check.
-    const dialog = within(screen.getByRole('dialog', { name: /hand off this hardware/i }))
-    expect(dialog.getByText(/SYN-ABC123XYZ/)).toBeInTheDocument()
-    expect(dialog.getByText(/exact unit you are handing to Bob Reyes/i)).toBeInTheDocument()
-    expect(handOffLoanRequestItem).not.toHaveBeenCalled()
-  })
-
-  it('records the hand-off only after the dialog is confirmed, then re-reads the loan', async () => {
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValueOnce(detail()).mockResolvedValueOnce(activeLoan)
-
-    renderDetail()
-    await userEvent.click(await screen.findByRole('button', { name: 'Mark as handed off' }))
-    const handOffDialog = within(screen.getByRole('dialog', { name: /hand off this hardware/i }))
-    await userEvent.click(handOffDialog.getByRole('button', { name: 'Mark as handed off' }))
-
-    await waitFor(() => expect(handOffLoanRequestItem).toHaveBeenCalledWith({
-      itemId: 'item-1',
-      adminId: 'admin-1',
-      adminName: 'Ada Admin',
-    }))
-    expect(await screen.findByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
-  })
-
-  it('does nothing when the hand-off dialog is cancelled', async () => {
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
-
-    renderDetail()
-    await userEvent.click(await screen.findByRole('button', { name: 'Mark as handed off' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
-
-    expect(handOffLoanRequestItem).not.toHaveBeenCalled()
-    expect(screen.queryByText(/exact unit you are handing/i)).not.toBeInTheDocument()
-  })
-
-  it('names the serial before checking hardware back in, and records the return on confirm', async () => {
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValueOnce(activeLoan).mockResolvedValueOnce(returnedLoan)
-
-    renderDetail()
-    await userEvent.click(await screen.findByRole('button', { name: 'Mark as returned' }))
-    const returnDialog = within(screen.getByRole('dialog', { name: /check this hardware back in/i }))
-    expect(returnDialog.getByText(/SYN-ABC123XYZ/)).toBeInTheDocument()
-
-    await userEvent.click(returnDialog.getByRole('button', { name: 'Mark as returned' }))
-
-    await waitFor(() => expect(markLoanRequestItemReturned).toHaveBeenCalledWith('item-1', 'admin-1'))
-    expect(await screen.findByText('Returned')).toBeInTheDocument()
-  })
-
-  it('surfaces a failure instead of pretending the loan changed', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(activeLoan)
-    vi.mocked(markLoanRequestItemReturned).mockRejectedValue(new Error('offline'))
-
-    renderDetail()
-    await userEvent.click(await screen.findByRole('button', { name: 'Mark as returned' }))
-    await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Mark as returned' }),
-    )
-
-    expect(await screen.findByText(/could not record the return/i)).toBeInTheDocument()
-    consoleError.mockRestore()
+    expect(await screen.findByText('Checkout requested')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /download hardware loan agreement/i })).not.toBeInTheDocument()
   })
 })
 
@@ -373,4 +348,50 @@ describe('HardwareLoans — opening a loan', () => {
 
     expect(screen.getByText('No hardware loans match your search')).toBeInTheDocument()
   })
+})
+
+// Each item bundled into one checkout is a loan in its own right — its own
+// serial, return date and hand-off — so the siblings list is a way into
+// them, not a read-only footnote.
+describe('LoanDetail — the other items in a request', () => {
+  it('opens a sibling item as its own loan', async () => {
+    vi.mocked(fetchLoanRequestItemDetail)
+      .mockResolvedValueOnce(bundledRequest)
+      .mockResolvedValueOnce(siblingItem)
+
+    renderDetail()
+    await userEvent.click(await screen.findByRole('button', { name: 'View loan details for Oculus VR' }))
+
+    expect(await screen.findByText('Oculus VR')).toBeInTheDocument()
+    expect(fetchLoanRequestItemDetail).toHaveBeenLastCalledWith('item-2')
+    // The screen stays mounted across the route change, so the whole record
+    // has to swap — including the way back to the item just left.
+    expect(screen.getByText('SYN-VR9087')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View loan details for Muse 2' })).toBeInTheDocument()
+  })
+
+  it('shows each sibling\'s product photo, and a placeholder for one without', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(
+      detail({
+        otherItems: [
+          { id: 'item-2', itemName: 'Oculus VR', imageUrl: 'https://example.test/oculus.png', itemRole: 'optional_addon' },
+          { id: 'item-3', itemName: 'USB-C cable', imageUrl: null, itemRole: 'required_addon' },
+        ],
+      }),
+    )
+
+    renderDetail()
+    const withPhoto = await screen.findByRole('button', { name: 'View loan details for Oculus VR' })
+
+    // Decorative: the row already names the item, so the photo repeating it
+    // would just be something extra to listen through.
+    const image = within(withPhoto).getByRole('presentation', { hidden: true })
+    expect(image).toHaveAttribute('src', 'https://example.test/oculus.png')
+
+    // The row without a photo keeps the same slot, so the names stay in line.
+    const withoutPhoto = screen.getByRole('button', { name: 'View loan details for USB-C cable' })
+    expect(within(withoutPhoto).queryByRole('presentation', { hidden: true })).not.toBeInTheDocument()
+    expect(within(withoutPhoto).getByText('USB-C cable')).toBeInTheDocument()
+  })
+
 })

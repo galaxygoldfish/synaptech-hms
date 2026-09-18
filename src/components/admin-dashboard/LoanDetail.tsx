@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AvailabilityModal } from './AvailabilityModal'
-import ConfirmActionModal from '../ConfirmActionModal'
-import { ArrowLeftIcon, CalendarIcon, DownloadIconFilled } from './icons'
+import {
+  ArrowDownRightFilled,
+  ArrowLeftIcon,
+  ArrowUpLeftFilled,
+  CalendarIcon,
+  ChevronRightIcon,
+  DownloadIconFilled,
+  ImagePlaceholderIconFilled,
+} from './icons'
 import {
   bucketForLoanItem,
   fetchLoanRequestItemDetail,
   fetchSignedAgreementUrl,
-  handOffLoanRequestItem,
-  markLoanRequestItemReturned,
   type AdminLoanRequestDetail,
   type LoanBucket,
 } from '../../lib/loanRequests'
@@ -48,10 +53,6 @@ const ROLE_LABEL: Record<LoanRequestItemRole, string> = {
   optional_addon: 'Optional add-on',
   required_addon: 'Required add-on',
 }
-
-// The two things an admin does from here, per the checkout and return
-// processes: hand the hardware over, and take it back.
-type PendingAction = 'hand-off' | 'return'
 
 function formatDate(iso: string): string {
   const date = new Date(iso)
@@ -98,21 +99,12 @@ export default function LoanDetail() {
 
   const [isAvailabilityOpen, setAvailabilityOpen] = useState(false)
 
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
-  const [isActing, setActing] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
-
-  const loadDetail = useCallback(async (itemId: string) => {
-    const data = await fetchLoanRequestItemDetail(itemId)
-    setDetail(data)
-    return data
-  }, [])
-
   useEffect(() => {
     if (!id) return
     let cancelled = false
     setLoading(true)
     setError(null)
+    setDownloadError(null)
 
     fetchLoanRequestItemDetail(id)
       .then((data) => {
@@ -147,19 +139,18 @@ export default function LoanDetail() {
   // bucketForLoanItem returns null only for a denied request.
   const state: LoanState | null = detail ? (bucket ?? 'denied') : null
 
-  // What this loan is waiting for the admin to do, if anything. A returned
-  // or denied loan is finished; an active or overdue one is waiting to come
-  // back even if the member hasn't formally asked to return it yet, since
-  // hand-backs here get arranged over Discord as often as through the app.
-  const action: PendingAction | null =
-    state === 'requests' ? 'hand-off' : state === 'active' || state === 'overdue' || state === 'returns' ? 'return' : null
-
-  // Handing off stamps a certificate onto the member's signed agreement, so
-  // there has to be one to stamp. Without it the loan can't be completed
-  // here, and saying why beats a button that fails when pressed.
-  const canHandOff = Boolean(detail?.signedAgreementPath)
-
-  const serialText = detail?.serialNumber ?? 'no serial number assigned'
+  // Which way the hardware is about to move, if at all. A returned or denied
+  // loan is finished; an active or overdue one is waiting to come back even
+  // if the member hasn't formally asked to return it, since hand-backs get
+  // arranged over Discord as often as through the app.
+  //
+  // Both buttons are inert for now — they render, they don't act.
+  const pendingMove: 'hand-off' | 'return' | null =
+    state === 'requests'
+      ? 'hand-off'
+      : state === 'active' || state === 'overdue' || state === 'returns'
+        ? 'return'
+        : null
 
   function handleLogOut() {
     setProfileOpen(false)
@@ -172,49 +163,14 @@ export default function LoanDetail() {
     setDownloadError(null)
 
     try {
-      const url = await fetchSignedAgreementUrl(detail.signedAgreementPath)
+      const url = await fetchSignedAgreementUrl(detail.signedAgreementPath, { download: true })
       window.open(url, '_blank', 'noopener')
     } catch (fetchError) {
       // eslint-disable-next-line no-console
       console.error('Failed to get signed agreement:', fetchError)
-      setDownloadError('Could not open the signed agreement. Please try again.')
+      setDownloadError('Could not download the loan agreement. Please try again.')
     } finally {
       setDownloading(false)
-    }
-  }
-
-  async function handleConfirmAction() {
-    if (!detail || !profile || !pendingAction || isActing) return
-    setActing(true)
-    setActionError(null)
-
-    try {
-      if (pendingAction === 'hand-off') {
-        await handOffLoanRequestItem({
-          itemId: detail.id,
-          adminId: profile.id,
-          adminName: `${profile.first_name} ${profile.last_name}`,
-        })
-      } else {
-        await markLoanRequestItemReturned(detail.id, profile.id)
-      }
-      // Re-read rather than patching state locally: the status shown here is
-      // derived from several fields across two tables, and the emails and
-      // audit entries fire from the database, so the record that comes back
-      // is the one that actually exists.
-      await loadDetail(detail.id)
-      setPendingAction(null)
-    } catch (actionFailure) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to update loan:', actionFailure)
-      setActionError(
-        pendingAction === 'hand-off'
-          ? 'Could not record the hand-off. Please try again.'
-          : 'Could not record the return. Please try again.',
-      )
-      setPendingAction(null)
-    } finally {
-      setActing(false)
     }
   }
 
@@ -279,29 +235,35 @@ export default function LoanDetail() {
             </div>
 
             <div className={styles.actionRow}>
-              {action === 'hand-off' && (
+              {/* Same diagonals the dashboard uses for its own Check out /
+                  Return actions — up-and-out for hardware leaving, down-and-in
+                  for hardware coming back. */}
+              {pendingMove === 'hand-off' && (
                 <button
                   type="button"
-                  className={styles.primaryAction}
-                  onClick={() => setPendingAction('hand-off')}
-                  disabled={!canHandOff}
+                  className={styles.agreementButton}
+                  onClick={() => navigate(`/adminHome/loans/${detail.id}/hand-off`)}
                 >
+                  <span className={styles.buttonIcon}>
+                    <ArrowUpLeftFilled size={16} />
+                  </span>
                   Mark as handed off
                 </button>
               )}
-              {action === 'return' && (
-                <button
-                  type="button"
-                  className={styles.primaryAction}
-                  onClick={() => setPendingAction('return')}
-                >
+              {pendingMove === 'return' && (
+                <button type="button" className={styles.agreementButton}>
+                  <span className={styles.buttonIcon}>
+                    <ArrowDownRightFilled size={16} />
+                  </span>
                   Mark as returned
                 </button>
               )}
 
               {(state === 'requests' || state === 'returns') && (
                 <button type="button" className={styles.agreementButton} onClick={() => setAvailabilityOpen(true)}>
-                  <CalendarIcon size={18} />
+                  <span className={styles.buttonIcon}>
+                    <CalendarIcon size={22} />
+                  </span>
                   {state === 'requests' ? 'View checkout availability' : 'View return availability'}
                 </button>
               )}
@@ -313,20 +275,15 @@ export default function LoanDetail() {
                   onClick={() => void handleDownloadAgreement()}
                   disabled={isDownloading}
                 >
-                  <DownloadIconFilled size={14} />
-                  {isDownloading ? 'Opening…' : 'View signed agreement'}
+                  <span className={styles.buttonIcon}>
+                    <DownloadIconFilled size={14} />
+                  </span>
+                  {isDownloading ? 'Preparing…' : 'Download hardware loan agreement'}
                 </button>
               )}
             </div>
 
-            {action === 'hand-off' && !canHandOff && (
-              <p className={styles.actionNote}>
-                This item has no signed agreement on file, so it can't be handed off here. Ask the
-                member to submit their checkout again with a signed agreement.
-              </p>
-            )}
             {downloadError && <p className={styles.inlineError}>{downloadError}</p>}
-            {actionError && <p className={styles.inlineError}>{actionError}</p>}
 
             <div className={styles.card}>
               <button
@@ -338,7 +295,6 @@ export default function LoanDetail() {
                 <span className={styles.rowValueLink}>{detail.memberName}</span>
               </button>
 
-              <DetailRow label="Member email" value={detail.memberEmail} />
               {/* Hand-offs get arranged over Discord as often as by email, so
                   the handle belongs next to the address rather than one screen
                   away on the member's profile. */}
@@ -360,9 +316,30 @@ export default function LoanDetail() {
                 <span className={styles.cardLabel}>Also included in this request</span>
                 <ul className={styles.otherItemsList}>
                   {detail.otherItems.map((item) => (
-                    <li key={item.itemName} className={styles.otherItem}>
-                      <span>{item.itemName}</span>
-                      <span className={styles.otherItemRole}>{ROLE_LABEL[item.itemRole]}</span>
+                    <li key={item.id}>
+                      {/* Each sibling is a loan in its own right, with its own
+                          serial, return date and hand-off — so this opens that
+                          item's detail screen rather than being a bare list. */}
+                      <button
+                        type="button"
+                        className={styles.otherItem}
+                        onClick={() => navigate(`/adminHome/loans/${item.id}`)}
+                        aria-label={`View loan details for ${item.itemName}`}
+                      >
+                        {/* A fixed-size slot either way: a product with no
+                            photo would otherwise pull its name left and
+                            break the column the other rows line up on. */}
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" className={styles.otherItemThumb} />
+                        ) : (
+                          <span className={styles.otherItemThumbEmpty}>
+                            <ImagePlaceholderIconFilled size={20} />
+                          </span>
+                        )}
+                        <span className={styles.otherItemName}>{item.itemName}</span>
+                        <span className={styles.otherItemRole}>{ROLE_LABEL[item.itemRole]}</span>
+                        <ChevronRightIcon size={16} className={styles.otherItemChevron} />
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -385,38 +362,6 @@ export default function LoanDetail() {
           onClose={() => setAvailabilityOpen(false)}
         />
       )}
-
-      {/* The serial is the whole point of the confirmation: several units of
-          the same product look identical on a shelf, and handing over the
-          wrong one puts the loan on the wrong record and the wrong person's
-          name against the wrong hardware. */}
-      <ConfirmActionModal
-        isOpen={pendingAction === 'hand-off' && detail !== null}
-        heading="Hand off this hardware?"
-        body={[
-          `${detail?.itemName ?? ''} — ${serialText}`,
-          `Check that this is the exact unit you are handing to ${detail?.memberName ?? 'this member'}.`,
-          'Confirming also attests that they signed the loan agreement correctly. A certificate of approval will be added to their signed copy.',
-        ]}
-        confirmLabel={isActing ? 'Recording…' : 'Mark as handed off'}
-        confirmDisabled={isActing}
-        onConfirm={() => void handleConfirmAction()}
-        onCancel={() => setPendingAction(null)}
-      />
-
-      <ConfirmActionModal
-        isOpen={pendingAction === 'return' && detail !== null}
-        heading="Check this hardware back in?"
-        body={[
-          `${detail?.itemName ?? ''} — ${serialText}`,
-          `Check that this is the exact unit ${detail?.memberName ?? 'this member'} is handing back to you.`,
-          'This closes the loan, frees the unit for checkout, and emails the member their return confirmation.',
-        ]}
-        confirmLabel={isActing ? 'Recording…' : 'Mark as returned'}
-        confirmDisabled={isActing}
-        onConfirm={() => void handleConfirmAction()}
-        onCancel={() => setPendingAction(null)}
-      />
     </div>
   )
 }

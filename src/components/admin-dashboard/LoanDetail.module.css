@@ -313,70 +313,137 @@
   gap: 0.5rem;
 }
 
+/* A button, not a list row: each sibling opens its own loan. The hover and
+   chevron are the same affordance the hardware loans list uses for the same
+   action. */
 .otherItem {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.5rem;
   background: #f4f4f4;
+  border: none;
   border-radius: 0.75rem;
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
   color: rgba(0, 0, 0, 0.93);
+  text-align: left;
+  cursor: pointer;
+}
+
+.otherItem:hover {
+  background: #ececec;
+}
+
+/* Smaller than the item card's 6rem thumb — this is a row in a list, and
+   the name is what identifies it; the image is a glance-level confirmation
+   that you're opening the right thing. */
+.otherItemThumb,
+.otherItemThumbEmpty {
+  flex-shrink: 0;
+  width: 3rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+}
+
+.otherItemThumb {
+  object-fit: contain;
+}
+
+.otherItemThumbEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.otherItemName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .otherItemRole {
+  margin-left: auto;
   font-size: 1rem;
   color: rgba(0, 0, 0, 0.5);
   white-space: nowrap;
 }
 
+.otherItemChevron {
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+/* On a phone the thumb, name, role and chevron can't share one line — the
+   name was wrapping to two lines mid-word while the role sat beside it. The
+   role drops under the name instead, which is the same shape the hardware
+   loans list takes at this width. */
+@media (max-width: 640px) {
+  .otherItem {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'thumb name chevron'
+      'thumb role chevron';
+    column-gap: 0.875rem;
+    row-gap: 0.125rem;
+    padding: 0.875rem 1.125rem;
+  }
+
+  .otherItemThumb,
+  .otherItemThumbEmpty {
+    grid-area: thumb;
+  }
+
+  .otherItemName {
+    grid-area: name;
+  }
+
+  .otherItemRole {
+    grid-area: role;
+    margin-left: 0;
+    font-size: 0.9375rem;
+  }
+
+  .otherItemChevron {
+    grid-area: chevron;
+  }
+}
+
 /* ── Actions (hand off / return, availability, agreement) ─── */
 
-/* One zone directly under the item card: an admin arrives here to do
-   something to this loan, so what they can do sits with what it is rather
-   than below every detail row. */
+/* Centred under the item card: these are the two things this screen offers
+   to open, and with no primary action anchoring the left edge a left-aligned
+   pair read as an orphaned fragment of a wider row. */
 .actionRow {
   width: min(64rem, 100%);
   margin: 0 auto;
   display: flex;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-/* Matches the save/delete buttons on "manage inventory item" — the app's
-   established page-level action, rather than a shape only this screen has. */
-.primaryAction {
+/* The three icons in this row come from different sources and carry
+   different amounts of whitespace inside their viewBoxes: the diagonal
+   arrows are drawn edge to edge, the calendar sits in a 24-unit box using
+   about 80% of it, and the download glyph isn't even square. Equal `size`
+   props therefore produced visibly unequal icons and unequal gaps.
+   
+   Each one now sits in a fixed box, so the gap to the label is measured
+   from the same place every time, and each is passed the size that puts its
+   drawn area at the same ~16px as the others. */
+.buttonIcon {
+  flex-shrink: 0;
+  width: 1.375rem;
+  height: 1.375rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  border: none;
-  border-radius: 1rem;
-  padding: 1rem 1.5rem;
-  background: rgba(161, 208, 167, 0.5);
-  font-family: 'Rubik', sans-serif;
-  font-size: 1.0625rem;
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.primaryAction:hover:not(:disabled) {
-  background: rgba(161, 208, 167, 0.7);
-}
-
-.primaryAction:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.actionNote {
-  width: min(64rem, 100%);
-  margin: 0 auto;
-  font-family: 'Rubik', sans-serif;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
 }
 
 .agreementButton {
@@ -405,6 +472,7 @@
 .inlineError {
   width: min(64rem, 100%);
   margin: 0 auto;
+  text-align: center;
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
   color: #b9433c;

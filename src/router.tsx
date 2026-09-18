@@ -17,6 +17,8 @@ import MyHardwareLoansPage from './pages/MyHardwareLoansPage'
 import AdminHomePage from './pages/AdminHomePage'
 import AdminHardwareLoansPage from './pages/AdminHardwareLoansPage'
 import AdminLoanDetailPage from './pages/AdminLoanDetailPage'
+import AdminHandOffScanPage from './pages/AdminHandOffScanPage'
+import AdminHandOffPage from './pages/AdminHandOffPage'
 import AdminViewMembersPage from './pages/AdminViewMembersPage'
 import AdminAuditLogPage from './pages/AdminAuditLogPage'
 import AdminManageInventoryPage from './pages/AdminManageInventoryPage'
@@ -117,6 +119,8 @@ export function AppRouter() {
           <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
           <Route path="/adminHome/loans" element={<AdminRoute><AdminHardwareLoansPage /></AdminRoute>} />
           <Route path="/adminHome/loans/:id" element={<AdminRoute><AdminLoanDetailPage /></AdminRoute>} />
+          <Route path="/adminHome/loans/:id/hand-off" element={<AdminRoute><AdminHandOffScanPage /></AdminRoute>} />
+          <Route path="/adminHome/loans/:id/hand-off/agreement" element={<AdminRoute><AdminHandOffPage /></AdminRoute>} />
           <Route path="/adminHome/members" element={<AdminRoute><AdminViewMembersPage /></AdminRoute>} />
           <Route path="/adminHome/audit-log" element={<AdminRoute><AdminAuditLogPage /></AdminRoute>} />
           <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />

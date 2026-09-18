@@ -132,9 +132,11 @@ export function AvailabilityModal({ loanRequestId, memberName, requestedAt, purp
             </div>
             <div className={styles.tableWrap} style={{ WebkitMaskImage: vMaskImage, maskImage: vMaskImage }}>
               <div
+                // One element, both axes — each hook keeps its own fade
+                // state for the edge it owns.
                 ref={(el) => {
-                  hFadeRef.current = el
-                  vFadeRef.current = el
+                  hFadeRef(el)
+                  vFadeRef(el)
                 }}
                 className={styles.tableScroll}
                 style={{ WebkitMaskImage: hMaskImage, maskImage: hMaskImage }}

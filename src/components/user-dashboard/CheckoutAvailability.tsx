@@ -36,6 +36,8 @@ interface CheckoutState {
   requiredAddonId: string | null
   returnDates: Record<string, string>
   signedAgreements?: Record<string, File>
+  signedNames?: Record<string, string>
+  signedDates?: Record<string, string>
 }
 
 function readCheckoutState(state: unknown): CheckoutState | null {
@@ -48,6 +50,8 @@ function readCheckoutState(state: unknown): CheckoutState | null {
     requiredAddonId: typeof value.requiredAddonId === 'string' ? value.requiredAddonId : null,
     returnDates: value.returnDates,
     signedAgreements: value.signedAgreements,
+    signedNames: value.signedNames,
+    signedDates: value.signedDates,
   }
 }
 
@@ -209,6 +213,8 @@ export default function CheckoutAvailability() {
       role: roleForItem(item.id),
       returnDate: checkoutState.returnDates[item.id] ?? null,
       signedAgreementFile: checkoutState.signedAgreements?.[item.id] ?? null,
+      signatureName: checkoutState.signedNames?.[item.id] ?? null,
+      signatureDate: checkoutState.signedDates?.[item.id] ?? null,
     }))
 
     try {
