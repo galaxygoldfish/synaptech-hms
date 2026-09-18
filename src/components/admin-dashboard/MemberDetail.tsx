@@ -219,6 +219,7 @@ export default function MemberDetail() {
       {member && targetRole && (
         <ConfirmActionModal
           isOpen={isRoleModalOpen}
+          wide
           heading="Change privilege level?"
           body={[
             `This will change ${member.first_name} ${member.last_name}'s privilege level to ${targetRole}.`,

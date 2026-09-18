@@ -7,6 +7,7 @@ interface ConfirmActionModalProps {
   confirmLabel: string
   confirmDisabled?: boolean
   hideCancel?: boolean
+  wide?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -21,6 +22,7 @@ export default function ConfirmActionModal({
   confirmLabel,
   confirmDisabled,
   hideCancel,
+  wide,
   onConfirm,
   onCancel,
 }: ConfirmActionModalProps) {
@@ -28,7 +30,7 @@ export default function ConfirmActionModal({
 
   return (
     <div className={`${styles.overlay} ${styles.overlayWelcome}`} onClick={onCancel}>
-      <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+      <div className={wide ? `${styles.modal} ${styles.modalWide}` : styles.modal} onClick={(event) => event.stopPropagation()}>
         <div className={styles.headerRow}>
           <h2 className={styles.heading}>{heading}</h2>
         </div>
