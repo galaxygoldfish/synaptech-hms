@@ -60,10 +60,17 @@ export function useBarcodeScanner(
           if (cancelled) return
         }
 
-        stream = await navigator.mediaDevices.getUserMedia({
+        const acquired = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
         })
-        if (cancelled) return
+        // The screen can be left (or the effect re-run) while the browser is
+        // still asking for permission. Cleanup has already run by then and saw
+        // no stream, so this one has to be released here or the camera stays on.
+        if (cancelled) {
+          acquired.getTracks().forEach((track) => track.stop())
+          return
+        }
+        stream = acquired
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -106,6 +113,7 @@ export function useBarcodeScanner(
       cancelled = true
       if (frameId) cancelAnimationFrame(frameId)
       stream?.getTracks().forEach(track => track.stop())
+      if (videoRef.current) videoRef.current.srcObject = null
     }
   }, [active, resetKey])
 
