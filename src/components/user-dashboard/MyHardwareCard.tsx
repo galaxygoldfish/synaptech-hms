@@ -1,67 +1,79 @@
-import type { LoanSummary } from "./types";
+import { homeLoanTone, type HomeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
 import { CognitiveBrainIconFilled, DeviceIcon } from "./icons";
 import { Skeleton, SkeletonScreen } from "../skeleton/Skeleton";
 import styles from "./Home.module.css";
 
 interface MyHardwareCardProps {
-  loan: LoanSummary | null;
+  /** The hardware the member has out right now. */
+  loans: MemberLoanItem[];
   /** While true the card shimmers instead of claiming there are no loans —
-      `loan` is also null before the fetch resolves, so the two states have
+      `loans` is also empty before the fetch resolves, so the two states have
       to be told apart explicitly. */
   isLoading?: boolean;
-  onMoreDetails: () => void;
+  onMoreDetails: (loan: MemberLoanItem) => void;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "long", day: "2-digit", year: "numeric" });
+function formatDate(isoDate: string): string {
+  // Date-only strings parse as UTC midnight, which is the previous evening in
+  // the Americas; anchoring to local midnight keeps the day the admin chose.
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-const statusClass: Record<LoanSummary["status"], string> = {
-  ACTIVE: "hardware-card--active",
-  DUE_SOON: "hardware-card--due-soon",
-  OVERDUE: "hardware-card--overdue",
+const TONE_CLASS: Record<HomeLoanTone, string> = {
+  active: "",
+  due_soon: styles.loanCardDueSoon,
+  overdue: styles.loanCardOverdue,
 };
 
-export function MyHardwareCard({ loan, isLoading = false, onMoreDetails }: MyHardwareCardProps) {
+export function MyHardwareCard({ loans, isLoading = false, onMoreDetails }: MyHardwareCardProps) {
   return (
     <section className={styles.hardwareCard} aria-busy={isLoading}>
       <h2 className={styles.hardwareLabel}>My hardware</h2>
 
       {isLoading && (
-        <SkeletonScreen label="Loading your hardware loan…">
-          <div className="hardware-card hardware-card--active">
-            <div className="hardware-card__thumb">
-              <Skeleton width={64} height={64} radius="var(--radius-md)" />
-            </div>
-            <div className="hardware-card__info" style={{ flex: 1 }}>
-              <Skeleton width="45%" height={15} shape="pill" style={{ marginBottom: 8 }} />
-              <Skeleton width="60%" height={13} shape="pill" style={{ marginBottom: 10 }} />
-              <Skeleton width="30%" height={13} shape="pill" />
+        <SkeletonScreen label="Loading your hardware loans…">
+          <div className={styles.loanGrid}>
+            <div className={styles.loanCard}>
+              <Skeleton width="6.5rem" height="4.5rem" radius="0.625rem" />
+              <Skeleton width="60%" height="1.5rem" shape="pill" style={{ marginTop: "1rem" }} />
+              <Skeleton width="80%" height="0.875rem" shape="pill" style={{ marginTop: "0.5rem" }} />
+              <Skeleton width="45%" height="1rem" shape="pill" style={{ marginTop: "0.75rem" }} />
             </div>
           </div>
         </SkeletonScreen>
       )}
 
-      {!isLoading && !loan && (
+      {!isLoading && loans.length === 0 && (
         <div className={styles.hardwareEmpty}>
           <CognitiveBrainIconFilled size={104} className={styles.hardwareEmptyIcon} />
           <p className={styles.hardwareEmptyText}>You don&rsquo;t have any active hardware loans</p>
         </div>
       )}
 
-      {!isLoading && loan && (
-        <div className={`hardware-card ${statusClass[loan.status]}`}>
-          <div className="hardware-card__thumb" aria-hidden="true">
-            {loan.imageUrl ? <img src={loan.imageUrl} alt="" /> : <DeviceIcon />}
-          </div>
-          <div className="hardware-card__info">
-            <div className="hardware-card__name">{loan.itemName}</div>
-            <div className="hardware-card__date">Return by {formatDate(loan.returnByDate)}</div>
-            <button className="hardware-card__link" onClick={onMoreDetails} type="button">
-              More details →
-            </button>
-          </div>
-        </div>
+      {!isLoading && loans.length > 0 && (
+        <ul className={styles.loanGrid}>
+          {loans.map((loan) => (
+            <li key={loan.id} className={`${styles.loanCard} ${TONE_CLASS[homeLoanTone(loan)]}`}>
+              <div className={styles.loanThumb} aria-hidden="true">
+                {loan.imageUrl ? <img src={loan.imageUrl} alt="" /> : <DeviceIcon size={40} />}
+              </div>
+              <p className={styles.loanName}>{loan.itemName}</p>
+              {loan.returnDate && <p className={styles.loanDate}>Return by {formatDate(loan.returnDate)}</p>}
+              <button
+                className={styles.loanLink}
+                onClick={() => onMoreDetails(loan)}
+                type="button"
+                aria-label={`More details about ${loan.itemName}`}
+              >
+                More details →
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

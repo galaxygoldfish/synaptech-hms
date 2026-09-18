@@ -215,7 +215,7 @@ export async function fetchEquipmentByIds(equipmentIds: string[]): Promise<Equip
 // agreement and for the loan_request_items row created at submission. A unit
 // is held by any pending or approved request until it's returned — members
 // can't read each other's requests, so the database answers this
-// (available_equipment_units, see 20260925000000_unit_reservation.sql). It
+// (available_equipment_units, see 20260926010000_unit_reservation.sql). It
 // isn't a reservation: the claim is made, and enforced, when the request is
 // inserted. Null means every unit is spoken for.
 export async function fetchAvailableEquipmentUnit(equipmentId: string): Promise<EquipmentUnit | null> {

@@ -182,105 +182,6 @@ button {
   filter: brightness(0.97);
 }
 
-/* My hardware card (user dashboard) */
-
-.hardware-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-}
-
-.hardware-card--empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 40px 20px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.hardware-card--empty svg {
-  color: #c7ccd4;
-}
-
-.hardware-card--empty p {
-  margin: 0;
-  font-size: 14px;
-}
-
-.hardware-card--active,
-.hardware-card--due-soon,
-.hardware-card--overdue {
-  display: flex;
-  gap: 16px;
-}
-
-.hardware-card--due-soon {
-  background: var(--olive-bg);
-  border-color: transparent;
-}
-
-.hardware-card--overdue {
-  background: var(--red-bg);
-  border-color: transparent;
-}
-
-.hardware-card__thumb {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-md);
-  background: var(--row-bg);
-  color: #8b93a1;
-  flex-shrink: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hardware-card--due-soon .hardware-card__thumb,
-.hardware-card--overdue .hardware-card__thumb {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.hardware-card__thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.hardware-card__name {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.hardware-card--due-soon .hardware-card__date {
-  color: var(--olive-fg);
-}
-
-.hardware-card--overdue .hardware-card__date {
-  color: var(--red-fg);
-}
-
-.hardware-card__date {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-}
-
-.hardware-card__link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
 /* Checkout CTA + action list row */
 
 .checkout-cta-wrap {
@@ -374,14 +275,6 @@ button {
   /* Mobile-only modal is hidden on desktop; the inline warning above is used instead */
   .warning-overlay {
     display: none;
-  }
-}
-
-@media (max-width: 640px) {
-  .hardware-card--active,
-  .hardware-card--due-soon,
-  .hardware-card--overdue {
-    flex-direction: column;
   }
 }
 

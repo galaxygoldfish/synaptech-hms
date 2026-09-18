@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchCurrentLoan } from "./api";
 import { ActionList } from "./ActionList";
 import { CheckoutCallToAction } from "./CheckoutCallToAction";
 import { Header } from "./Header";
@@ -8,16 +7,16 @@ import { InlineOverdueWarning } from "./InlineOverdueWarning";
 import { MyHardwareCard } from "./MyHardwareCard";
 import { OverdueWarningModal } from "./OverdueWarningModal";
 import { ProfileModal } from "./ProfileModal";
-import type { LoanSummary } from "./types";
 import type { UserProfile } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { memberActions } from "../../data/memberActions";
+import { fetchActiveHardwareLoans, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
 import styles from "./Home.module.css";
 
 export default function Home() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
-  const [loan, setLoan] = useState<LoanSummary | null>(null);
+  const [loans, setLoans] = useState<MemberLoanItem[]>([]);
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isWarningOpen, setWarningOpen] = useState(false);
   const [isLoading, setLoading] = useState(true);
@@ -27,12 +26,12 @@ export default function Home() {
     if (!profile) return;
     let cancelled = false;
 
-    fetchCurrentLoan(profile.id)
-      .then((currentLoan) => {
-        if (!cancelled) setLoan(currentLoan);
+    fetchActiveHardwareLoans(profile.id)
+      .then((activeLoans) => {
+        if (!cancelled) setLoans(activeLoans);
       })
       .catch(() => {
-        if (!cancelled) setError("Couldn't load your hardware loan.");
+        if (!cancelled) setError("Couldn't load your hardware loans.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -54,7 +53,8 @@ export default function Home() {
     };
   }, [profile]);
 
-  const hasOverdueLoan = loan?.status === "OVERDUE";
+  // Any one overdue item blocks new checkouts until it is back.
+  const hasOverdueLoan = loans.some((loan) => homeLoanTone(loan) === "overdue");
 
   const handleCheckoutClick = () => {
     if (isLoading) return;
@@ -65,10 +65,8 @@ export default function Home() {
     navigate("/home/checkout");
   };
 
-  const handleMoreDetails = () => {
-    // Placeholder: wire this up to a loan detail screen once it's built.
-    // eslint-disable-next-line no-console
-    console.log("Navigate to: loan details");
+  const handleMoreDetails = (loan: MemberLoanItem) => {
+    navigate(`/home/loans/${loan.id}`);
   };
 
   const handleAction = (actionId: string) => {
@@ -90,9 +88,9 @@ export default function Home() {
     signOut();
   };
 
-  // Only the current loan comes from the network. The header, checkout CTA
+  // Only the active loans come from the network. The header, checkout CTA
   // and action list are all local, so the shell renders straight away and
-  // only the hardware card shimmers.
+  // only the hardware section shimmers.
   if (error || !user) {
     return (
       <div className="app-shell app-shell--centered">
@@ -106,7 +104,7 @@ export default function Home() {
       <Header userName={user.name.split(" ")[0]} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <MyHardwareCard loan={loan} isLoading={isLoading} onMoreDetails={handleMoreDetails} />
+        <MyHardwareCard loans={loans} isLoading={isLoading} onMoreDetails={handleMoreDetails} />
 
         <div className={styles.row}>
           <div className={`checkout-cta-wrap${isWarningOpen ? " checkout-cta-wrap--warning" : ""}`}>

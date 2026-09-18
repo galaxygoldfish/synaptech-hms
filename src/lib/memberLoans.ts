@@ -124,6 +124,31 @@ export function isOutWithMember(state: MemberLoanState): boolean {
   )
 }
 
+/**
+ * How a loan is coloured on the member's home screen — the "My hardware"
+ * cards.
+ *
+ * Deliberately not memberLoanState: the home screen is stricter about the
+ * due date. Hardware due *today* is already overdue here (the card is red and
+ * new checkouts are blocked), where the loans list only calls it overdue once
+ * the date has passed. Date alone decides it, so a loan the member has asked
+ * to return still counts as overdue until an admin actually checks it in.
+ */
+export type HomeLoanTone = 'active' | 'due_soon' | 'overdue'
+
+export function homeLoanTone(item: MemberLoanItem, now: Date = new Date()): HomeLoanTone {
+  if (!item.returnDate) return 'active'
+
+  const due = new Date(`${item.returnDate}T00:00:00`)
+  const today = new Date(now)
+  today.setHours(0, 0, 0, 0)
+  if (due <= today) return 'overdue'
+
+  const soonest = new Date(today)
+  soonest.setDate(soonest.getDate() + RETURN_SOON_DAYS)
+  return due <= soonest ? 'due_soon' : 'active'
+}
+
 interface ItemRow {
   id: string
   loan_request_id: string
@@ -264,6 +289,22 @@ export async function fetchMemberLoans(userId: string): Promise<MemberLoanGroup[
       },
     ]
   })
+}
+
+/**
+ * The hardware a member currently has out — what "My hardware" on the home
+ * screen lists. Every item, add-ons included, that has been handed over and
+ * not yet checked back in. Consumables are kept rather than lent, so they are
+ * not loans and never appear here.
+ *
+ * Soonest due first, which puts anything overdue at the front.
+ */
+export async function fetchActiveHardwareLoans(userId: string): Promise<MemberLoanItem[]> {
+  const groups = await fetchMemberLoans(userId)
+  return groups
+    .flatMap((group) => [group.primary, ...group.addOns])
+    .filter((item) => !item.isConsumable && isOutWithMember(memberLoanState(item)))
+    .sort((a, b) => (a.returnDate ?? '9999-12-31').localeCompare(b.returnDate ?? '9999-12-31'))
 }
 
 /** One item, for the detail screen behind a row. */
