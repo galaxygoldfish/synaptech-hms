@@ -3,10 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
-import { ArrowLeftIcon, ChevronRightIcon, CognitiveBrainIconFilled } from './icons'
-import { fetchLoanRequestItems, type LoanRequestItemSummary } from '../../lib/loanRequests'
+import { LoanStatusBadge } from './LoanStatusBadge'
+import { SearchField } from './SearchField'
+import { AddOnArrowIcon, ArrowLeftIcon, ChevronRightIcon, CognitiveBrainIconFilled } from './icons'
+import {
+  fetchMemberLoans,
+  memberLoanState,
+  type MemberLoanGroup,
+  type MemberLoanItem,
+  type MemberLoanState,
+} from '../../lib/memberLoans'
 import { useEdgeFade } from '../../lib/useEdgeFade'
-import type { LoanRequestStatus, UserProfile } from '../../types'
+import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MyHardwareLoans.module.css'
 
@@ -19,32 +27,59 @@ const FILTERS: { value: LoanFilter; label: string }[] = [
   { value: 'pending', label: 'Pending' },
 ]
 
-const STATUS_BADGE_CLASS: Record<LoanRequestStatus, string> = {
-  pending: styles.badgePending,
-  approved: styles.badgeApproved,
-  denied: styles.badgeDenied,
+/**
+ * Which chip a state lives under. 'pending' is the one thing still waiting to
+ * start; 'current' is anything the member is holding, however late; 'past' is
+ * every way a loan can be over, including the two that never began.
+ */
+const FILTER_FOR_STATE: Record<MemberLoanState, Exclude<LoanFilter, 'all'>> = {
+  checkout_requested: 'pending',
+  active: 'current',
+  return_soon: 'current',
+  return_requested: 'current',
+  overdue: 'current',
+  returned: 'past',
+  cancelled: 'past',
+  denied: 'past',
 }
 
-function bucketFor(status: LoanRequestStatus): Exclude<LoanFilter, 'all'> {
-  if (status === 'pending') return 'pending'
-  if (status === 'denied') return 'past'
-  return 'current' // approved
+/** "June 23rd, 2026" — the long form the wireframes use under a row. */
+function formatLongDate(iso: string, isDateOnly = false): string {
+  const date = isDateOnly ? new Date(`${iso}T00:00:00`) : new Date(iso)
+  const day = date.getDate()
+  const remainder = day % 100
+  const suffix =
+    remainder >= 11 && remainder <= 13
+      ? 'th'
+      : day % 10 === 1
+        ? 'st'
+        : day % 10 === 2
+          ? 'nd'
+          : day % 10 === 3
+            ? 'rd'
+            : 'th'
+  return `${date.toLocaleDateString(undefined, { month: 'long' })} ${day}${suffix}, ${date.getFullYear()}`
 }
 
-function statusLabel(loan: LoanRequestItemSummary): string {
-  if (loan.status === 'pending') return `Checkout requested on ${formatShortDate(loan.requestedAt)}`
-  if (loan.status === 'approved') return 'Approved'
-  return 'Not approved'
-}
+/**
+ * The two lines under a row's badges: when the member got it, and what
+ * happens next. A request that hasn't been handed over has neither — the
+ * badge already carries the only date it has.
+ */
+function dateLines(item: MemberLoanItem, state: MemberLoanState): string[] {
+  if (state === 'checkout_requested' || state === 'cancelled' || state === 'denied') return []
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'long', day: '2-digit', year: 'numeric' })
-}
+  // reviewed_at is when an admin approved and handed it over. Older rows
+  // approved before that was recorded fall back to the request date rather
+  // than showing nothing.
+  const checkedOut = `Checked out on ${formatLongDate(item.reviewedAt ?? item.requestedAt)}`
 
-// "6.23.26" — matches the wireframe's compact requested-on date format.
-function formatShortDate(iso: string): string {
-  const date = new Date(iso)
-  return `${date.getMonth() + 1}.${date.getDate()}.${date.getFullYear() % 100}`
+  if (state === 'returned' && item.returnedAt) {
+    return [checkedOut, `Returned on ${formatLongDate(item.returnedAt)}`]
+  }
+  // Consumables are kept, so there is nothing to be due.
+  if (!item.returnDate) return [checkedOut, 'Return not required']
+  return [checkedOut, `Return by ${formatLongDate(item.returnDate, true)}`]
 }
 
 export default function MyHardwareLoans() {
@@ -52,10 +87,11 @@ export default function MyHardwareLoans() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [loans, setLoans] = useState<LoanRequestItemSummary[]>([])
+  const [groups, setGroups] = useState<MemberLoanGroup[]>([])
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<LoanFilter>('all')
+  const [query, setQuery] = useState('')
 
   const { ref: chipRowRef, maskImage: chipRowMaskImage } = useEdgeFade<HTMLDivElement>()
 
@@ -63,9 +99,9 @@ export default function MyHardwareLoans() {
     if (!profile) return
     let cancelled = false
 
-    fetchLoanRequestItems(profile.id)
+    fetchMemberLoans(profile.id)
       .then((items) => {
-        if (!cancelled) setLoans(items)
+        if (!cancelled) setGroups(items)
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
@@ -92,38 +128,124 @@ export default function MyHardwareLoans() {
     }
   }, [profile])
 
-  const filteredLoans = useMemo<LoanRequestItemSummary[]>(() => {
-    if (filter === 'all') return loans
-    return loans.filter((loan) => bucketFor(loan.status) === filter)
-  }, [loans, filter])
+  /**
+   * A request shows if anything in it matches the chip, and then shows whole.
+   *
+   * Matching on any item rather than on the primary is deliberate: returns
+   * are recorded per item, so a request can be half back — and filtering on
+   * the primary alone would hide an add-on still out under "Current" once the
+   * main item had been returned. Showing the group whole keeps an add-on
+   * readable as what it is: something that came with the item above it.
+   */
+  const visibleGroups = useMemo(() => {
+    const trimmed = query.trim().toLowerCase()
+    return groups.filter((group) => {
+      const items = [group.primary, ...group.addOns]
+      const matchesFilter =
+        filter === 'all' || items.some((item) => FILTER_FOR_STATE[memberLoanState(item)] === filter)
+      if (!matchesFilter) return false
+      if (!trimmed) return true
+      // Searching the whole request, not each row: typing the name of an
+      // add-on should find the loan it belongs to, not strand it under a
+      // primary item that has been filtered away.
+      return items.some((item) =>
+        [item.itemName, item.serialNumber ?? ''].join(' ').toLowerCase().includes(trimmed),
+      )
+    })
+  }, [groups, filter, query])
 
   function handleLogOut() {
     setProfileOpen(false)
     signOut()
   }
 
-  function handleMoreDetails() {
-    // Placeholder: wire this up to a loan detail screen once it's built.
-    // eslint-disable-next-line no-console
-    console.log('Navigate to: loan details')
-  }
+  const emptyMessage = query.trim()
+    ? 'No hardware loans match your search'
+    : filter === 'all'
+      ? "You don't have any hardware loans"
+      : `You don't have any ${filter} hardware loans`
 
-  const emptyMessage =
-    filter === 'all' ? "You don't have any hardware loans" : `You don't have any ${filter} hardware loans`
+  /** One row. Add-ons render the same way, indented and without the button. */
+  function LoanRow({ item, isAddOn }: { item: MemberLoanItem; isAddOn: boolean }) {
+    const state = memberLoanState(item)
+    const lines = dateLines(item, state)
+    // A consumable is kept rather than borrowed, so there is no loan of it to
+    // open — the row is a statement, not a link.
+    const canOpenDetail = !(isAddOn && item.isConsumable)
+
+    const body = (
+      <>
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt="" className={styles.loanThumb} />
+        ) : (
+          <span className={styles.loanThumbEmpty} />
+        )}
+
+        <div className={styles.loanInfo}>
+          <p className={styles.loanName}>{item.itemName}</p>
+          {lines.map((line) => (
+            <p className={styles.loanDate} key={line}>
+              {line}
+            </p>
+          ))}
+        </div>
+
+        <div className={styles.badgeRow}>
+          {isAddOn && <span className={styles.tagBadge}>ADD-ON</span>}
+          {item.isConsumable && <span className={styles.tagBadge}>Consumable</span>}
+          <LoanStatusBadge state={state} item={item} />
+        </div>
+
+        <div className={styles.loanActions}>
+          {canOpenDetail && <ChevronRightIcon size={20} />}
+        </div>
+      </>
+    )
+
+    if (!canOpenDetail) {
+      return <div className={`${styles.loanItem} ${styles.loanItemStatic}`}>{body}</div>
+    }
+
+    return (
+      <button
+        type="button"
+        className={styles.loanItem}
+        onClick={() => navigate(`/home/loans/${item.id}`)}
+        aria-label={`View details for ${item.itemName}`}
+      >
+        {body}
+      </button>
+    )
+  }
 
   return (
     <div className={styles.page}>
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <button type="button" className={styles.backButton} onClick={() => navigate('/home')} aria-label="Back">
-          <ArrowLeftIcon size={20} />
-          <span>Back</span>
-        </button>
+        <div className={styles.topRow}>
+          <button
+            type="button"
+            className={styles.backButton}
+            onClick={() => navigate('/home')}
+            aria-label="Back"
+          >
+            <ArrowLeftIcon size={20} />
+            <span>Back</span>
+          </button>
+          <h1 className={styles.heading}>My hardware loans</h1>
+          <div />
+        </div>
 
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardLabel}>My hardware loans</span>
+            <div className={styles.searchWrap}>
+              <SearchField
+                value={query}
+                onChange={setQuery}
+                placeholder="Search your hardware loans"
+              />
+            </div>
             <div
               ref={chipRowRef}
               className={styles.chipRow}
@@ -149,13 +271,13 @@ export default function MyHardwareLoans() {
           {isLoading && (
             <SkeletonScreen label="Loading your loans…">
               <ul className={styles.loanList}>
-                {Array.from({ length: 4 }, (_, index) => (
+                {Array.from({ length: 3 }, (_, index) => (
                   <li key={index}>
                     <div className={styles.skeletonRow}>
-                      <Skeleton width="4.5rem" height="4.5rem" radius="0.625rem" />
-                      <div className={styles.loanInfo}>
-                        <Skeleton width="55%" height="1.5625rem" shape="pill" />
-                        <Skeleton width="7rem" height="1.5rem" shape="pill" />
+                      <Skeleton width="5.625rem" height="3.75rem" radius="0.625rem" />
+                      <div className={styles.skeletonInfo}>
+                        <Skeleton width="55%" height="1.75rem" shape="pill" />
+                        <Skeleton width="9rem" height="1.5rem" shape="pill" />
                         <Skeleton width="40%" height="0.9375rem" shape="pill" />
                       </div>
                       <Skeleton width="1.25rem" height="1.25rem" shape="pill" />
@@ -165,36 +287,31 @@ export default function MyHardwareLoans() {
               </ul>
             </SkeletonScreen>
           )}
+
           {!isLoading && error && <p className={styles.status}>{error}</p>}
 
-          {!isLoading && !error && filteredLoans.length === 0 && (
+          {!isLoading && !error && visibleGroups.length === 0 && (
             <div className={styles.empty}>
               <CognitiveBrainIconFilled size={145} className={styles.emptyIcon} />
               <p className={styles.emptyText}>{emptyMessage}</p>
             </div>
           )}
 
-          {!isLoading && !error && filteredLoans.length > 0 && (
+          {!isLoading && !error && visibleGroups.length > 0 && (
             <ul className={styles.loanList}>
-              {filteredLoans.map((loan) => (
-                <li key={loan.id}>
-                  <button type="button" className={styles.loanItem} onClick={handleMoreDetails}>
-                    {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}
-                    <div className={styles.loanInfo}>
-                      <p className={styles.loanName}>{loan.itemName}</p>
-                      <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[loan.status]}`}>
-                        {statusLabel(loan)}
-                      </span>
-                      {loan.status === 'approved' && loan.returnDate && (
-                        <p className={styles.loanDate}>Return by {formatDate(loan.returnDate)}</p>
-                      )}
-                      <span className={styles.moreDetailsMobile}>
-                        More details
-                        <ChevronRightIcon size={14} />
-                      </span>
+              {visibleGroups.map((group) => (
+                <li key={group.loanRequestId} className={styles.loanGroup}>
+                  <LoanRow item={group.primary} isAddOn={false} />
+
+                  {group.addOns.map((addOn) => (
+                    <div className={styles.addOnRow} key={addOn.id}>
+                      {/* The elbow that ties an add-on to the item above it.
+                          Decorative: the ADD-ON badge says the same thing to
+                          anyone not looking at the picture. */}
+                      <AddOnArrowIcon className={styles.addOnArrow} />
+                      <LoanRow item={addOn} isAddOn />
                     </div>
-                    <ChevronRightIcon size={20} className={styles.chevronDesktop} />
-                  </button>
+                  ))}
                 </li>
               ))}
             </ul>
@@ -205,6 +322,7 @@ export default function MyHardwareLoans() {
       {isProfileOpen && user && (
         <ProfileModal user={user} onClose={() => setProfileOpen(false)} onLogOut={handleLogOut} />
       )}
+
     </div>
   )
 }

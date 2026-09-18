@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useEdgeFade, useVerticalEdgeFade } from '../../lib/useEdgeFade'
-import { fetchLoanRequestAvailability, type AvailabilitySlot } from '../../lib/loanRequests'
+import { fetchAvailability, type AvailabilitySlot } from '../../lib/availability'
 import { CloseIcon } from './icons'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AvailabilityModal.module.css'
 
 interface AvailabilityModalProps {
   loanRequestId: string
+  /** The item whose return this is about. Required when purpose is 'return':
+      returns are raised per item, so the hours belong to one of them. */
+  loanRequestItemId?: string
   memberName: string
   requestedAt: string
   purpose: 'checkout' | 'return'
@@ -35,7 +38,14 @@ function formatHourLabel(hour: number): string {
   return `${displayHour}:00 ${period}`
 }
 
-export function AvailabilityModal({ loanRequestId, memberName, requestedAt, purpose, onClose }: AvailabilityModalProps) {
+export function AvailabilityModal({
+  loanRequestId,
+  loanRequestItemId,
+  memberName,
+  requestedAt,
+  purpose,
+  onClose,
+}: AvailabilityModalProps) {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +58,11 @@ export function AvailabilityModal({ loanRequestId, memberName, requestedAt, purp
     setLoading(true)
     setError(null)
 
-    fetchLoanRequestAvailability(loanRequestId)
+    fetchAvailability(
+      purpose === 'return' && loanRequestItemId
+        ? { kind: 'return', loanRequestId, loanRequestItemId }
+        : { kind: 'checkout', loanRequestId },
+    )
       .then((data) => {
         if (!cancelled) setSlots(data)
       })
@@ -64,7 +78,7 @@ export function AvailabilityModal({ loanRequestId, memberName, requestedAt, purp
     return () => {
       cancelled = true
     }
-  }, [loanRequestId])
+  }, [loanRequestId, loanRequestItemId, purpose])
 
   const selectedByDate = useMemo(() => {
     const map = new Map<string, Set<number>>()

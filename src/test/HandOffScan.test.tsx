@@ -56,6 +56,7 @@ const loan = {
   signatureDate: '2026-09-17',
   reviewedAt: null,
   reviewNote: null,
+  returnRequestedAt: null,
   returnedAt: null,
   returnedByName: null,
   memberId: 'member-1',

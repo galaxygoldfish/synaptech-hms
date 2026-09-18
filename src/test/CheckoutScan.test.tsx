@@ -49,6 +49,7 @@ const requested: AdminLoanRequestItemSummary = {
   status: 'pending',
   requestedAt: '2026-09-14T17:30:00Z',
   returnDate: '2026-10-12',
+  returnRequestedAt: null,
   returnedAt: null,
   memberName: 'Bob Reyes',
 }
@@ -63,6 +64,7 @@ const alreadyOut: AdminLoanRequestItemSummary = {
   status: 'approved',
   requestedAt: '2026-09-01T17:30:00Z',
   returnDate: '2026-10-01',
+  returnRequestedAt: null,
   returnedAt: null,
   memberName: 'Cleo Park',
 }
@@ -77,6 +79,7 @@ const backOnTheShelf: AdminLoanRequestItemSummary = {
   status: 'approved',
   requestedAt: '2026-08-01T17:30:00Z',
   returnDate: '2026-09-01',
+  returnRequestedAt: null,
   returnedAt: '2026-08-30T12:00:00Z',
   memberName: 'Dara Singh',
 }

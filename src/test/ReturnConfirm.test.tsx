@@ -50,6 +50,7 @@ const detail: AdminLoanRequestDetail = {
   signatureDate: '2026-09-01',
   reviewedAt: '2026-09-02T10:00:00Z',
   reviewNote: null,
+  returnRequestedAt: null,
   returnedAt: null,
   returnedByName: null,
   memberId: 'member-1',

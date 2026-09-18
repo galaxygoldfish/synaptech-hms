@@ -1,0 +1,56 @@
+/* The member-facing status pill. Colours match the admin list's badges
+   (HardwareLoans.module.css) so one loan reads the same to both sides of the
+   desk; .returnSoon is the one addition, for a state only the member has. */
+
+.badge {
+  display: inline-block;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.7);
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.4375rem;
+  white-space: nowrap;
+}
+
+/* Waiting on an admin to hand it over. */
+.requested {
+  background: rgba(208, 206, 161, 0.44);
+}
+
+.active {
+  background: rgba(161, 208, 167, 0.44);
+}
+
+/* Pink rather than the overdue red: this is a reminder, not a problem. */
+.returnSoon {
+  background: rgba(208, 161, 196, 0.44);
+}
+
+/* Waiting on an admin again, at the other end of the loan. */
+.returnRequested {
+  background: rgba(166, 161, 208, 0.44);
+}
+
+.overdue {
+  background: rgba(208, 161, 161, 0.44);
+}
+
+.denied {
+  background: rgba(208, 161, 161, 0.44);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Neutral, for the two endings where nothing is outstanding any more —
+   returned, and cancelled before it ever started. */
+.closed {
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+  .badge {
+    font-size: 0.8125rem;
+    white-space: normal;
+  }
+}

@@ -90,7 +90,9 @@ export interface EquipmentAddon {
   created_at: string;
 }
 
-export type LoanRequestStatus = "pending" | "approved" | "denied";
+/** 'cancelled' is the member calling off their own request before hand-off;
+    'denied' is an admin turning it down. See the 20260925000000 migration. */
+export type LoanRequestStatus = "pending" | "approved" | "denied" | "cancelled";
 
 // A checkout submission: the primary item plus any add-ons, bundled into
 // one request that an admin approves or denies as a whole.

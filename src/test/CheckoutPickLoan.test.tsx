@@ -35,6 +35,7 @@ function loan(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     status: 'pending',
     requestedAt: '2026-09-14T17:30:00Z',
     returnDate: '2026-10-12',
+    returnRequestedAt: null,
     returnedAt: null,
     memberName: 'Bob Reyes',
     ...overrides,
@@ -59,6 +60,7 @@ const returned = loan({
   itemName: 'Oculus Quest 2',
   serialNumber: 'SYN-5OHTYJ2GX',
   status: 'approved',
+  returnRequestedAt: null,
   returnedAt: '2026-08-30T12:00:00Z',
   memberName: 'Dara Singh',
 })

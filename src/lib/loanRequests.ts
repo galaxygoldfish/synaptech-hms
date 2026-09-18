@@ -187,6 +187,8 @@ export interface AdminLoanRequestDetail {
   signatureDate: string | null
   reviewedAt: string | null
   reviewNote: string | null
+  /** Set when the member asked to give it back; cleared only by checking in. */
+  returnRequestedAt: string | null
   returnedAt: string | null
   returnedByName: string | null
   memberId: string
@@ -208,7 +210,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
     .select(
-      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, signature_name, signature_date, returned_at, returned_by',
+      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, signature_name, signature_date, return_requested_at, returned_at, returned_by',
     )
     .eq('id', itemId)
     .single()
@@ -317,6 +319,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     signatureDate: item.signature_date,
     reviewedAt: request.reviewed_at,
     reviewNote: request.review_note,
+    returnRequestedAt: item.return_requested_at,
     returnedAt: item.returned_at,
     returnedByName,
     memberId: member.id,
@@ -378,6 +381,8 @@ export interface AdminLoanRequestItemSummary {
   status: LoanRequestStatus
   requestedAt: string
   returnDate: string | null
+  /** Set when the member asked to give it back; cleared only by checking in. */
+  returnRequestedAt: string | null
   returnedAt: string | null
   memberName: string
 }
@@ -485,22 +490,32 @@ export async function markLoanRequestItemReturned(itemId: string, adminId: strin
 export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns' | 'returned'
 
 // Shared by the admin "Hardware loans" list, the loan detail screen and the
-// dashboard stat cards so their counts can never drift apart. Denied
-// requests never became a loan, so they're excluded entirely (null).
+// dashboard stat cards so their counts can never drift apart. Denied and
+// cancelled requests never became a loan, so they're excluded entirely
+// (null) — one was refused by an admin, the other called off by the member.
 //
 // 'returned' is terminal and checked first: an item that came back late is
 // returned, not overdue, and nothing about it is outstanding any more.
 //
-// 'returns' (a member has asked to give something back but hasn't yet) still
-// never matches — that's the one step of the flow with no trigger, because
-// members have no way to raise a return request in the app yet. The bucket
-// is kept for when that's built; the detail screen already renders it.
+// 'returns' (a member has asked to give something back but hasn't yet) is
+// answered by return_requested_at, added in the 20260925000000 migration.
+// Nothing sets it until the member-facing return flow is built, so the
+// bucket stays empty in practice — but the rule is here rather than waiting
+// on that work, so the list, the counts and the member's badge agree the day
+// it lands.
 export function bucketForLoanItem(
-  loan: Pick<AdminLoanRequestItemSummary, 'status' | 'returnDate' | 'returnedAt'>,
+  loan: Pick<
+    AdminLoanRequestItemSummary,
+    'status' | 'returnDate' | 'returnedAt' | 'returnRequestedAt'
+  >,
 ): LoanBucket | null {
-  if (loan.status === 'denied') return null
+  if (loan.status === 'denied' || loan.status === 'cancelled') return null
   if (loan.returnedAt) return 'returned'
   if (loan.status === 'pending') return 'requests'
+  // The member has asked to give it back and nobody has checked it in yet.
+  // Ranked above the date checks: what an admin has to do about it is take
+  // the hardware back, which is true whether or not it is also late.
+  if (loan.returnRequestedAt) return 'returns'
   if (loan.returnDate) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -527,7 +542,9 @@ export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSu
   const requestIds = requests.map((request) => request.id)
   const { data: items, error: itemsError } = await supabase
     .from('loan_request_items')
-    .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at')
+    .select(
+      'id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at, return_requested_at',
+    )
     .in('loan_request_id', requestIds)
 
   if (itemsError) throw itemsError
@@ -585,6 +602,7 @@ export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSu
         status: request.status as LoanRequestStatus,
         requestedAt: request.requested_at,
         returnDate: item.return_date,
+        returnRequestedAt: item.return_requested_at,
         returnedAt: item.returned_at,
         memberName: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown member',
       },
@@ -711,9 +729,4 @@ export function matchReturnSerial(
   if (requested) return { outcome: 'not_handed_over', serial, loan: requested }
 
   return { outcome: 'no_match', serial, loan: null }
-}
-
-/** True for a loan whose return date has already passed. */
-export function isOverdue(loan: Pick<AdminLoanRequestItemSummary, 'status' | 'returnDate' | 'returnedAt'>): boolean {
-  return bucketForLoanItem(loan) === 'overdue'
 }

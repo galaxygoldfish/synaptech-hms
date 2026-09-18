@@ -6,7 +6,7 @@ import {
 } from '../lib/loanRequests'
 
 function loan(overrides: Partial<Parameters<typeof bucketForLoanItem>[0]> = {}) {
-  return { status: 'approved' as const, returnDate: null, returnedAt: null, ...overrides }
+  return { status: 'approved' as const, returnDate: null, returnRequestedAt: null, returnedAt: null, ...overrides }
 }
 
 describe('bucketForLoanItem', () => {
@@ -48,6 +48,7 @@ function item(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     status: 'approved',
     requestedAt: '2026-09-14T17:30:00Z',
     returnDate: null,
+    returnRequestedAt: null,
     returnedAt: null,
     memberName: 'Bob Reyes',
     ...overrides,
