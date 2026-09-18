@@ -69,6 +69,49 @@ npm run lint       # Oxlint
 npm run preview    # Preview a production build locally
 ```
 
+## Deployment
+
+The web app deploys to Cloudflare as a **Worker serving static assets** — not a Pages
+project, which is what the dashboard creates for a repository import now. The deploy
+command is `npx wrangler deploy` and the settings live in
+[`wrangler.jsonc`](wrangler.jsonc), committed so that every deploy is identical and the
+non-interactive build never hits Wrangler's setup prompt.
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Deploy command | `npx wrangler deploy` |
+| Environment variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+
+Client-side routing is handled by `assets.not_found_handling:
+"single-page-application"` in that config: a request for `/adminHome/loans/123` has no
+file behind it, so the asset layer serves `index.html` with a 200 and React Router
+resolves it. **Do not add a `public/_redirects`** with the usual `/* /index.html 200`
+rule — Workers Assets rejects it as an infinite loop, because it already rewrites
+`/index.html` to `/` and the rule would match its own output. That failure happens at
+deploy time, after a successful build.
+
+[`.nvmrc`](.nvmrc) pins the build image's Node. The toolchain (Vite 8, TypeScript 6)
+needs a recent version, and the error from an old one doesn't obviously point at Node.
+
+Because the env vars are `VITE_`-prefixed they are read at **build** time, not run time:
+changing one in the Cloudflare dashboard does nothing until the next deploy.
+
+Two things live outside this repo and are easy to miss:
+
+- **DNS** — the Worker answers on `<name>.<subdomain>.workers.dev` immediately, which is
+  enough to test. For `hardware.synaptechuw.org`, add it as a custom domain on the
+  Worker; with the zone already on Cloudflare the DNS record is created for you.
+- **Supabase Auth → URL Configuration** — Site URL and Redirect URLs must list whichever
+  origin is actually being used, including the `workers.dev` one while testing. Google
+  sign-in otherwise completes and bounces the user somewhere else. The Google Cloud
+  console callback is unaffected: it points at Supabase's `/auth/v1/callback`, not at
+  this app.
+
+Run any unapplied [migrations](supabase/migrations) before the first deploy — the app
+reads columns that only exist once they have.
+
 ## Database
 
 Auth and profile data live in `profiles`, keyed by `auth.uid()`, with `role` (`'member'` | `'admin'`) enforced server-side (a trigger forces new rows to `'member'`; only a service-role change can promote a user to admin). Hardware tracking lives in three related tables:

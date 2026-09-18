@@ -1,0 +1,23 @@
+{
+  // Deployed as a Worker serving static assets (`npx wrangler deploy`), not a
+  // Pages project — that is what Cloudflare's dashboard creates for a repo
+  // import now. Committing this config rather than letting the build generate
+  // one keeps every deploy identical and stops the setup prompt running in a
+  // non-interactive build.
+  "name": "synaptech-hms",
+  "compatibility_date": "2026-09-18",
+  "assets": {
+    "directory": "./dist",
+    // The SPA fallback. A request for /adminHome/loans/123 has no file behind
+    // it, so the asset layer serves index.html with a 200 and React Router
+    // resolves it — the member keeps the URL they asked for.
+    //
+    // This is why there is no `public/_redirects`: Workers Assets rejects the
+    // usual `/* /index.html 200` rule outright, because it already rewrites
+    // /index.html to / and so the rule would match its own output.
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
