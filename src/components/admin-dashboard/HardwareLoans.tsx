@@ -15,21 +15,48 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HardwareLoans.module.css'
 
-type LoanFilter = 'all' | LoanBucket
+type LoanFilter = 'all' | 'active' | 'overdue' | 'requests' | 'returned'
 
-const FILTERS: { value: LoanFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'overdue', label: 'Overdue' },
-  { value: 'requests', label: 'Requests' },
-  { value: 'returns', label: 'Returns' },
-  { value: 'returned', label: 'Returned' },
+/**
+ * The chips, and the buckets each one covers.
+ *
+ * Checkout requests and return requests share the "Requests" chip: they are
+ * the same thing to an admin working this screen — a member waiting on them
+ * to do something — and which of the two it is, is already on the row's own
+ * badge. Two chips made an admin check both to find everything waiting.
+ */
+const FILTERS: { value: LoanFilter; label: string; buckets: LoanBucket[]; emptyLabel: string }[] = [
+  {
+    value: 'all',
+    label: 'All',
+    buckets: ['active', 'overdue', 'requests', 'returns', 'returned'],
+    emptyLabel: 'hardware loans yet',
+  },
+  { value: 'active', label: 'Active', buckets: ['active'], emptyLabel: 'active hardware loans' },
+  { value: 'overdue', label: 'Overdue', buckets: ['overdue'], emptyLabel: 'overdue hardware loans' },
+  {
+    value: 'requests',
+    label: 'Requests',
+    buckets: ['requests', 'returns'],
+    emptyLabel: 'requests waiting on an admin',
+  },
+  {
+    value: 'returned',
+    label: 'Returned',
+    buckets: ['returned'],
+    emptyLabel: 'returned hardware loans',
+  },
 ]
 
-const FILTER_VALUES = FILTERS.map((f) => f.value)
+const FILTER_BY_VALUE = new Map(FILTERS.map((option) => [option.value, option]))
 
 function parseFilter(value: string | null): LoanFilter {
-  return (FILTER_VALUES as string[]).includes(value ?? '') ? (value as LoanFilter) : 'all'
+  // 'returns' was its own chip before the two request kinds were merged. The
+  // dashboard's "Pending returns" card still links with it, and so may a
+  // bookmark, so it resolves to the chip that now covers it rather than
+  // silently falling back to All.
+  if (value === 'returns') return 'requests'
+  return FILTER_BY_VALUE.has(value as LoanFilter) ? (value as LoanFilter) : 'all'
 }
 
 function matchesQuery(loan: AdminLoanRequestItemSummary, query: string): boolean {
@@ -118,11 +145,12 @@ export default function HardwareLoans() {
 
   const visibleLoans = useMemo(() => {
     const trimmed = query.trim().toLowerCase()
+    const buckets = FILTER_BY_VALUE.get(filter)?.buckets ?? []
     return loans
       .map((loan) => ({ loan, bucket: bucketForLoanItem(loan) }))
       .filter((entry): entry is { loan: AdminLoanRequestItemSummary; bucket: LoanBucket } => {
         if (entry.bucket === null) return false
-        if (filter !== 'all' && entry.bucket !== filter) return false
+        if (!buckets.includes(entry.bucket)) return false
         return !trimmed || matchesQuery(entry.loan, trimmed)
       })
   }, [loans, filter, query])
@@ -138,9 +166,7 @@ export default function HardwareLoans() {
 
   const emptyMessage = query.trim()
     ? 'No hardware loans match your search'
-    : filter === 'all'
-      ? 'There are no hardware loans yet'
-      : `There are no ${filter} hardware loans`
+    : `There are no ${FILTER_BY_VALUE.get(filter)?.emptyLabel ?? 'hardware loans yet'}`
 
   return (
     <div className={styles.page}>
