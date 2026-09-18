@@ -303,12 +303,16 @@ create trigger on_equipment_updated_notify_email
   for each row execute function public.notify_equipment_updated();
 
 -- ── What's NOT wired up yet ──────────────────────────────────────────────
--- checkout-request-approval, hardware-return-requested,
--- successful-return-confirmation, and hardware-returned have no trigger
--- above — there's no separate approval step and no return-request/return-
--- completion feature in the app yet for them to fire on (see LoanDetail.tsx
--- and loanRequests.ts's comments on the 'returns' bucket). They're still
--- editable from the admin UI, just dormant until those flows exist.
+-- hardware-return-requested, successful-return-confirmation, and
+-- hardware-returned have no trigger above — there's no return-request/
+-- return-completion feature in the app yet for them to fire on (see
+-- LoanDetail.tsx and loanRequests.ts's comments on the 'returns' bucket).
+-- They're still editable from the admin UI, just dormant until those flows
+-- exist.
+--
+-- checkout-request-approval was in this same situation (no separate
+-- approval step, so it never fired) until it was removed entirely by
+-- 20260918050000_remove_checkout_request_approval_template.sql.
 --
 -- return-reminder-one-week/due-date/past-due and hardware-item-overdue
 -- aren't triggers at all — they're computed daily from

@@ -38,10 +38,27 @@ function unwrap<T>(
   return result.data;
 }
 
+// Shared by every case below that needs to say who performed an admin
+// action (the `admin_name` chip) — either the acting admin's id, passed
+// through by a trigger that captured auth.uid() (see
+// 20260919000000_equipment_actor_tracking.sql), or a "reviewed_by"-style
+// column already on the row itself. Returns "" rather than throwing when
+// there's no actor at all, since that's a normal case (most events have
+// none), not a query failure.
+async function fetchActorName(admin: SupabaseClient, actorId: string | null | undefined): Promise<string> {
+  if (!actorId) return "";
+  const actor = unwrap(
+    await admin.from("profiles").select("first_name, last_name").eq("id", actorId).maybeSingle(),
+    "fetching actor profile",
+  );
+  return actor ? `${actor.first_name} ${actor.last_name}` : "";
+}
+
 async function resolveEvent(
   admin: SupabaseClient,
   event: string,
   recordId: string,
+  actorId: string | null,
 ): Promise<Dispatch> {
   switch (event) {
     case "profile.created": {
@@ -120,15 +137,18 @@ async function resolveEvent(
       const dispatch: Dispatch = [
         { templateKey: "checkout-request-confirmation", to: profile.uw_email, fields },
       ];
-      for (const adminEmail of await fetchAdminEmails(admin)) {
-        dispatch.push({ templateKey: "hardware-checkout-requested", to: adminEmail, fields });
+      const adminEmails = await fetchAdminEmails(admin);
+      // One email to every admin together, not one separately-CC'd email
+      // per admin — see sendTemplatedEmail's `to: string | string[]`.
+      if (adminEmails.length > 0) {
+        dispatch.push({ templateKey: "hardware-checkout-requested", to: adminEmails, fields });
       }
       return dispatch;
     }
 
     case "loan_request.approved": {
       const request = unwrap(
-        await admin.from("loan_requests").select("user_id").eq("id", recordId).maybeSingle(),
+        await admin.from("loan_requests").select("user_id, reviewed_by").eq("id", recordId).maybeSingle(),
         "loan_request.approved: fetching loan_requests row",
       );
       if (!request) return [];
@@ -161,18 +181,28 @@ async function resolveEvent(
         serial = unit?.serial_number ?? "";
       }
 
+      // reviewed_by is set to the acting admin's id by checkoutLoanRequestItem
+      // (src/lib/loanRequests.ts) at the moment of approval — already exactly
+      // what hardware-handed-off's admin_name chip needs, no trigger changes
+      // required. Harmless to include in `fields` for
+      // successful-handoff-confirmation too: that template just has no
+      // admin_name chip to consume it.
+      const adminName = await fetchActorName(admin, request.reviewed_by);
+
       const fields = {
         user_name: `${profile.first_name} ${profile.last_name}`,
         hardware_name: equipment.name,
         hardware_serial: serial,
         loan_due_date: item.return_date ? formatDate(item.return_date) : "",
+        admin_name: adminName,
       };
 
       const dispatch: Dispatch = [
         { templateKey: "successful-handoff-confirmation", to: profile.uw_email, fields },
       ];
-      for (const adminEmail of await fetchAdminEmails(admin)) {
-        dispatch.push({ templateKey: "hardware-handed-off", to: adminEmail, fields });
+      const adminEmails = await fetchAdminEmails(admin);
+      if (adminEmails.length > 0) {
+        dispatch.push({ templateKey: "hardware-handed-off", to: adminEmails, fields });
       }
       return dispatch;
     }
@@ -186,8 +216,10 @@ async function resolveEvent(
       if (!equipment) return [];
 
       const templateKey = event === "equipment.created" ? "hardware-item-added" : "hardware-item-modified";
-      const fields = { hardware_name: equipment.name };
-      return (await fetchAdminEmails(admin)).map((to) => ({ templateKey, to, fields }));
+      const fields = { hardware_name: equipment.name, admin_name: await fetchActorName(admin, actorId) };
+      const adminEmails = await fetchAdminEmails(admin);
+      if (adminEmails.length === 0) return [];
+      return [{ templateKey, to: adminEmails, fields }];
     }
 
     default:
@@ -201,14 +233,14 @@ export default {
       return new Response("Method not allowed", { status: 405 });
     }
 
-    let payload: { event?: string; recordId?: string };
+    let payload: { event?: string; recordId?: string; actorId?: string | null };
     try {
       payload = await req.json();
     } catch {
       return new Response("Invalid JSON body", { status: 400 });
     }
 
-    const { event, recordId } = payload;
+    const { event, recordId, actorId } = payload;
     if (!event || !recordId) {
       return new Response("event and recordId are required", { status: 400 });
     }
@@ -216,7 +248,7 @@ export default {
     const admin = ctx.supabaseAdmin;
 
     try {
-      const dispatch = await resolveEvent(admin, event, recordId);
+      const dispatch = await resolveEvent(admin, event, recordId, actorId ?? null);
       await Promise.all(dispatch.map((send) => sendTemplatedEmail(admin, send)));
       return new Response(JSON.stringify({ ok: true, sent: dispatch.length }), {
         headers: { "Content-Type": "application/json" },

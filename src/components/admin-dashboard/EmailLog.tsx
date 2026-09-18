@@ -246,7 +246,7 @@ export default function EmailLog() {
             <ArrowLeftIcon size={20} />
             <span>Back</span>
           </button>
-          <h1 className={styles.heading}>Automated email log</h1>
+          <h1 className={styles.heading}>Sent email log</h1>
           <div />
         </div>
 

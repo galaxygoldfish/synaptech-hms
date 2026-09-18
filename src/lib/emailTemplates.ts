@@ -26,7 +26,20 @@ export const EMAIL_FIELD_LABELS: Record<string, string> = {
   loan_due_date: 'LOAN DUE DATE',
   return_date: 'RETURN DATE',
   new_role: 'NEW ROLE',
+  // Unlike every field above, these aren't tied to a specific business
+  // event — they're the date/time the email itself went out, computed at
+  // send time (see sendTemplatedEmail.ts) rather than pulled from a row.
+  // Available on every template for that reason.
+  sent_date: 'DATE',
+  sent_time: 'TIME',
 }
+
+// Mirrors DEFAULT_ARCHIVE_CC in supabase/functions/_shared/sendTemplatedEmail.ts.
+// The frontend has no way to read that function's live EMAIL_ARCHIVE_CC
+// secret — this documents the default every template CCs, same as "Sent"
+// and "Goes to" describe default behaviour rather than a live-queried
+// per-environment value.
+export const EMAIL_ARCHIVE_CC_ADDRESS = 'synaptechuw@gmail.com'
 
 /**
  * Editor-only copy explaining what each template is for. Not stored in the
@@ -64,13 +77,6 @@ export const EMAIL_TEMPLATE_DESCRIPTIONS: Record<string, EmailTemplateDescriptio
       'Acknowledges that a checkout request was received, so the member knows it is waiting on a Hardware Manager.',
     timing: 'Immediately after a member submits a hardware checkout request.',
     recipient: 'The member who made the request.',
-  },
-  'checkout-request-approval': {
-    blurb: 'Tells a member their checkout request was approved.',
-    timing:
-      'Nothing sends this yet — the app has no separate approval step, so approval and handoff are the same action. "Successful handoff confirmation" is what members actually receive.',
-    recipient: 'The member who made the request.',
-    dormant: true,
   },
   'return-reminder-one-week': {
     blurb: 'First nudge that a loan is coming to an end, while there is still time to plan a return.',

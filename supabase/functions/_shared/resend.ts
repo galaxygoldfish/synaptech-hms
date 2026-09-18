@@ -3,7 +3,12 @@
 // providers later means replacing just this one file.
 
 export interface SendEmailInput {
-  to: string;
+  /** Multiple addresses send ONE email to all of them (Resend accepts an
+      array directly — max 50) rather than one email per address. Used for
+      "notify every admin" sends, where every admin sees the others in the
+      To line — acceptable for an internal notification, not a member-facing
+      one. */
+  to: string | string[];
   subject: string;
   text: string;
   /** Optional HTML alternative — most clients prefer this when both are

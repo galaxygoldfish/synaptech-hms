@@ -20,15 +20,15 @@ export const actionGroups: ActionGroup[] = [
   {
     category: 'Members',
     items: [
-      { id: 'view-members',   label: 'View all registered members', icon: 'members', category: 'Members' },
+      { id: 'view-members',   label: 'View registered users',       icon: 'members', category: 'Members' },
     ],
   },
   {
     category: 'Notifications',
     items: [
-      { id: 'configure-member-emails', label: 'Configure member emails', icon: 'mail-member', category: 'Notifications' },
-      { id: 'configure-admin-emails',  label: 'Configure admin emails',  icon: 'mail-admin',  category: 'Notifications' },
-      { id: 'automated-email-log',     label: 'Automated email log',     icon: 'mail-log',    category: 'Notifications' },
+      { id: 'configure-member-emails', label: 'Member-facing emails', icon: 'mail-member', category: 'Notifications' },
+      { id: 'configure-admin-emails',  label: 'Admin-facing emails',  icon: 'mail-admin',  category: 'Notifications' },
+      { id: 'automated-email-log',     label: 'Sent email log',       icon: 'mail-log',    category: 'Notifications' },
     ],
   },
 ];

@@ -5,6 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { ArrowLeftIcon, InfoIcon, PlusIconSmallFilled, SaveIconFilled } from './icons'
 import {
+  EMAIL_ARCHIVE_CC_ADDRESS,
   EMAIL_FIELD_LABELS,
   EMAIL_TEMPLATE_DESCRIPTIONS,
   fetchEmailTemplate,
@@ -72,16 +73,80 @@ function segmentsToDom(container: HTMLElement, segments: EmailBodySegment[]) {
   }
 }
 
+// Pressing Enter in a plain contentEditable doesn't insert a newline
+// character — browsers wrap each subsequent line in its own block element
+// (a bare <div> in Chrome/Safari; a blank line becomes <div><br></div>).
+// Shift+Enter, by contrast, inserts a plain inline <br> with no wrapping
+// element. The previous version of this function only looked at direct
+// children, so anything past the first line — wrapped in one of those
+// <div>s — was neither a text node nor a chip and was silently dropped:
+// multi-line bodies survived exactly one line through a save/reload.
+//
+// This walks the full tree instead, converting the various ways a
+// line break can be represented into a single '\n' each: a bare <br>
+// contributes one, and stepping into a new block-level wrapper (anything
+// that isn't a chip or the container's first block) contributes one too —
+// except when that wrapper's only child is itself a <br>, where the two
+// would otherwise double-count a single blank line.
 function domToSegments(container: HTMLElement): EmailBodySegment[] {
   const segments: EmailBodySegment[] = []
-  container.childNodes.forEach((node) => {
+  let currentText = ''
+  // Whether any real content — text, a chip, or a line break — has been
+  // seen yet. Used only to avoid an accidental leading blank line if the
+  // very first block happens to be a wrapper (an edge case, not the
+  // common "start typing immediately" path).
+  let started = false
+
+  function flushText() {
+    if (currentText) {
+      segments.push({ type: 'text', value: currentText })
+      currentText = ''
+    }
+  }
+
+  function walk(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
       const value = node.textContent ?? ''
-      if (value) segments.push({ type: 'text', value })
-    } else if (node instanceof HTMLElement && node.dataset.field) {
-      segments.push({ type: 'chip', field: node.dataset.field })
+      if (value) started = true
+      currentText += value
+      return
     }
-  })
+    if (!(node instanceof HTMLElement)) return
+
+    if (node.dataset.field) {
+      flushText()
+      segments.push({ type: 'chip', field: node.dataset.field })
+      started = true
+      return
+    }
+
+    if (node.tagName === 'BR') {
+      currentText += '\n'
+      started = true
+      return
+    }
+
+    // Any other element is a block wrapper the browser inserted for a new
+    // line — entering one marks a line break, unless it's the first block
+    // in an otherwise-empty editor (nothing to break away from yet).
+    if (started) currentText += '\n'
+
+    const onlyChild = node.childNodes.length === 1 ? node.childNodes[0] : null
+    const isBlankLinePlaceholder =
+      onlyChild?.nodeType === Node.ELEMENT_NODE && (onlyChild as HTMLElement).tagName === 'BR'
+    if (isBlankLinePlaceholder) {
+      // <div><br></div>: an empty line. The block-transition newline just
+      // above already represents it — descending into the <br> too would
+      // add a second, redundant one.
+      started = true
+      return
+    }
+
+    node.childNodes.forEach(walk)
+  }
+
+  container.childNodes.forEach(walk)
+  flushText()
   return segments
 }
 
@@ -106,10 +171,16 @@ function AboutThisEmail({ templateKey }: { templateKey: string }) {
             </span>
             <span>{description.timing}</span>
           </span>
-          <span className={styles.aboutFact}>
-            <span className={styles.aboutFactLabel}>Goes to</span>
-            <span>{description.recipient}</span>
-          </span>
+          <div className={styles.aboutFactRow}>
+            <span className={styles.aboutFact}>
+              <span className={styles.aboutFactLabel}>Goes to</span>
+              <span>{description.recipient}</span>
+            </span>
+            <span className={styles.aboutFact}>
+              <span className={styles.aboutFactLabel}>CC</span>
+              <span>{EMAIL_ARCHIVE_CC_ADDRESS}</span>
+            </span>
+          </div>
         </div>
       </div>
     </aside>

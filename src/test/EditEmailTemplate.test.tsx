@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { act } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
-import { fetchEmailTemplate } from '../lib/emailTemplates'
+import { fetchEmailTemplate, updateEmailTemplateContent } from '../lib/emailTemplates'
 import EditEmailTemplate from '../components/admin-dashboard/EditEmailTemplate'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
@@ -33,6 +34,16 @@ beforeEach(() => {
   // This suite's mocks would otherwise leak between tests in this file —
   // vitest isn't configured with clearMocks/restoreMocks globally.
   vi.mocked(fetchEmailTemplate).mockReset()
+  vi.mocked(updateEmailTemplateContent).mockReset()
+  vi.mocked(updateEmailTemplateContent).mockResolvedValue({
+    key: 'return-reminder-one-week',
+    category: 'user',
+    label: 'Return reminder (1 week before)',
+    dynamicFields: [],
+    subject: '',
+    body: [],
+    enabled: true,
+  })
   vi.mocked(useAuth).mockReturnValue({
     session: mockSession,
     profile: mockProfile,
@@ -132,5 +143,62 @@ describe('EditEmailTemplate — loading an existing body', () => {
       expect(editor?.textContent).toContain('Hello')
       expect(editor?.textContent).toContain('please return your item soon.')
     })
+  })
+})
+
+describe('EditEmailTemplate — saving a multi-line body', () => {
+  // Pressing Enter in a contentEditable doesn't insert a '\n' character —
+  // the browser wraps each subsequent line in its own element instead (a
+  // bare <div> in Chrome/Safari; a blank line becomes <div><br></div>).
+  // domToSegments used to read only the editor's direct children, so
+  // anything past the first line was neither a text node nor a chip and
+  // was silently dropped — a saved multi-line body came back as one line
+  // on the very next visit to this screen. These set the editor's
+  // innerHTML directly to the exact structure real browsers produce,
+  // since jsdom's execCommand doesn't simulate that browser behavior.
+  async function loadEditorAndSave(editorHtml: string) {
+    vi.mocked(fetchEmailTemplate).mockResolvedValue({
+      key: 'return-reminder-one-week',
+      category: 'user',
+      label: 'Return reminder (1 week before)',
+      dynamicFields: [],
+      subject: 'Subject',
+      body: [{ type: 'text', value: 'placeholder' }],
+      enabled: true,
+    })
+
+    renderEditor()
+
+    const editor = await waitFor(() => {
+      const el = document.querySelector('[contenteditable="true"]')
+      expect(el?.textContent).toContain('placeholder')
+      return el as HTMLElement
+    })
+
+    editor.innerHTML = editorHtml
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(updateEmailTemplateContent).toHaveBeenCalled()
+    })
+
+    return vi.mocked(updateEmailTemplateContent).mock.calls[0][1].body
+  }
+
+  it('keeps every line when the browser wrapped them in <div>s', async () => {
+    const body = await loadEditorAndSave('Hello<div>Second line</div><div>Third line</div>')
+    expect(body).toEqual([{ type: 'text', value: 'Hello\nSecond line\nThird line' }])
+  })
+
+  it('preserves exactly one blank line for a <div><br></div> placeholder', async () => {
+    const body = await loadEditorAndSave('Hello<div><br></div><div>Second line</div>')
+    expect(body).toEqual([{ type: 'text', value: 'Hello\n\nSecond line' }])
+  })
+
+  it('preserves a Shift+Enter soft break (a bare <br>, no wrapping element)', async () => {
+    const body = await loadEditorAndSave('Line A<br>Line B')
+    expect(body).toEqual([{ type: 'text', value: 'Line A\nLine B' }])
   })
 })
