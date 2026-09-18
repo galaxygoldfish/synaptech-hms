@@ -1,0 +1,6 @@
+# Client-side routing. A request for /adminHome/loans/123 has no file behind
+# it, so Cloudflare Pages serves index.html and lets React Router resolve it.
+# Pages matches real static assets first, so /assets/* is unaffected. The 200
+# (rather than a 301/302) is what makes this a rewrite instead of a redirect,
+# so the browser keeps the URL the member actually asked for.
+/*    /index.html   200

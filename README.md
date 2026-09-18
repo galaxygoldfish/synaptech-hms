@@ -69,6 +69,45 @@ npm run lint       # Oxlint
 npm run preview    # Preview a production build locally
 ```
 
+## Deployment
+
+The web app deploys to Cloudflare Pages at **hardware.synaptechuw.org** — its own
+subdomain, and therefore its own origin, which is why nothing in the app is aware of
+being deployed: the build stays at the site root, `BrowserRouter` needs no `basename`,
+and the Google sign-in `redirectTo` in [`AuthContext`](src/context/AuthContext.tsx) can
+keep using `window.location.origin`. Serving it from a path
+(`synaptechuw.org/hardware`) would mean changing all three.
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Environment variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+
+[`public/_redirects`](public/_redirects) points every unmatched path at `index.html`
+with a 200, which is what makes it a rewrite rather than a redirect — the member keeps
+the URL they asked for. Pages matches real static assets first, so `/assets/*` is
+unaffected. Without it, client-side routes 404 on a hard refresh or a shared link. Vite
+copies `public/` into the build verbatim, so it needs no wiring.
+
+[`.nvmrc`](.nvmrc) pins the build image's Node. Pages defaults to a version old enough
+that this project's toolchain (Vite 8, TypeScript 6) fails to build, and the error it
+produces doesn't obviously point at Node.
+
+Two things live outside this repo and are easy to miss:
+
+- **DNS** — add `hardware.synaptechuw.org` under the Pages project's Custom domains.
+  With the zone already on Cloudflare the CNAME is created for you.
+- **Supabase Auth → URL Configuration** — Site URL set to
+  `https://hardware.synaptechuw.org` and the same origin added to Redirect URLs.
+  Without it Google sign-in completes and then bounces the user somewhere else. The
+  Google Cloud console callback is unaffected: it points at Supabase's
+  `/auth/v1/callback`, not at this app.
+
+Run any unapplied [migrations](supabase/migrations) before the first deploy — the app
+reads columns that only exist once they have.
+
 ## Database
 
 Auth and profile data live in `profiles`, keyed by `auth.uid()`, with `role` (`'member'` | `'admin'`) enforced server-side (a trigger forces new rows to `'member'`; only a service-role change can promote a user to admin). Hardware tracking lives in three related tables:
