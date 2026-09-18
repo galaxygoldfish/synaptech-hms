@@ -4,6 +4,16 @@
   gap: 1rem;
 }
 
+.brandButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .brainLogo {
   height: 3.25rem;
   width: auto;

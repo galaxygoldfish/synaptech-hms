@@ -5,11 +5,12 @@ interface BrandWordmarkProps {
   hideHardwareOnMobile?: boolean
   mutedText?: string
   compact?: boolean
+  onClick?: () => void
 }
 
-export function BrandWordmark({ hideHardwareOnMobile, mutedText = 'Hardware', compact }: BrandWordmarkProps) {
-  return (
-    <div className={styles.brand}>
+export function BrandWordmark({ hideHardwareOnMobile, mutedText = 'Hardware', compact, onClick }: BrandWordmarkProps) {
+  const content = (
+    <>
       <img
         src={brainLogo}
         alt=""
@@ -27,6 +28,16 @@ export function BrandWordmark({ hideHardwareOnMobile, mutedText = 'Hardware', co
           {mutedText}
         </span>
       </span>
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" className={`${styles.brand} ${styles.brandButton}`} onClick={onClick} aria-label="Go to home">
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={styles.brand}>{content}</div>
 }

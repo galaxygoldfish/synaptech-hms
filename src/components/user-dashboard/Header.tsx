@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { UserIconFilled } from "./icons";
 import { BrandWordmark } from "../BrandWordmark";
 import styles from "./Home.module.css";
@@ -8,9 +9,11 @@ interface HeaderProps {
 }
 
 export function Header({ userName, onProfileClick }: HeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <header className={styles.header}>
-      <BrandWordmark hideHardwareOnMobile />
+      <BrandWordmark hideHardwareOnMobile onClick={() => navigate("/home")} />
       <button className={styles.profilePill} onClick={onProfileClick} type="button">
         <UserIconFilled size={15} className={styles.profilePillIcon} />
         <span className={styles.profilePillName}>{userName}</span>

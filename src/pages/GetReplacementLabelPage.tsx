@@ -6,8 +6,13 @@ import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
-import { ArrowLeftIcon, DownloadIconFilled, PrinterIconFilled } from '../components/admin-dashboard/icons'
-import { ChevronRightIcon, DatabaseIcon } from '../components/admin-dashboard/return-hardware/icons'
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
+  DownloadIconFilled,
+  PrinterIconFilled,
+  ServerIconFilled,
+} from '../components/admin-dashboard/icons'
 import { fetchEquipmentUnitBySerial } from '../lib/inventory'
 import { buildItemLabelsPdf, downloadLabelsPdf, printLabelsPdf } from '../lib/labelPdf'
 import type { Equipment, UserProfile } from '../types'
@@ -174,7 +179,7 @@ export default function GetReplacementLabelPage() {
                 onClick={() => navigate('/adminHome/get-labels/browse')}
               >
                 <span className={styles.altButtonLabel}>
-                  <DatabaseIcon size={20} />
+                  <ServerIconFilled size={20} />
                   Pick from database
                 </span>
                 <ChevronRightIcon size={20} />

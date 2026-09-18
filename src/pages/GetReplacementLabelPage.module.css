@@ -138,31 +138,30 @@
   margin: 1.25rem auto 0;
 }
 
-/* Same look as the "Enter serial number" button on the return hardware page. */
+/* Same look as the alternative-action buttons on the return hardware page. */
 .altButton {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 0.75rem;
   width: 100%;
-  background: var(--blue-bg);
+  background: #f4f4f4;
   border: none;
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  color: var(--blue-fg);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: 0.9375rem;
+  padding: 1rem 1.25rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .altButton:hover {
-  filter: brightness(0.97);
+  background: #ececec;
 }
 
 .altButtonLabel {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.75rem;
 }
 
 /* ── Database browse lists ─────────────────────────────────── */
