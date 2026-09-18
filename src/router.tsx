@@ -6,6 +6,7 @@ import WelcomePage from './pages/WelcomePage'
 import ProfileSetupPage from './pages/ProfileSetupPage'
 import HomePage from './pages/HomePage'
 import BrowseInventoryPage from './pages/BrowseInventoryPage'
+import BrowseInventoryItemPage from './pages/BrowseInventoryItemPage'
 import CheckoutSelectHardwarePage from './pages/CheckoutSelectHardwarePage'
 import CheckoutConfirmHardwarePage from './pages/CheckoutConfirmHardwarePage'
 import CheckoutReturnDatePage from './pages/CheckoutReturnDatePage'
@@ -105,6 +106,7 @@ export function AppRouter() {
           <Route path="/setup" element={<SetupRoute><ProfileSetupPage /></SetupRoute>} />
           <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
           <Route path="/home/browse" element={<PrivateRoute><BrowseInventoryPage /></PrivateRoute>} />
+          <Route path="/home/browse/item" element={<PrivateRoute><BrowseInventoryItemPage /></PrivateRoute>} />
           <Route path="/home/loans" element={<PrivateRoute><MyHardwareLoansPage /></PrivateRoute>} />
           <Route path="/home/checkout" element={<PrivateRoute><CheckoutSelectHardwarePage /></PrivateRoute>} />
         <Route path="/home/checkout/confirm" element={<PrivateRoute><CheckoutConfirmHardwarePage /></PrivateRoute>} />

@@ -1,0 +1,180 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(78rem, 92%);
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem;
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+/* ── Back button ──────────────────────────────────────────── */
+
+.backButton {
+  flex-shrink: 0;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  color: rgba(0, 0, 0, 0.66);
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.backButtonLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.66);
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.9375rem;
+    border-radius: 0.875rem;
+  }
+
+  .backButtonLabel {
+    display: none;
+  }
+}
+
+/* ── Layout ───────────────────────────────────────────────── */
+
+.layoutCentered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  max-width: 40rem;
+  margin: 2rem auto 0;
+}
+
+/* ── Item info ────────────────────────────────────────────── */
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  text-align: center;
+}
+
+.itemImage {
+  width: min(20rem, 100%);
+  max-height: 15rem;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+
+.itemName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.875rem;
+  color: rgba(0, 0, 0, 0.8);
+  margin: 0;
+}
+
+.itemDescription {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+  max-width: 30rem;
+}
+
+.itemAvailable {
+  font-family: 'Rubik', sans-serif;
+  font-style: italic;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+/* ── Documentation / help links ──────────────────────────────── */
+
+.linkRows {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  background: #f4f4f4;
+  border: none;
+  padding: 1rem 1.125rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: #474747;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.linkRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.linkRowTop {
+  border-radius: 0.625rem 0.625rem 0.3125rem 0.3125rem;
+}
+
+.linkRowBottom {
+  border-radius: 0.3125rem 0.3125rem 0.625rem 0.625rem;
+}
+
+.linkRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.0625rem;
+}
+
+.linkRowIcon {
+  flex-shrink: 0;
+  width: 1.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding-bottom: 2rem;
+  }
+
+  .layoutCentered {
+    margin-top: 1.5rem;
+    gap: 1.5rem;
+  }
+
+  .itemName {
+    font-size: 1.5rem;
+  }
+}

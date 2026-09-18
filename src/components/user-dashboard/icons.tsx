@@ -273,6 +273,14 @@ export function ChevronRightFilled({ size = 9, color = "#474747", className }: I
   )
 }
 
+export function ArrowUpLeftFilled({ size = 22, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 15.625 15.625" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M12.5 0V1.5625H2.66406L15.625 14.5234L14.5234 15.625L1.5625 2.66406V12.5H0V0H12.5Z" fill={color} />
+    </svg>
+  )
+}
+
 export function BrowseIconFilled({ size = 22, color = "#474747", className }: IconProps & { color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 21.875 21.875" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
