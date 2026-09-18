@@ -1,9 +1,11 @@
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-const SUFFIX_LENGTH = 9
+/** Characters after the SYN- prefix. Exported so a field that stands in for
+    a serial can be the right shape without hard-coding the number. */
+export const SERIAL_SUFFIX_LENGTH = 9
 
 function randomSuffix(): string {
   let result = ''
-  for (let i = 0; i < SUFFIX_LENGTH; i++) {
+  for (let i = 0; i < SERIAL_SUFFIX_LENGTH; i++) {
     result += CHARSET[Math.floor(Math.random() * CHARSET.length)]
   }
   return result

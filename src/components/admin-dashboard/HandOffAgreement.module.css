@@ -155,8 +155,9 @@
 
 /* ── Step 1: verifying the serial by camera ───────────────── */
 /* Mirrors the scan step in the barcode checkout flow
-   (src/pages/admin-checkout-hardware.css) — dashed frame, caption beneath,
-   tinted alternative below that — in this screen's own card widths. */
+   (checkout-hardware/CheckoutHardware.module.css) — dashed frame, caption
+   beneath, tinted alternative below that — in this screen's own card
+   widths. */
 
 /* Wide enough for the caption beneath the frame to sit on one line — it
    needs about 37rem at this size, and breaking "verify serial / number"

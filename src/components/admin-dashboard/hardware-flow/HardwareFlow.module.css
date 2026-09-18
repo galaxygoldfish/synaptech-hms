@@ -1,0 +1,757 @@
+/* The two desk flows an admin runs with hardware in their hands — "Check out
+   hardware" and "Return hardware". They are the same screens in a different
+   direction: find the loan a unit belongs to by barcode, typed serial or
+   list, confirm it, then record it. One stylesheet, so a barcode result, a
+   loan row and a confirmation look the same whichever way the hardware is
+   travelling.
+
+   Page furniture (back row, heading, cards) follows the other admin screens;
+   the viewfinder and its result markers are the same ones the hand-off scan
+   and the inventory audit use. */
+
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: 100%;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Top row (back button + centered heading) ──────────────── */
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: center;
+  margin: 0;
+}
+
+.subtext {
+  width: min(40rem, 100%);
+  margin: 0 auto;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+
+  .heading {
+    font-size: 1.375rem;
+  }
+
+  .subtext {
+    font-size: 0.9375rem;
+    text-align: left;
+  }
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.inlineError {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: #b9433c;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── The scanning column ──────────────────────────────────── */
+
+/* Wide enough for the caption beneath the frame to sit on one line, matching
+   the hand-off scan step's column. */
+.scanColumn {
+  width: min(40rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.scanFrame {
+  position: relative;
+  width: 100%;
+  /* 4:3 less 30% of its height, keeping the column's full width. */
+  aspect-ratio: 40 / 21;
+  border: 3px dashed #d5d8dd;
+  border-radius: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f4f5f7;
+}
+
+.scanVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Blurring the live picture while a result is up makes the marker the only
+   thing in focus, and stops the camera visibly hunting for another barcode
+   behind an answer that's already been given. */
+.scanVideoBlurred {
+  filter: blur(8px) brightness(0.92);
+}
+
+.scanOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.scanMarker {
+  width: 7.5rem;
+  height: 7.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.25);
+}
+
+.scanMarkerSuccess {
+  background: #2bc217;
+}
+
+.scanMarkerFailure {
+  background: #d0342c;
+}
+
+/* Amber, not red: the barcode was read and the unit is ours — the answer is
+   "not this one, and here's why", which is a different thing from a label
+   this app has never seen. */
+.scanMarkerWarning {
+  background: #d8a01d;
+}
+
+.scanMarkerGlyph {
+  width: 4.25rem;
+  height: 4.25rem;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Sits on its own dark plate: the text is over a live camera picture, which
+   can be any colour from one frame to the next. */
+.scanFeedbackText {
+  max-width: 80%;
+  background: rgba(0, 0, 0, 0.62);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.875rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: #fff;
+  text-align: center;
+}
+
+@media (max-width: 40rem) {
+  .scanMarker {
+    width: 5.5rem;
+    height: 5.5rem;
+  }
+
+  .scanMarkerGlyph {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .scanFeedbackText {
+    font-size: 0.9375rem;
+  }
+}
+
+.scanPlaceholder {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #c3c9d3;
+  text-align: center;
+  padding: 0 2rem;
+  margin: 0;
+}
+
+.scanCaption {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── The two ways past the camera ─────────────────────────── */
+/* Grey, not the app's blue: blue is what this app tints the thing it wants
+   you to reach for, and these are the ways around the scan rather than the
+   way through it. */
+
+.altActions {
+  display: flex;
+  flex-direction: column;
+  /* Tighter between the two than the column's own 1.25rem, so they read as
+     one pair of choices; the space above sets them apart from the scan. */
+  gap: 0.625rem;
+  margin-top: 0.75rem;
+}
+
+.altButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1rem 1.25rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.altButton:hover {
+  background: #ececec;
+}
+
+.altButtonLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ── Typing a serial by hand ──────────────────────────────── */
+/* In a dialog rather than on the screen, so the two ways past the camera
+   read as the two choices they are instead of one choice and one form. The
+   field follows the app's other text inputs — white, ruled, and blue on
+   focus — rather than the grey plates used for rows you press. */
+
+.dialogBody {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-bottom: 1.75rem;
+}
+
+.dialogField {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  background: var(--white);
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1.25rem;
+  padding: 0.9375rem 1.25rem;
+  transition: border-color 0.15s ease;
+}
+
+.dialogField:focus-within {
+  border-color: var(--welcome-blue);
+}
+
+/* The SYN- prefix is printed, not typed: it's on every label and identical
+   every time, so typing it is four keystrokes of nothing. */
+.dialogPrefix {
+  flex-shrink: 0;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.45);
+  letter-spacing: 0.04em;
+}
+
+.dialogInput {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: var(--black);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dialogInput::placeholder {
+  color: var(--gray-400);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* Left-aligned against the field it's about, where the modal's own copy is
+   centred — it belongs to the input, not to the dialog. */
+.dialogError {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #b9433c;
+  text-align: left;
+  margin: 0;
+}
+
+/* ── The loan the barcode resolved to ─────────────────────── */
+/* Nothing is recorded from this screen, but the next one is an agreement
+   with somebody's name on it — so the answer is repeated back in full
+   before the admin commits to it. */
+
+.confirmCard {
+  width: min(40rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: #f4f4f4;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+}
+
+.confirmHead {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Fixed slot whether or not the product has a photo, so the name always
+   starts in the same place. */
+.confirmThumb,
+.confirmThumbEmpty {
+  flex-shrink: 0;
+  width: 5.5rem;
+  height: 4rem;
+  border-radius: 0.625rem;
+}
+
+.confirmThumb {
+  object-fit: contain;
+}
+
+.confirmThumbEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.confirmHeadText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+.confirmName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.375rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+.confirmSerial {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.55);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.confirmRows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.confirmRow {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.confirmLabel {
+  flex-shrink: 0;
+  width: 8.5rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+.confirmValue {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.88);
+  margin: 0;
+}
+
+/* Hardware coming back late is the one thing on a return confirmation an
+   admin might need to act on, so the date says so rather than leaving them
+   to work it out from today's. */
+.confirmValueOverdue {
+  color: #b9433c;
+}
+
+/* The black Bungee pill the member-facing checkout steps and the agreement
+   sign-off end on, but alone and full width: there is no second choice here
+   to balance it against. */
+.confirmActions {
+  display: flex;
+  padding-top: 0.25rem;
+}
+
+.confirmContinue {
+  width: 100%;
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.25rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.confirmContinue:hover {
+  background: #1f2937;
+}
+
+@media (max-width: 40rem) {
+  .confirmCard {
+    padding: 1.25rem;
+  }
+
+  .confirmRow {
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .confirmLabel {
+    width: auto;
+  }
+
+  .confirmContinue {
+    padding: 1rem;
+  }
+}
+
+/* ── Loading ──────────────────────────────────────────────── */
+
+.skeletonStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Picking the loan from a list ─────────────────────────── */
+/* The way in for hardware the camera can't help with: a label that's gone,
+   or a requested item that never had a serial assigned in the first place.
+   It lists only what this flow can act on — loans waiting to be handed over
+   — which is why it isn't the "Hardware loans" screen with a filter on it.
+   Rows carry no status badge for the same reason: every row has the same
+   one. */
+
+.pickCard {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.75rem 2rem;
+}
+
+.pickList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.pickItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 13rem 17rem auto;
+  grid-template-areas: 'thumb info member date chevron';
+  align-items: center;
+  column-gap: 2rem;
+  row-gap: 0.5rem;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pickItem:hover {
+  background: #ececec;
+}
+
+/* Fixed slot whether or not the product has a photo, so the name always
+   starts in the same place. */
+.pickThumb,
+.pickThumbEmpty {
+  grid-area: thumb;
+  width: 5rem;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pickThumb {
+  object-fit: contain;
+}
+
+.pickThumbEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.pickInfo {
+  grid-area: info;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pickName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.5625rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickSerial {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+/* An item with no serial assigned is the reason half of this screen exists,
+   so the row says so plainly rather than leaving a gap. */
+.pickSerialMissing {
+  color: rgba(0, 0, 0, 0.45);
+  font-style: italic;
+}
+
+.pickMember,
+.pickDate {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(0, 0, 0, 0.66);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickMember {
+  grid-area: member;
+  width: 13rem;
+  flex-shrink: 0;
+}
+
+.pickMember span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickDate {
+  grid-area: date;
+}
+
+.pickRowIcon {
+  flex-shrink: 0;
+}
+
+.pickChevron {
+  grid-area: chevron;
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 1200px) {
+  .pickItem,
+  .pickSkeletonRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'thumb info'
+      'member member'
+      'date date';
+  }
+
+  .pickMember {
+    width: auto;
+  }
+
+  .pickChevron {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .pickCard {
+    padding: 1.5rem 1.25rem 1.75rem;
+  }
+
+  .pickItem {
+    column-gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .pickName {
+    font-size: 1.25rem;
+  }
+
+  .pickSerial,
+  .pickMember,
+  .pickDate {
+    font-size: 1rem;
+  }
+}
+
+.pickSkeletonRow {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 13rem 17rem auto;
+  grid-template-areas: 'thumb info member date chevron';
+  align-items: center;
+  column-gap: 2rem;
+  row-gap: 0.5rem;
+  background: #f4f4f4;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+}
+
+/* ── Finished ─────────────────────────────────────────────── */
+/* The same shape as the "Successfully added to inventory" screen: a mark, a
+   sentence, and one way out. */
+
+.successMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.successPage {
+  min-height: 100vh;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+
+.successCheckmark {
+  width: clamp(5.5rem, 12vw, 8.875rem);
+  height: auto;
+}
+
+.successHeading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+  color: rgba(0, 0, 0, 0.98);
+  margin: 0;
+}
+
+.successDetailGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.successDetail {
+  max-width: 34rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 0;
+}
+
+.successDoneButton {
+  margin-top: 0.75rem;
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.successDoneButton:hover {
+  background: #1f2937;
+}
