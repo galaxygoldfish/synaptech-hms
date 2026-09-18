@@ -1,5 +1,6 @@
 import { createAdminClient } from "./db.ts";
-import { renderSegments, type EmailBodySegment } from "./render.ts";
+import { renderSegments, renderSegmentsHtml, type EmailBodySegment } from "./render.ts";
+import { buildSignatureHtml } from "./signature.ts";
 import { sendViaResend } from "./resend.ts";
 
 export interface SendTemplatedEmailInput {
@@ -48,22 +49,37 @@ export async function sendTemplatedEmail(
   if (!template || !template.enabled) return;
 
   const subject = template.subject || template.label;
-  const text = renderSegments((template.body ?? []) as EmailBodySegment[], fields);
+  const segments = (template.body ?? []) as EmailBodySegment[];
+
+  // `text` stays exactly what it always was — the admin editor's segments
+  // rendered plain, nothing appended. `html` is the version that actually
+  // goes out: the same content wrapped for email-safe HTML, with the brand
+  // signature appended at send time only. Templates never store it, so it
+  // never appears back in the editor — see signature.ts.
+  const text = renderSegments(segments, fields);
+  const html =
+    `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.5; color: #1c2430;">` +
+    renderSegmentsHtml(segments, fields) +
+    `</div>` +
+    buildSignatureHtml();
+
   const cc = archiveCcFor(to);
 
   // Logged on both paths so the admin "Automated email log" screen shows
-  // the message body that was actually rendered, including for failures —
-  // which is usually the thing you need in order to debug one.
+  // the message exactly as sent, including for failures — which is
+  // usually the thing you need in order to debug one. body_html is what
+  // the log renders; body_text is kept as the plain-text fallback record.
   const logRow = {
     template_key: templateKey,
     recipient_email: to,
     cc_email: cc ?? null,
     subject,
     body_text: text,
+    body_html: html,
   };
 
   try {
-    await sendViaResend({ to, subject, text, cc });
+    await sendViaResend({ to, subject, text, html, cc });
     await admin.from("email_log").insert({ ...logRow, status: "sent" });
   } catch (sendError) {
     console.error(`Failed to send "${templateKey}" to ${to}:`, sendError);

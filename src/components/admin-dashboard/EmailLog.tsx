@@ -43,6 +43,21 @@ function matchesQuery(entry: EmailLogEntry, query: string): boolean {
   return haystack.includes(query)
 }
 
+// The reference badge (HardwareLoans' Active/Overdue/etc.) capitalizes via
+// its own label map rather than a CSS transform, so this does the same.
+const STATUS_LABEL: Record<EmailLogStatus, string> = {
+  sent: 'Sent',
+  failed: 'Failed',
+}
+
+// Wraps the stored HTML in a minimal document for the iframe — padding and
+// a background so it reads as a panel, matching .bodyBox's look. The
+// content itself (entry.bodyHtml) is untouched: this is presentation
+// chrome around it, not a change to what was actually sent.
+function buildPreviewDocument(bodyHtml: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:1.75rem;background:#f2f2f2;box-sizing:border-box;">${bodyHtml}</body></html>`
+}
+
 function StatusBadge({ status }: { status: EmailLogStatus }) {
   return (
     <span
@@ -52,7 +67,7 @@ function StatusBadge({ status }: { status: EmailLogStatus }) {
           : `${styles.statusBadge} ${styles.statusFailed}`
       }
     >
-      {status}
+      {STATUS_LABEL[status]}
     </span>
   )
 }
@@ -83,7 +98,7 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
         </div>
 
         <div className={styles.metaList}>
-          <div className={styles.metaRow}>
+          <div className={`${styles.metaRow} ${styles.metaRowSpaced}`}>
             <span className={styles.metaLabel}>Status</span>
             <span className={styles.metaValue}>
               <StatusBadge status={entry.status} />
@@ -121,10 +136,25 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
         )}
 
         <div>
-          <p className={styles.bodyLabel}>Body as sent</p>
-          {/* An empty string is a real (if odd) email; null means the row
-              predates the body column. They're shown differently. */}
-          {entry.bodyText === null ? (
+          <p className={styles.bodyLabel}>Body</p>
+          {entry.bodyHtml ? (
+            // Rendered exactly as sent, signature included — but in a fully
+            // sandboxed iframe. This HTML embeds admin/member-supplied data
+            // (names, hardware, notes); it's escaped at render time in
+            // render.ts, but this is the second, independent layer that
+            // actually matters here — an empty `sandbox` blocks scripts,
+            // forms, top navigation and same-origin access outright, so
+            // even a script that slipped through escaping still couldn't
+            // run or reach this page's session.
+            <iframe
+              title={`Email body — ${entry.templateLabel}`}
+              sandbox=""
+              srcDoc={buildPreviewDocument(entry.bodyHtml)}
+              className={styles.bodyFrame}
+            />
+          ) : entry.bodyText === null ? (
+            // An empty string is a real (if odd) email; null means the row
+            // predates the body column. They're shown differently.
             <p className={`${styles.bodyBox} ${styles.bodyMissing}`}>
               Not recorded — this email was sent before the log stored message bodies.
             </p>
@@ -293,8 +323,8 @@ export default function EmailLog() {
                       <StatusBadge status={entry.status} />
 
                       <span className={styles.templateCell}>
-                        <span className={styles.templateName}>{entry.templateLabel}</span>
-                        <span className={styles.subjectLine}>{entry.subject || '(no subject)'}</span>
+                        <span className={styles.emailSubject}>{entry.subject || '(no subject)'}</span>
+                        <span className={styles.templateType}>{entry.templateLabel}</span>
                       </span>
 
                       <span className={styles.recipientCell}>

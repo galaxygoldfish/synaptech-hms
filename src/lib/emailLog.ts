@@ -14,6 +14,10 @@ export interface EmailLogEntry {
   /** Null for rows logged before the body column existed — see the
       20260916010000 migration. The UI distinguishes this from an empty body. */
   bodyText: string | null
+  /** The HTML actually sent (includes the brand signature — see
+      supabase/functions/_shared/signature.ts). Null for rows sent before
+      HTML emails existed, or if a future send path stays plain-text-only. */
+  bodyHtml: string | null
   status: EmailLogStatus
   error: string | null
   sentAt: string
@@ -26,6 +30,7 @@ interface EmailLogRow {
   cc_email: string | null
   subject: string
   body_text: string | null
+  body_html: string | null
   status: EmailLogStatus
   error: string | null
   sent_at: string
@@ -44,6 +49,7 @@ function mapRow(row: EmailLogRow): EmailLogEntry {
     ccEmail: row.cc_email,
     subject: row.subject,
     bodyText: row.body_text,
+    bodyHtml: row.body_html,
     status: row.status,
     error: row.error,
     sentAt: row.sent_at,
@@ -58,7 +64,7 @@ function mapRow(row: EmailLogRow): EmailLogEntry {
 export async function fetchEmailLog(limit = 500): Promise<EmailLogEntry[]> {
   const { data, error } = await supabase
     .from('email_log')
-    .select('id, template_key, recipient_email, cc_email, subject, body_text, status, error, sent_at, email_templates(label, category)')
+    .select('id, template_key, recipient_email, cc_email, subject, body_text, body_html, status, error, sent_at, email_templates(label, category)')
     .order('sent_at', { ascending: false })
     .limit(limit)
 
