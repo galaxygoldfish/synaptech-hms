@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { ArrowLeftIcon, ArrowUpLeftFilled, ChevronRightFilled, DocumentationIcon, HelpIconFilled } from './icons'
-import { fetchEquipment } from '../../lib/inventory'
+import { availableQuantity, fetchEquipment, fetchEquipmentAvailability } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './BrowseInventoryItem.module.css'
@@ -35,9 +35,10 @@ export default function BrowseInventoryItem() {
     setLoading(true)
     setError(null)
 
-    fetchEquipment(equipmentId)
-      .then((item) => {
-        if (!cancelled) setEquipment(item)
+    Promise.all([fetchEquipment(equipmentId), fetchEquipmentAvailability()])
+      .then(([item, availability]) => {
+        // Free units, not units owned — see availableQuantity.
+        if (!cancelled) setEquipment({ ...item, quantity_total: availableQuantity(item, availability) })
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console

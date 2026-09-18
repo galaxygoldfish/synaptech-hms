@@ -211,22 +211,37 @@ export async function fetchEquipmentByIds(equipmentIds: string[]): Promise<Equip
   return data as Equipment[]
 }
 
-// An available unit for pre-filling the loan agreement and for the
-// loan_request_items row created at submission. Picks the first unit by
-// serial — there's no notion of "already on an active loan" yet (nothing
-// reads loan_request_items to exclude already-requested units), so this is
-// a placeholder for real availability tracking, not a reservation.
+// The first unit (by serial) that nobody is holding, for pre-filling the loan
+// agreement and for the loan_request_items row created at submission. A unit
+// is held by any pending or approved request until it's returned — members
+// can't read each other's requests, so the database answers this
+// (available_equipment_units, see 20260925000000_unit_reservation.sql). It
+// isn't a reservation: the claim is made, and enforced, when the request is
+// inserted. Null means every unit is spoken for.
 export async function fetchAvailableEquipmentUnit(equipmentId: string): Promise<EquipmentUnit | null> {
-  const { data, error } = await supabase
-    .from('equipment_units')
-    .select()
-    .eq('equipment_id', equipmentId)
-    .order('serial_number')
-    .limit(1)
-    .maybeSingle()
+  const { data, error } = await supabase.rpc('available_equipment_units', { p_equipment_id: equipmentId })
 
   if (error) throw error
-  return data as EquipmentUnit | null
+  return ((data ?? []) as EquipmentUnit[])[0] ?? null
+}
+
+// Free units per hardware product, keyed by equipment id. Consumables have
+// no units and are absent — see availableQuantity.
+export async function fetchEquipmentAvailability(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc('equipment_availability')
+  if (error) throw error
+
+  const availability: Record<string, number> = {}
+  for (const row of (data ?? []) as { equipment_id: string; available: number }[]) {
+    availability[row.equipment_id] = row.available
+  }
+  return availability
+}
+
+// What a member is told is available: free units for hardware, the stocked
+// quantity for consumables (which aren't tracked per unit).
+export function availableQuantity(item: Equipment, availability: Record<string, number>): number {
+  return item.product_type === 'hardware' ? (availability[item.id] ?? 0) : item.quantity_total
 }
 
 export async function fetchAvailableSerialNumber(equipmentId: string): Promise<string | null> {

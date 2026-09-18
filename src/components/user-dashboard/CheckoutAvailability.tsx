@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import { fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
-import { submitLoanRequest, type SubmitLoanRequestItemInput } from '../../lib/loanRequests'
+import { submitLoanRequest, UnitUnavailableError, type SubmitLoanRequestItemInput } from '../../lib/loanRequests'
 import type { Equipment, LoanRequestItemRole, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutAvailability.module.css'
@@ -38,6 +38,7 @@ interface CheckoutState {
   signedAgreements?: Record<string, File>
   signedNames?: Record<string, string>
   signedDates?: Record<string, string>
+  unitIds?: Record<string, string | null>
 }
 
 function readCheckoutState(state: unknown): CheckoutState | null {
@@ -52,6 +53,7 @@ function readCheckoutState(state: unknown): CheckoutState | null {
     signedAgreements: value.signedAgreements,
     signedNames: value.signedNames,
     signedDates: value.signedDates,
+    unitIds: value.unitIds,
   }
 }
 
@@ -215,6 +217,7 @@ export default function CheckoutAvailability() {
       signedAgreementFile: checkoutState.signedAgreements?.[item.id] ?? null,
       signatureName: checkoutState.signedNames?.[item.id] ?? null,
       signatureDate: checkoutState.signedDates?.[item.id] ?? null,
+      equipmentUnitId: checkoutState.unitIds?.[item.id] ?? null,
     }))
 
     try {
@@ -223,7 +226,11 @@ export default function CheckoutAvailability() {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to submit checkout:', error)
-      setSubmitError('Could not submit your checkout request. Please try again.')
+      setSubmitError(
+        error instanceof UnitUnavailableError
+          ? 'Someone else just requested that hardware, so it is no longer available. Please go back to the start of checkout and try again.'
+          : 'Could not submit your checkout request. Please try again.',
+      )
       setSubmitting(false)
     }
   }

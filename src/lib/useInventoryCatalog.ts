@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { listEquipment } from './inventory'
+import { availableQuantity, fetchEquipmentAvailability, listEquipment } from './inventory'
 import { CATEGORY_OPTIONS, type CategoryFilter } from './equipmentCategories'
 import type { Equipment } from '../types'
 
@@ -22,9 +22,14 @@ export function useInventoryCatalog() {
 
   useEffect(() => {
     let cancelled = false
-    listEquipment()
-      .then((items) => {
-        if (!cancelled) setEquipment(items)
+    // Members are shown how many units are actually free (not held by anyone's
+    // pending or approved request), not how many exist, so quantity_total on
+    // these items carries that count — see availableQuantity.
+    Promise.all([listEquipment(), fetchEquipmentAvailability()])
+      .then(([items, availability]) => {
+        if (!cancelled) {
+          setEquipment(items.map((item) => ({ ...item, quantity_total: availableQuantity(item, availability) })))
+        }
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console

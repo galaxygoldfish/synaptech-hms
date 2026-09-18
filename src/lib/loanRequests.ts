@@ -15,6 +15,23 @@ export interface SubmitLoanRequestItemInput {
   /** What the borrower typed into section 9 — hardware only. */
   signatureName: string | null
   signatureDate: string | null // ISO date
+  /**
+   * The unit the borrower signed the agreement for — hardware only. Omit to
+   * have one picked at submission.
+   */
+  equipmentUnitId?: string | null
+}
+
+// Another member's request took the unit first (or every unit is spoken for).
+export class UnitUnavailableError extends Error {
+  constructor(message = 'That hardware was just requested by someone else.') {
+    super(message)
+    this.name = 'UnitUnavailableError'
+  }
+}
+
+function isUnitUnavailable(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'message' in error && String(error.message).includes('unit_unavailable')
 }
 
 export interface AvailabilitySlotInput {
@@ -49,7 +66,13 @@ export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<
   try {
     const itemRows = await Promise.all(
       input.items.map(async (item) => {
-        const unit = item.isHardware ? await fetchAvailableEquipmentUnit(item.equipmentId) : null
+        let unitId: string | null = null
+        if (item.isHardware) {
+          unitId = item.equipmentUnitId ?? (await fetchAvailableEquipmentUnit(item.equipmentId))?.id ?? null
+          // No free unit means no request: every serial of this product is
+          // already on someone else's pending or approved request.
+          if (!unitId) throw new UnitUnavailableError('No units of this hardware are currently available.')
+        }
 
         let signedAgreementPath: string | null = null
         if (item.isHardware && item.signedAgreementFile) {
@@ -63,7 +86,7 @@ export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<
         return {
           loan_request_id: request.id,
           equipment_id: item.equipmentId,
-          equipment_unit_id: unit?.id ?? null,
+          equipment_unit_id: unitId,
           item_role: item.role,
           return_date: item.isHardware ? item.returnDate : null,
           signed_agreement_path: signedAgreementPath,
@@ -74,7 +97,7 @@ export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<
     )
 
     const { error: itemsError } = await supabase.from('loan_request_items').insert(itemRows)
-    if (itemsError) throw itemsError
+    if (itemsError) throw isUnitUnavailable(itemsError) ? new UnitUnavailableError() : itemsError
 
     if (input.availability.length > 0) {
       const { error: availabilityError } = await supabase.from('loan_request_availability').insert(

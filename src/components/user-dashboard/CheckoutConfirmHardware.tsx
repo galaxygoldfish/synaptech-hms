@@ -4,7 +4,13 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { CheckmarkIcon, ChevronRightFilled, DocumentationIcon, HelpIconFilled, PlusIconSmallFilled } from './icons'
-import { fetchEquipment, fetchEquipmentAddonOptions, type EquipmentAddonOption } from '../../lib/inventory'
+import {
+  availableQuantity,
+  fetchEquipment,
+  fetchEquipmentAddonOptions,
+  fetchEquipmentAvailability,
+  type EquipmentAddonOption,
+} from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutConfirmHardware.module.css'
@@ -93,11 +99,20 @@ export default function CheckoutConfirmHardware() {
     setLoading(true)
     setError(null)
 
-    Promise.all([fetchEquipment(equipmentId), fetchEquipmentAddonOptions(equipmentId)])
-      .then(([item, addons]) => {
+    Promise.all([fetchEquipment(equipmentId), fetchEquipmentAddonOptions(equipmentId), fetchEquipmentAvailability()])
+      .then(([item, addons, availability]) => {
         if (cancelled) return
-        setEquipment(item)
-        setAddonOptions(addons)
+        // Free units, not units owned — see availableQuantity.
+        setEquipment({ ...item, quantity_total: availableQuantity(item, availability) })
+        setAddonOptions(
+          addons.map((option) => ({
+            ...option,
+            equipment: {
+              ...option.equipment,
+              quantity_total: availableQuantity(option.equipment, availability),
+            },
+          })),
+        )
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
@@ -154,7 +169,13 @@ export default function CheckoutConfirmHardware() {
     setSelectedRequiredId(id)
   }
 
-  const canProceed = !isLoading && !error && equipment !== null && (requiredAddons.length === 0 || selectedRequiredId !== null)
+  // Nothing to request when every unit is already on someone's request.
+  const canProceed =
+    !isLoading &&
+    !error &&
+    equipment !== null &&
+    !isOutOfStock(equipment) &&
+    (requiredAddons.length === 0 || selectedRequiredId !== null)
 
   function handleNext() {
     if (!canProceed || !equipment) return

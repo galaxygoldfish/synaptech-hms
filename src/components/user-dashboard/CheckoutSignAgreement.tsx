@@ -5,9 +5,9 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AgreementPreview } from './AgreementPreview'
 import { CheckmarkIcon } from './icons'
-import { fetchAvailableSerialNumber, fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
+import { fetchAvailableEquipmentUnit, fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
 import { buildLoanAgreementPdf } from '../../lib/loanAgreementPdf'
-import type { Equipment, UserProfile } from '../../types'
+import type { Equipment, EquipmentUnit, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutSignAgreement.module.css'
 
@@ -64,7 +64,7 @@ export default function CheckoutSignAgreement() {
   const checkoutState = readCheckoutState(location.state)
 
   const [items, setItems] = useState<Equipment[]>([])
-  const [serials, setSerials] = useState<Record<string, string | null>>({})
+  const [units, setUnits] = useState<Record<string, EquipmentUnit | null>>({})
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [signatures, setSignatures] = useState<Record<string, SignatureEntry>>({})
@@ -89,10 +89,10 @@ export default function CheckoutSignAgreement() {
         setItems(allItems)
 
         const hardwareItems = allItems.filter((item) => item.product_type === 'hardware')
-        const serialEntries = await Promise.all(
-          hardwareItems.map(async (item) => [item.id, await fetchAvailableSerialNumber(item.id)] as const),
+        const unitEntries = await Promise.all(
+          hardwareItems.map(async (item) => [item.id, await fetchAvailableEquipmentUnit(item.id)] as const),
         )
-        if (!cancelled) setSerials(Object.fromEntries(serialEntries))
+        if (!cancelled) setUnits(Object.fromEntries(unitEntries))
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
@@ -136,11 +136,19 @@ export default function CheckoutSignAgreement() {
     setActiveItemId((current) => (current && hardwareItems.some((item) => item.id === current) ? current : hardwareItems[0].id))
   }, [hardwareItems])
 
+  // Hardware whose every unit is already on someone's pending or approved
+  // request. There's nothing to sign for, so the request can't go ahead.
+  const unavailableItems = useMemo(
+    () => (isLoading ? [] : hardwareItems.filter((item) => !units[item.id])),
+    [hardwareItems, units, isLoading],
+  )
+
   const canSubmit =
     !isLoading &&
     !error &&
     !isSubmitting &&
     hardwareItems.length > 0 &&
+    unavailableItems.length === 0 &&
     hardwareItems.every((item) => {
       const entry = signatures[item.id]
       return Boolean(entry && entry.name.trim() && entry.date)
@@ -185,7 +193,7 @@ export default function CheckoutSignAgreement() {
             phone: profile.phone,
             address: profile.address,
             productName: item.name,
-            serialNumber: serials[item.id] ?? 'TBD',
+            serialNumber: units[item.id]?.serial_number ?? 'TBD',
             loanDate: formatDate(todayIso()),
             returnDate: returnDateIso ? formatDate(returnDateIso) : 'TBD',
             replacementValue: formatCurrency(item.replacement_value),
@@ -208,8 +216,10 @@ export default function CheckoutSignAgreement() {
       const signedDates = Object.fromEntries(
         Object.entries(signatures).map(([itemId, entry]) => [itemId, entry.date]),
       )
+      // The unit the agreement names, so the request claims that same serial.
+      const unitIds = Object.fromEntries(hardwareItems.map((item) => [item.id, units[item.id]?.id ?? null]))
       navigate('/home/checkout/availability', {
-        state: { ...checkoutState, signedAgreements, signedNames, signedDates },
+        state: { ...checkoutState, signedAgreements, signedNames, signedDates, unitIds },
       })
     } catch (submitError) {
       // eslint-disable-next-line no-console
@@ -253,7 +263,15 @@ export default function CheckoutSignAgreement() {
         )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
-        {!isLoading && !error && activeItem && activeSignature && profile && (
+        {!isLoading && !error && unavailableItems.length > 0 && (
+          <p className={styles.status} role="alert">
+            {unavailableItems.map((item) => item.name).join(', ')}{' '}
+            {unavailableItems.length === 1 ? 'is' : 'are'} not available right now — every unit is already requested
+            or checked out. Go back and pick something else, or try again once one is returned.
+          </p>
+        )}
+
+        {!isLoading && !error && unavailableItems.length === 0 && activeItem && activeSignature && profile && (
           <>
             {hardwareItems.length > 1 && (
               <div className={styles.tabRow}>
@@ -290,7 +308,7 @@ export default function CheckoutSignAgreement() {
               phone={profile.phone}
               address={profile.address}
               productName={activeItem.name}
-              serialNumber={serials[activeItem.id] ?? 'TBD'}
+              serialNumber={units[activeItem.id]?.serial_number ?? 'TBD'}
               loanDate={formatDate(todayIso())}
               returnDate={
                 checkoutState.returnDates[activeItem.id] ? formatDate(checkoutState.returnDates[activeItem.id]) : 'TBD'
