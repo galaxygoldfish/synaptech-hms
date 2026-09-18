@@ -21,7 +21,7 @@ export const actionGroups: ActionGroup[] = [
   {
     category: 'Administration',
     items: [
-      { id: 'view-members',   label: 'View registered users', icon: 'members', category: 'Administration' },
+      { id: 'view-members',   label: 'Manage registered users', icon: 'members', category: 'Administration' },
       { id: 'app-audit-log',  label: 'App audit log',         icon: 'audit-log', category: 'Administration' },
     ],
   },
