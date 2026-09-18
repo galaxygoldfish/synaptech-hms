@@ -37,6 +37,8 @@ import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
 import AdminEmailLogPage from './pages/AdminEmailLogPage'
 import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 import AdminCheckoutHardwarePage from './pages/AdminCheckoutHardwarePage'
+import AdminCheckoutPickLoanPage from './pages/AdminCheckoutPickLoanPage'
+import AdminCheckoutAgreementPage from './pages/AdminCheckoutAgreementPage'
 
 function LoadingScreen() {
   return <AppShellSkeleton />
@@ -143,6 +145,8 @@ export function AppRouter() {
           <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
           <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
           <Route path="/adminHome/checkout" element={<AdminRoute><AdminCheckoutHardwarePage /></AdminRoute>} />
+          <Route path="/adminHome/checkout/pick" element={<AdminRoute><AdminCheckoutPickLoanPage /></AdminRoute>} />
+          <Route path="/adminHome/checkout/:id/agreement" element={<AdminRoute><AdminCheckoutAgreementPage /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </PageTransition>
