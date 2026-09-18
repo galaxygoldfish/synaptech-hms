@@ -332,3 +332,65 @@ export function DeviceIcon({ size = 28 }: IconProps) {
     </svg>
   );
 }
+
+/**
+ * The elbow that ties an add-on row to the item it came with — down from the
+ * row above, then right into the card. Decorative: the ADD-ON badge beside it
+ * says the same thing without the picture.
+ */
+export function AddOnArrowIcon({ size = 44, className }: IconProps) {
+  // The elbow turns at y=20 of a 40-tall box — the icon's exact vertical
+  // middle — so that centring the icon against the card it points at lands
+  // the horizontal stroke on the card's midpoint. The upright runs from the
+  // top edge to the corner, so it still reads as coming down from the row
+  // above.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 34 40"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M3 0v20h27"
+        stroke="#9A9A9A"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22 12l8 8-8 8"
+        stroke="#9A9A9A"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** The mirror of ArrowUpLeftFilled — checking hardware back in, not out. */
+export function ArrowDownRightFilled({ size = 22, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 15.625 15.625" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M3.125 15.625V14.0625H12.9609L0 1.10156L1.10156 0L14.0625 12.9609V3.125H15.625V15.625H3.125Z" fill={color} />
+    </svg>
+  )
+}
+
+/** Editing something already submitted — the availability on a request. */
+export function PencilIcon({ size = 20, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        d="M14.5 4.5l5 5L8 21H3v-5L14.5 4.5z"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M12.5 6.5l5 5" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}

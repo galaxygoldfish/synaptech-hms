@@ -1,0 +1,96 @@
+/* The fourteen-day availability grid, shared by every screen that asks a
+   member when they are free: submitting a checkout, requesting a return, and
+   editing either afterwards. */
+
+.card {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+}
+
+.tableScroll {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tableScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.dayColumn {
+  flex: 0 0 auto;
+  width: 14rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dayColumn:first-child {
+  padding-left: 0.25rem;
+}
+
+.dayColumn:last-child {
+  border-right: none;
+}
+
+.dayLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: #969696;
+  text-align: center;
+  margin: 0 0 1rem;
+}
+
+.slotList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* Dragging across the grid paints hours; it must not also select the
+     labels inside them. */
+  user-select: none;
+}
+
+.slot {
+  background: rgba(131, 156, 197, 0.17);
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.5rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  /* Leaves the browser's horizontal swipe alone so a touch user can still
+     scroll the fourteen days sideways. */
+  touch-action: pan-x;
+}
+
+.slot:hover {
+  background: rgba(131, 156, 197, 0.3);
+}
+
+.slotSelected {
+  background: #839cc5;
+  color: var(--white);
+}
+
+.slotSelected:hover {
+  background: #6f89b3;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem 0.75rem;
+  }
+
+  .dayColumn {
+    width: 11rem;
+    padding: 0 0.625rem;
+  }
+
+  .dayLabel {
+    font-size: 1rem;
+  }
+}

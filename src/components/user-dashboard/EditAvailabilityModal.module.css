@@ -1,0 +1,155 @@
+/* The dialog behind "Edit checkout availability" and "Edit return
+   availability". Built like the admin's AvailabilityModal — a wide panel with
+   the grid scrolling inside it — because the two are the same table read and
+   written from opposite sides of the desk. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+
+.modal {
+  background: var(--white);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: min(72rem, 100%);
+  max-height: 90vh;
+  padding: 1.75rem 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.heading {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--black);
+  margin: 0 0 0.5rem;
+}
+
+.subtext {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.6);
+  max-width: 44rem;
+  margin: 0;
+}
+
+.closeButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.closeButton:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* The grid scrolls inside the dialog rather than the dialog growing with it —
+   fourteen days of fifteen hours is taller than any screen. */
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 1rem;
+  padding: 1.25rem 1rem;
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.inlineError {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  color: #b9433c;
+  text-align: center;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.cancelButton {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--black);
+  border: none;
+  border-radius: 999px;
+  padding: 0.875rem 1.75rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 0.9375rem;
+}
+
+.cancelButton:hover {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.saveButton {
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 0.875rem 1.75rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 0.9375rem;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.saveButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    padding: 0.75rem;
+  }
+
+  .modal {
+    padding: 1.25rem 1rem 1rem;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .cancelButton,
+  .saveButton {
+    flex: 1;
+  }
+}

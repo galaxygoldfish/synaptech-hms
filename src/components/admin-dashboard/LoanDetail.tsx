@@ -319,6 +319,7 @@ export default function LoanDetail() {
           loanRequestId={detail.loanRequestId}
           memberName={detail.memberName}
           requestedAt={detail.requestedAt}
+          loanRequestItemId={detail.id}
           purpose={state === 'returns' ? 'return' : 'checkout'}
           onClose={() => setAvailabilityOpen(false)}
         />

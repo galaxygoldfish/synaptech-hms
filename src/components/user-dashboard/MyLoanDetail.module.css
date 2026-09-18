@@ -1,0 +1,240 @@
+/* One of the member's loans, opened from "My hardware loans": what the item
+   is, what the loan is doing, and the handful of things they can do about it.
+
+   The action rows are the same component vocabulary as the browse screen's
+   documentation/help rows (BrowseInventoryItem.module.css), because they are
+   the same kind of thing — a stack of one-line actions on a light plate. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  width: min(72rem, 92%);
+  margin: 0 auto;
+  padding: 0.5rem 0 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.backButton {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.inlineError {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: #b9433c;
+  margin: 0;
+}
+
+/* ── What it is ───────────────────────────────────────────── */
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  padding: 1rem 0 1.5rem;
+}
+
+.itemImage,
+.itemImageEmpty {
+  flex-shrink: 0;
+  width: 22rem;
+  max-width: 40%;
+  height: 14rem;
+  border-radius: 0.75rem;
+}
+
+.itemImage {
+  object-fit: contain;
+}
+
+.itemImageEmpty {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.itemName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 2rem;
+  line-height: 1.15;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+.itemDescription {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.8);
+  margin: 0;
+  max-width: 34rem;
+}
+
+/* Tighter than the gap above them: the two dates are one fact in two lines,
+   not two more items in the stack. */
+.itemDate {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.75);
+  margin: -0.375rem 0 0;
+}
+
+@media (max-width: 48rem) {
+  .itemRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .itemImage,
+  .itemImageEmpty {
+    width: 100%;
+    max-width: 100%;
+    height: 11rem;
+  }
+
+  .itemName {
+    font-size: 1.5rem;
+  }
+
+  .itemDescription {
+    font-size: 1rem;
+  }
+}
+
+/* ── Actions ──────────────────────────────────────────────── */
+
+.linkRows {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.3125rem;
+  padding: 1rem 1.125rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: #474747;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.linkRow:hover:not(:disabled) {
+  background: #ececec;
+}
+
+.linkRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.linkRowTop {
+  border-radius: 0.625rem 0.625rem 0.3125rem 0.3125rem;
+}
+
+.linkRowBottom {
+  border-radius: 0.3125rem 0.3125rem 0.625rem 0.625rem;
+}
+
+/* The row that changes the loan, tinted so it reads as the action among a
+   stack that otherwise only opens things. */
+.linkRowPrimary {
+  background: #e8eef6;
+}
+
+.linkRowPrimary:hover:not(:disabled) {
+  background: #dce5f1;
+}
+
+/* Cancelling is the action here, but a heavier grey rather than the blue —
+   it undoes a request rather than moving one forward. */
+.linkRowCancel {
+  background: #d9d9d9;
+}
+
+.linkRowCancel:hover:not(:disabled) {
+  background: #cfcfcf;
+}
+
+.linkRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.0625rem;
+}
+
+.linkRowIcon {
+  flex-shrink: 0;
+  width: 1.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .linkRow {
+    font-size: 1rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .linkRowLeft {
+    gap: 0.75rem;
+  }
+}

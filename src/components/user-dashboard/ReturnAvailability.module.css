@@ -1,0 +1,169 @@
+/* "Initiate hardware return" — the member's half of a return: when they are
+   free for a Hardware Manager to collect it. The mirror of the checkout
+   flow's availability step, and finishing on the same kind of success
+   screen. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  width: min(84rem, 94%);
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: rgba(0, 0, 0, 0.93);
+  text-align: center;
+  margin: 1.5rem 0 1rem;
+}
+
+.subtext {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.75);
+  text-align: center;
+  margin: 0;
+}
+
+.gridWrap {
+  margin-top: 2rem;
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+/* ── Footer actions ───────────────────────────────────────── */
+/* The grey "back" / black "done" pair every step of the member's checkout
+   ends on. */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 3rem;
+}
+
+.backButton {
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(55, 55, 55, 0.51);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.backButton:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.submitButton {
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.submitButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .subtext {
+    font-size: 0.9375rem;
+  }
+
+  .backButton,
+  .submitButton {
+    padding: 1rem 1.75rem;
+    font-size: 0.9375rem;
+  }
+}
+
+/* ── Submitted ────────────────────────────────────────────── */
+/* The same shape as the checkout flow's success screen. */
+
+.successMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.successBadge {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  background: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.successIcon {
+  color: var(--white);
+}
+
+.successHeading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+.successText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.75);
+  max-width: 34rem;
+  margin: 0;
+}
+
+.doneButton {
+  margin-top: 1.5rem;
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 3rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.doneButton:hover {
+  background: #1f2937;
+}

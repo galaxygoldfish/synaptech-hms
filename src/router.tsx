@@ -14,6 +14,8 @@ import CheckoutSignAgreementPage from './pages/CheckoutSignAgreementPage'
 import CheckoutAvailabilityPage from './pages/CheckoutAvailabilityPage'
 import CheckoutSuccessPage from './pages/CheckoutSuccessPage'
 import MyHardwareLoansPage from './pages/MyHardwareLoansPage'
+import MyLoanDetailPage from './pages/MyLoanDetailPage'
+import ReturnAvailabilityPage from './pages/ReturnAvailabilityPage'
 import AdminHomePage from './pages/AdminHomePage'
 import AdminHardwareLoansPage from './pages/AdminHardwareLoansPage'
 import AdminLoanDetailPage from './pages/AdminLoanDetailPage'
@@ -118,6 +120,8 @@ export function AppRouter() {
           <Route path="/home/browse" element={<PrivateRoute><BrowseInventoryPage /></PrivateRoute>} />
           <Route path="/home/browse/item" element={<PrivateRoute><BrowseInventoryItemPage /></PrivateRoute>} />
           <Route path="/home/loans" element={<PrivateRoute><MyHardwareLoansPage /></PrivateRoute>} />
+          <Route path="/home/loans/:id" element={<PrivateRoute><MyLoanDetailPage /></PrivateRoute>} />
+          <Route path="/home/loans/:id/return" element={<PrivateRoute><ReturnAvailabilityPage /></PrivateRoute>} />
           <Route path="/home/checkout" element={<PrivateRoute><CheckoutSelectHardwarePage /></PrivateRoute>} />
         <Route path="/home/checkout/confirm" element={<PrivateRoute><CheckoutConfirmHardwarePage /></PrivateRoute>} />
         <Route path="/home/checkout/return-date" element={<PrivateRoute><CheckoutReturnDatePage /></PrivateRoute>} />
