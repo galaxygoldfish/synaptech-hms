@@ -6,9 +6,11 @@ export interface SendEmailInput {
   to: string;
   subject: string;
   text: string;
+  /** Archive copy. Omitted from the request entirely when not set. */
+  cc?: string;
 }
 
-export async function sendViaResend({ to, subject, text }: SendEmailInput): Promise<void> {
+export async function sendViaResend({ to, subject, text, cc }: SendEmailInput): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured for this function");
 
@@ -25,7 +27,8 @@ export async function sendViaResend({ to, subject, text }: SendEmailInput): Prom
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to, subject, text }),
+    // `cc` is only included when present — Resend rejects a null/empty cc.
+    body: JSON.stringify({ from, to, subject, text, ...(cc ? { cc } : {}) }),
   });
 
   if (!response.ok) {

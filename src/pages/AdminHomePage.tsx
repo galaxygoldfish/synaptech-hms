@@ -100,6 +100,10 @@ export default function AdminHomePage() {
       navigate('/adminHome/emails/admin')
       return
     }
+    if (actionId === 'automated-email-log') {
+      navigate('/adminHome/emails/log')
+      return
+    }
     if (actionId === 'return-hardware') {
       navigate('/adminHome/return')
       return

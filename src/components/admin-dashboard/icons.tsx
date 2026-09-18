@@ -39,6 +39,16 @@ export function ClockIcon({ size = 16 }: IconProps) {
   );
 }
 
+export function InfoIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M12 11v5.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="12" cy="7.9" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

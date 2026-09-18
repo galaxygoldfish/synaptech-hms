@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
-import { ArrowLeftIcon, PlusIconSmallFilled, SaveIconFilled } from './icons'
+import { ArrowLeftIcon, InfoIcon, PlusIconSmallFilled, SaveIconFilled } from './icons'
 import {
   EMAIL_FIELD_LABELS,
+  EMAIL_TEMPLATE_DESCRIPTIONS,
   fetchEmailTemplate,
   updateEmailTemplateContent,
   type EmailBodySegment,
@@ -26,12 +27,6 @@ function fieldLabel(field: string): string {
 // Mirrors the recipient logic in supabase/functions/send-email — user
 // templates always go to the one member tied to the triggering row, admin
 // templates go to every admin (see resolveEvent/fetchAdminEmails there).
-function recipientNote(category: EmailTemplate['category']): string {
-  return category === 'admin'
-    ? 'This email is sent to all admins.'
-    : 'This email is sent to the member associated with this request.'
-}
-
 function removeChipNode(node: HTMLElement) {
   node.remove()
 }
@@ -90,6 +85,37 @@ function domToSegments(container: HTMLElement): EmailBodySegment[] {
   return segments
 }
 
+/**
+ * Explains what the template being edited is actually for. Falls back to
+ * rendering nothing rather than guessing, so a template added to the
+ * database without a matching entry simply shows no panel.
+ */
+function AboutThisEmail({ templateKey }: { templateKey: string }) {
+  const description = EMAIL_TEMPLATE_DESCRIPTIONS[templateKey]
+  if (!description) return null
+
+  return (
+    <aside className={styles.aboutPanel}>
+      <InfoIcon size={20} className={styles.aboutIcon} />
+      <div className={styles.aboutBody}>
+        <p className={styles.aboutBlurb}>{description.blurb}</p>
+        <div className={styles.aboutFacts}>
+          <span className={styles.aboutFact}>
+            <span className={styles.aboutFactLabel}>
+              {description.dormant ? 'Status' : 'Sent'}
+            </span>
+            <span>{description.timing}</span>
+          </span>
+          <span className={styles.aboutFact}>
+            <span className={styles.aboutFactLabel}>Goes to</span>
+            <span>{description.recipient}</span>
+          </span>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
 export default function EditEmailTemplate() {
   const { category, templateId } = useParams<{ category: string; templateId: string }>()
   const navigate = useNavigate()
@@ -120,7 +146,6 @@ export default function EditEmailTemplate() {
         if (cancelled) return
         setTemplate(data)
         setSubject(data?.subject ?? '')
-        if (editorRef.current) segmentsToDom(editorRef.current, data?.body ?? [])
         savedRangeRef.current = null
       })
       .catch((fetchError) => {
@@ -136,6 +161,18 @@ export default function EditEmailTemplate() {
       cancelled = true
     }
   }, [templateId])
+
+  // Populates the contentEditable body once the real editor is on screen.
+  // This can't happen inside the fetch above: while isLoading is true, the
+  // component renders the loading skeleton in place of the editor, so
+  // editorRef.current is still null when the fetch resolves — writing to it
+  // there was silently a no-op. The saved body was never lost, it just
+  // never made it onto the screen, which is why editing, saving, and
+  // coming back always showed a blank editor regardless of what was saved.
+  useEffect(() => {
+    if (isLoading || !template || !editorRef.current) return
+    segmentsToDom(editorRef.current, template.body)
+  }, [isLoading, template])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -222,6 +259,14 @@ export default function EditEmailTemplate() {
             <div />
           </div>
 
+          <div className={styles.aboutPanel} aria-hidden="true">
+            <InfoIcon size={20} className={styles.aboutIcon} />
+            <div className={styles.aboutBody}>
+              <Skeleton width="80%" height="1rem" shape="pill" />
+              <Skeleton width="60%" height="0.9375rem" shape="pill" />
+            </div>
+          </div>
+
           <div className={styles.formSection}>
             <span className={styles.fieldLabel}>Subject line</span>
             <div className={styles.subjectInput} aria-hidden="true">
@@ -272,6 +317,8 @@ export default function EditEmailTemplate() {
           </button>
         </div>
 
+        <AboutThisEmail templateKey={template.key} />
+
         <div className={styles.formSection}>
           <label className={styles.fieldLabel} htmlFor="email-subject">
             Subject line
@@ -315,8 +362,6 @@ export default function EditEmailTemplate() {
               onInput={captureSelection}
             />
           </div>
-
-          <p className={styles.recipientNote}>{recipientNote(template.category)}</p>
 
           {saveError && <p className={styles.inlineError}>{saveError}</p>}
         </div>

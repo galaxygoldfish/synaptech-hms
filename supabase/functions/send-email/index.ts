@@ -4,28 +4,51 @@
 // { event: string; recordId: string }. Resolves that event to zero or
 // more (template, recipient, fields) sends via the DB, then sends each.
 //
-// Deploy: supabase functions deploy send-email
-// Requires: RESEND_API_KEY secret (supabase secrets set RESEND_API_KEY=...)
-// and, for the pg_net trigger to be able to call this at all, the two
-// `app.settings.*` database settings described in that migration.
+// Deploy: supabase functions deploy send-email --no-verify-jwt
+// (--no-verify-jwt because the caller is Postgres's pg_net, presenting a
+// project secret key on `apikey` rather than a user JWT on `Authorization`
+// — withSupabase's own `auth: 'secret'` check below is what actually gates
+// this function; the platform's default JWT gate has nothing to check
+// against a non-JWT key and would reject every call before we saw it.)
+//
+// Requires: RESEND_API_KEY secret (supabase secrets set RESEND_API_KEY=...),
+// a secret key created under Settings > API Keys, and the Vault secrets
+// described in supabase/migrations/20260917000000_email_trigger_vault_secrets.sql
+// so notify_email_event knows this function's URL and that key.
 
-import { createAdminClient, fetchAdminEmails, formatDate } from "../_shared/db.ts";
+import { withSupabase } from "npm:@supabase/server";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { fetchAdminEmails, formatDate } from "../_shared/db.ts";
 import { sendTemplatedEmail, type SendTemplatedEmailInput } from "../_shared/sendTemplatedEmail.ts";
 
 type Dispatch = SendTemplatedEmailInput[];
 
+// Every query below used to destructure only `data`, silently discarding
+// `error` — a genuine query failure (bad grant, RLS denial, whatever) then
+// looked identical to "no such row", and resolveEvent quietly returned an
+// empty dispatch with no trace of why. This surfaces it as a thrown error
+// instead, which the outer handler turns into a {"ok":false,"error":...}
+// response — visible in net._http_response for the pg_net caller, and
+// logged, rather than disappearing.
+function unwrap<T>(
+  result: { data: T; error: { message: string } | null },
+  context: string,
+): T {
+  if (result.error) throw new Error(`${context}: ${result.error.message}`);
+  return result.data;
+}
+
 async function resolveEvent(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: SupabaseClient,
   event: string,
   recordId: string,
 ): Promise<Dispatch> {
   switch (event) {
     case "profile.created": {
-      const { data: profile } = await admin
-        .from("profiles")
-        .select("uw_email, first_name, last_name")
-        .eq("id", recordId)
-        .maybeSingle();
+      const profile = unwrap(
+        await admin.from("profiles").select("uw_email, first_name, last_name").eq("id", recordId).maybeSingle(),
+        "profile.created: fetching profile",
+      );
       if (!profile) return [];
       return [
         {
@@ -37,11 +60,10 @@ async function resolveEvent(
     }
 
     case "profile.role_changed": {
-      const { data: profile } = await admin
-        .from("profiles")
-        .select("uw_email, first_name, last_name, role")
-        .eq("id", recordId)
-        .maybeSingle();
+      const profile = unwrap(
+        await admin.from("profiles").select("uw_email, first_name, last_name, role").eq("id", recordId).maybeSingle(),
+        "profile.role_changed: fetching profile",
+      );
       // "Account permission elevation" — only the promote direction, not demotions.
       if (!profile || profile.role !== "admin") return [];
       return [
@@ -54,33 +76,36 @@ async function resolveEvent(
     }
 
     case "loan_item.requested": {
-      const { data: item } = await admin
-        .from("loan_request_items")
-        .select("loan_request_id, equipment_id, equipment_unit_id, return_date")
-        .eq("id", recordId)
-        .maybeSingle();
+      const item = unwrap(
+        await admin
+          .from("loan_request_items")
+          .select("loan_request_id, equipment_id, equipment_unit_id, return_date")
+          .eq("id", recordId)
+          .maybeSingle(),
+        "loan_item.requested: fetching loan_request_items row",
+      );
       if (!item) return [];
 
-      const { data: request } = await admin
-        .from("loan_requests")
-        .select("user_id, requested_at")
-        .eq("id", item.loan_request_id)
-        .maybeSingle();
+      const request = unwrap(
+        await admin.from("loan_requests").select("user_id, requested_at").eq("id", item.loan_request_id).maybeSingle(),
+        "loan_item.requested: fetching loan_requests row",
+      );
       if (!request) return [];
 
-      const [{ data: profile }, { data: equipment }] = await Promise.all([
+      const [profileResult, equipmentResult] = await Promise.all([
         admin.from("profiles").select("uw_email, first_name, last_name").eq("id", request.user_id).maybeSingle(),
         admin.from("equipment").select("name").eq("id", item.equipment_id).maybeSingle(),
       ]);
+      const profile = unwrap(profileResult, "loan_item.requested: fetching profile");
+      const equipment = unwrap(equipmentResult, "loan_item.requested: fetching equipment");
       if (!profile || !equipment) return [];
 
       let serial = "";
       if (item.equipment_unit_id) {
-        const { data: unit } = await admin
-          .from("equipment_units")
-          .select("serial_number")
-          .eq("id", item.equipment_unit_id)
-          .maybeSingle();
+        const unit = unwrap(
+          await admin.from("equipment_units").select("serial_number").eq("id", item.equipment_unit_id).maybeSingle(),
+          "loan_item.requested: fetching equipment_units row",
+        );
         serial = unit?.serial_number ?? "";
       }
 
@@ -102,30 +127,37 @@ async function resolveEvent(
     }
 
     case "loan_request.approved": {
-      const { data: request } = await admin.from("loan_requests").select("user_id").eq("id", recordId).maybeSingle();
+      const request = unwrap(
+        await admin.from("loan_requests").select("user_id").eq("id", recordId).maybeSingle(),
+        "loan_request.approved: fetching loan_requests row",
+      );
       if (!request) return [];
 
-      const { data: item } = await admin
-        .from("loan_request_items")
-        .select("equipment_id, equipment_unit_id, return_date")
-        .eq("loan_request_id", recordId)
-        .eq("item_role", "primary")
-        .maybeSingle();
+      const item = unwrap(
+        await admin
+          .from("loan_request_items")
+          .select("equipment_id, equipment_unit_id, return_date")
+          .eq("loan_request_id", recordId)
+          .eq("item_role", "primary")
+          .maybeSingle(),
+        "loan_request.approved: fetching primary loan_request_items row",
+      );
       if (!item) return [];
 
-      const [{ data: profile }, { data: equipment }] = await Promise.all([
+      const [profileResult, equipmentResult] = await Promise.all([
         admin.from("profiles").select("uw_email, first_name, last_name").eq("id", request.user_id).maybeSingle(),
         admin.from("equipment").select("name").eq("id", item.equipment_id).maybeSingle(),
       ]);
+      const profile = unwrap(profileResult, "loan_request.approved: fetching profile");
+      const equipment = unwrap(equipmentResult, "loan_request.approved: fetching equipment");
       if (!profile || !equipment) return [];
 
       let serial = "";
       if (item.equipment_unit_id) {
-        const { data: unit } = await admin
-          .from("equipment_units")
-          .select("serial_number")
-          .eq("id", item.equipment_unit_id)
-          .maybeSingle();
+        const unit = unwrap(
+          await admin.from("equipment_units").select("serial_number").eq("id", item.equipment_unit_id).maybeSingle(),
+          "loan_request.approved: fetching equipment_units row",
+        );
         serial = unit?.serial_number ?? "";
       }
 
@@ -147,7 +179,10 @@ async function resolveEvent(
 
     case "equipment.created":
     case "equipment.updated": {
-      const { data: equipment } = await admin.from("equipment").select("name").eq("id", recordId).maybeSingle();
+      const equipment = unwrap(
+        await admin.from("equipment").select("name").eq("id", recordId).maybeSingle(),
+        `${event}: fetching equipment row`,
+      );
       if (!equipment) return [];
 
       const templateKey = event === "equipment.created" ? "hardware-item-added" : "hardware-item-modified";
@@ -160,42 +195,39 @@ async function resolveEvent(
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
+export default {
+  fetch: withSupabase({ auth: "secret" }, async (req, ctx) => {
+    if (req.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
+    }
 
-  const expectedAuth = `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`;
-  if (req.headers.get("Authorization") !== expectedAuth) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+    let payload: { event?: string; recordId?: string };
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response("Invalid JSON body", { status: 400 });
+    }
 
-  let payload: { event?: string; recordId?: string };
-  try {
-    payload = await req.json();
-  } catch {
-    return new Response("Invalid JSON body", { status: 400 });
-  }
+    const { event, recordId } = payload;
+    if (!event || !recordId) {
+      return new Response("event and recordId are required", { status: 400 });
+    }
 
-  const { event, recordId } = payload;
-  if (!event || !recordId) {
-    return new Response("event and recordId are required", { status: 400 });
-  }
+    const admin = ctx.supabaseAdmin;
 
-  const admin = createAdminClient();
-
-  try {
-    const dispatch = await resolveEvent(admin, event, recordId);
-    await Promise.all(dispatch.map((send) => sendTemplatedEmail(admin, send)));
-    return new Response(JSON.stringify({ ok: true, sent: dispatch.length }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(`send-email failed for event "${event}" (${recordId}):`, error);
-    return new Response(JSON.stringify({ ok: false, error: String(error) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-});
+    try {
+      const dispatch = await resolveEvent(admin, event, recordId);
+      await Promise.all(dispatch.map((send) => sendTemplatedEmail(admin, send)));
+      return new Response(JSON.stringify({ ok: true, sent: dispatch.length }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(`send-email failed for event "${event}" (${recordId}):`, error);
+      return new Response(JSON.stringify({ ok: false, error: String(error) }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+};

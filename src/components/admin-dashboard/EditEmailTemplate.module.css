@@ -213,14 +213,6 @@
   color: rgba(0, 0, 0, 0.8);
 }
 
-.recipientNote {
-  font-family: 'Rubik', sans-serif;
-  font-style: italic;
-  font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.45);
-  margin: 0.75rem 0 0;
-}
-
 .inlineError {
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
@@ -236,5 +228,72 @@
 
   .editor {
     min-height: 16rem;
+  }
+}
+
+/* ── "About this email" panel ─────────────────────────────── */
+
+.aboutPanel {
+  width: min(60rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  gap: 0.875rem;
+  background: rgba(207, 207, 207, 0.26);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.aboutIcon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.aboutBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.aboutBlurb {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.75);
+  margin: 0;
+}
+
+.aboutFacts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.aboutFact {
+  display: flex;
+  gap: 0.5rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.aboutFactLabel {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 640px) {
+  .aboutPanel {
+    padding: 1rem 1.125rem;
+    gap: 0.75rem;
+  }
+
+  .aboutFact {
+    flex-direction: column;
+    gap: 0.0625rem;
   }
 }
