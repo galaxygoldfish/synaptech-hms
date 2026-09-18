@@ -8,7 +8,7 @@ import { SearchField } from './SearchField'
 import { InventoryFilterChips } from './InventoryFilterChips'
 import { InventoryGroupedList } from './InventoryGroupedList'
 import { useInventoryCatalog } from '../../lib/useInventoryCatalog'
-import type { UserProfile } from '../../types'
+import type { Equipment, UserProfile } from '../../types'
 import styles from './BrowseInventory.module.css'
 
 export default function BrowseInventory() {
@@ -34,6 +34,10 @@ export default function BrowseInventory() {
     signOut()
   }
 
+  function handleSelectItem(item: Equipment) {
+    navigate('/home/browse/item', { state: { equipmentId: item.id } })
+  }
+
   return (
     <div className={styles.page}>
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
@@ -49,7 +53,7 @@ export default function BrowseInventory() {
 
         <InventoryFilterChips selected={selectedFilters} onToggle={toggleFilter} />
 
-        <InventoryGroupedList groups={groups} isLoading={isLoading} error={error} />
+        <InventoryGroupedList groups={groups} isLoading={isLoading} error={error} onSelectItem={handleSelectItem} />
       </main>
 
       {isProfileOpen && user && (

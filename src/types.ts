@@ -23,7 +23,9 @@ export type IconKey =
   | "members"
   | "mail-member"
   | "mail-admin"
-  | "mail-log";
+  | "mail-log"
+  | "audit"
+  | "audit-log";
 
 export interface ActionItem {
   id: string;

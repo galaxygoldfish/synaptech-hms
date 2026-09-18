@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useEdgeFade, useVerticalEdgeFade } from '../../lib/useEdgeFade'
 import { fetchLoanRequestAvailability, type AvailabilitySlot } from '../../lib/loanRequests'
 import { CloseIcon } from './icons'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AvailabilityModal.module.css'
 
 interface AvailabilityModalProps {
@@ -98,7 +99,26 @@ export function AvailabilityModal({ loanRequestId, memberName, requestedAt, purp
           </button>
         </div>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading availability…">
+            <div className={styles.tableWrap}>
+              <div className={styles.tableScroll}>
+                {Array.from({ length: 5 }, (_, dayIndex) => (
+                  <div key={dayIndex} className={styles.dayColumn}>
+                    <p className={styles.dayLabel}>
+                      <Skeleton width="4.5rem" height="0.9375rem" shape="pill" style={{ margin: '0 auto' }} />
+                    </p>
+                    <div className={styles.slotList}>
+                      {Array.from({ length: 8 }, (_, slotIndex) => (
+                        <Skeleton key={slotIndex} height="2rem" radius="0.625rem" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
         {!isLoading && !error && slots.length === 0 && (
           <p className={styles.status}>No availability was submitted with this request.</p>
@@ -112,9 +132,11 @@ export function AvailabilityModal({ loanRequestId, memberName, requestedAt, purp
             </div>
             <div className={styles.tableWrap} style={{ WebkitMaskImage: vMaskImage, maskImage: vMaskImage }}>
               <div
+                // One element, both axes — each hook keeps its own fade
+                // state for the edge it owns.
                 ref={(el) => {
-                  hFadeRef.current = el
-                  vFadeRef.current = el
+                  hFadeRef(el)
+                  vFadeRef(el)
                 }}
                 className={styles.tableScroll}
                 style={{ WebkitMaskImage: hMaskImage, maskImage: hMaskImage }}

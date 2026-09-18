@@ -8,6 +8,7 @@ import { ArrowLeftIcon, PersonIcon, TrashIconFilled } from './icons'
 import { fetchProfileById, updateMemberRole } from '../../lib/members'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MemberDetail.module.css'
 
 function formatRegistrationDate(iso: string): string {
@@ -19,11 +20,71 @@ interface DetailRowProps {
   value: string
 }
 
+// Mirrors the rows rendered below once the member loads.
+const DETAIL_LABELS = [
+  'Name',
+  'UW Email',
+  'Student ID',
+  'Discord',
+  'Phone #',
+  'Address',
+  'Registration date',
+  'Privilege level',
+] as const
+
+// Varied widths so the placeholder reads as data rather than a bar chart.
+const SKELETON_VALUE_WIDTHS = ['9rem', '14rem', '7rem', '10rem', '8.5rem', '16rem', '11rem', '5rem']
+
 function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className={styles.row}>
       <span className={styles.rowLabel}>{label}</span>
       <span className={styles.rowValue}>{value}</span>
+    </div>
+  )
+}
+
+/**
+ * A home address, hidden until an admin asks for it.
+ *
+ * Not removed, because it isn't decorative: it's printed on the loan
+ * agreement each member signs (see AgreementPreview.tsx), and it's what the
+ * club has to go on when hardware doesn't come back. Taking the row away
+ * wouldn't even remove admin access — the signed PDF is downloadable from
+ * the loan detail screen — it would only make a legitimate lookup harder.
+ *
+ * What's worth changing is the default: opening someone's profile to check
+ * their Discord handle shouldn't also put their home address on screen, in
+ * a room, on a shared laptop, over a screen share.
+ */
+function AddressRow({ address }: { address: string }) {
+  const [isRevealed, setRevealed] = useState(false)
+
+  return (
+    <div className={styles.row}>
+      <span className={styles.rowLabel}>Address</span>
+      <span className={styles.rowValueGroup}>
+        {isRevealed ? (
+          <span className={styles.rowValue}>{address}</span>
+        ) : (
+          // Fixed-length mask: the real length of an address is itself a
+          // detail worth not leaking, and a ragged row of dots would give it.
+          <span className={styles.rowValueHidden} aria-hidden="true">
+            ••••••••••••
+          </span>
+        )}
+        <button
+          type="button"
+          className={styles.revealButton}
+          onClick={() => setRevealed((wasRevealed) => !wasRevealed)}
+          aria-expanded={isRevealed}
+          // Someone tabbing between buttons hears only the label, and
+          // "Reveal" on its own doesn't say reveal what.
+          aria-label={isRevealed ? 'Hide home address' : 'Reveal home address'}
+        >
+          {isRevealed ? 'Hide' : 'Reveal'}
+        </button>
+      </span>
     </div>
   )
 }
@@ -134,7 +195,24 @@ export default function MemberDetail() {
           <div />
         </div>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {/* The field labels are static, so only the values shimmer — the
+            card keeps its exact final height and nothing shifts. */}
+        {isLoading && (
+          <SkeletonScreen label="Loading member details…">
+            <div className={styles.card}>
+              {DETAIL_LABELS.map((label, index) => (
+                <div key={label} className={styles.row}>
+                  <span className={styles.rowLabel}>{label}</span>
+                  <Skeleton
+                    width={SKELETON_VALUE_WIDTHS[index % SKELETON_VALUE_WIDTHS.length]}
+                    height="1.25rem"
+                    shape="pill"
+                  />
+                </div>
+              ))}
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {!isLoading && !error && member && (
@@ -145,7 +223,7 @@ export default function MemberDetail() {
               <DetailRow label="Student ID" value={member.student_id} />
               <DetailRow label="Discord" value={member.discord} />
               <DetailRow label="Phone #" value={member.phone} />
-              <DetailRow label="Address" value={member.address} />
+              <AddressRow address={member.address} />
               <DetailRow label="Registration date" value={formatRegistrationDate(member.created_at)} />
               <div className={styles.row}>
                 <span className={styles.rowLabel}>Privilege level</span>
@@ -186,6 +264,7 @@ export default function MemberDetail() {
       {member && targetRole && (
         <ConfirmActionModal
           isOpen={isRoleModalOpen}
+          wide
           heading="Change privilege level?"
           body={[
             `This will change ${member.first_name} ${member.last_name}'s privilege level to ${targetRole}.`,

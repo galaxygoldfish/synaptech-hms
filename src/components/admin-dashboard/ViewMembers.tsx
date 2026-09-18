@@ -6,6 +6,7 @@ import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, HandleIcon, MailIcon } from './icons'
 import { fetchAllProfiles } from '../../lib/members'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import styles from './ViewMembers.module.css'
@@ -89,7 +90,23 @@ export default function ViewMembers() {
         </div>
 
         <div className={styles.card}>
-          {isLoading && <p className={styles.status}>Loading…</p>}
+          {isLoading && (
+            <SkeletonScreen label="Loading members…">
+              <ul className={styles.memberList}>
+                {Array.from({ length: 6 }, (_, index) => (
+                  <li key={index}>
+                    <div className={styles.skeletonRow}>
+                      <Skeleton width="5.5rem" height="2.125rem" shape="pill" />
+                      <Skeleton width="9rem" height="1.25rem" shape="pill" />
+                      <Skeleton width="11rem" height="1.125rem" shape="pill" />
+                      <Skeleton width="7rem" height="1.125rem" shape="pill" />
+                      <Skeleton width="8rem" height="1rem" shape="pill" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </SkeletonScreen>
+          )}
           {!isLoading && error && <p className={styles.status}>{error}</p>}
           {!isLoading && !error && visibleMembers.length === 0 && (
             <p className={styles.status}>No members match your search.</p>

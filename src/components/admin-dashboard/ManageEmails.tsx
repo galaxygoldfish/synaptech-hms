@@ -11,6 +11,7 @@ import {
   type EmailTemplateCategory,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageEmails.module.css'
 
 interface ManageEmailsProps {
@@ -110,7 +111,21 @@ export function ManageEmails({ heading, listPath, category }: ManageEmailsProps)
           <div />
         </div>
 
-        {isLoading && <p className={styles.status}>Loading…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading email templates…">
+            <div className={styles.card}>
+              <ul className={styles.templateList}>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <li key={index} className={styles.templateRow}>
+                    <Skeleton width="4.75rem" height="2.4rem" radius="0.5625rem" />
+                    <Skeleton width="45%" height="1.25rem" shape="pill" style={{ flex: 1 }} />
+                    <Skeleton width="3.25rem" height="1.75rem" shape="pill" />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {!isLoading && !error && (

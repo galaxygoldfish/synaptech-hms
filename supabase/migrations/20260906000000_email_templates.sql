@@ -152,8 +152,18 @@ on conflict (key) do nothing;
 -- Fire-and-forget: notify_email_event POSTs {event, recordId} to the
 -- send-email Edge Function via pg_net and never raises — a notification
 -- failure (or the Edge Function not being deployed/configured yet) must
--- never block the write that triggered it. It no-ops entirely until the
--- two settings below are configured (see this file's closing comment).
+-- never block the write that triggered it. It no-ops entirely until it's
+-- configured (see this file's closing comment).
+--
+-- SUPERSEDED: the config mechanism described just below this comment —
+-- `alter database postgres set app.settings.*` — turned out to need a
+-- privilege the SQL editor's connection doesn't have, so it could never
+-- actually be set. 20260917000000_email_trigger_vault_secrets.sql replaces
+-- it with Supabase Vault, and 20260918000000_email_trigger_secret_key_header.sql
+-- changes the outgoing auth header to match. Skip straight to those two
+-- migrations (and README.md's "One-time setup") rather than following the
+-- steps below — they're kept here only as a record of what this looked
+-- like originally.
 --
 -- app.settings.edge_functions_url and app.settings.service_role_key are
 -- NOT set by this migration — they contain a live secret and a
@@ -293,12 +303,16 @@ create trigger on_equipment_updated_notify_email
   for each row execute function public.notify_equipment_updated();
 
 -- ── What's NOT wired up yet ──────────────────────────────────────────────
--- checkout-request-approval, hardware-return-requested,
--- successful-return-confirmation, and hardware-returned have no trigger
--- above — there's no separate approval step and no return-request/return-
--- completion feature in the app yet for them to fire on (see LoanDetail.tsx
--- and loanRequests.ts's comments on the 'returns' bucket). They're still
--- editable from the admin UI, just dormant until those flows exist.
+-- hardware-return-requested, successful-return-confirmation, and
+-- hardware-returned have no trigger above — there's no return-request/
+-- return-completion feature in the app yet for them to fire on (see
+-- LoanDetail.tsx and loanRequests.ts's comments on the 'returns' bucket).
+-- They're still editable from the admin UI, just dormant until those flows
+-- exist.
+--
+-- checkout-request-approval was in this same situation (no separate
+-- approval step, so it never fired) until it was removed entirely by
+-- 20260918050000_remove_checkout_request_approval_template.sql.
 --
 -- return-reminder-one-week/due-date/past-due and hardware-item-overdue
 -- aren't triggers at all — they're computed daily from

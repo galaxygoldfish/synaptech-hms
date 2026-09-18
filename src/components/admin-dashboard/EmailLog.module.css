@@ -1,0 +1,433 @@
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: 100%;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ── Top row (back button + centered heading) ────────────────── */
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+
+  .heading {
+    font-size: 1.375rem;
+  }
+}
+
+/* ── Card + toolbar ───────────────────────────────────────── */
+
+.card {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  flex: 1;
+  min-width: 14rem;
+}
+
+/* Matches the filter-chip convention from HardwareLoans.module.css
+   (the "View hardware loans" screen), rather than a page-local style. */
+.filterRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4375rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filterRow::-webkit-scrollbar {
+  display: none;
+}
+
+.filterChip {
+  flex-shrink: 0;
+  height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5625rem;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-radius: 1.25rem;
+  background: none;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.filterChip:hover {
+  border-color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.filterChipActive {
+  border-color: rgba(83, 106, 138, 0.7);
+  background: rgba(131, 156, 197, 0.44);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+  .filterChip {
+    height: 2.75rem;
+    padding: 0 1rem;
+    font-size: 0.9375rem;
+    border-width: 2px;
+  }
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.count {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* ── Log rows ─────────────────────────────────────────────── */
+
+.logList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.logItem,
+.skeletonRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1.1fr) minmax(0, 1.4fr) 11rem;
+  grid-template-areas: 'status template recipient sent';
+  align-items: center;
+  gap: 1.5rem;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1rem 1.375rem;
+  font: inherit;
+  text-align: left;
+}
+
+.logItem {
+  cursor: pointer;
+}
+
+.logItem:hover {
+  background: #ececec;
+}
+
+/* Matches the loan-status badge from HardwareLoans.module.css (the
+   Active/Overdue/etc. labels on "View hardware loans") — a rectangle,
+   not a pill, in the same font. */
+.statusBadge {
+  grid-area: status;
+  justify-self: start;
+  display: inline-block;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.7);
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.4375rem;
+  white-space: nowrap;
+}
+
+.statusSent {
+  background: rgba(161, 208, 167, 0.44);
+}
+
+.statusFailed {
+  background: rgba(208, 161, 161, 0.44);
+}
+
+.templateCell {
+  grid-area: template;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+/* Bold: the actual subject line that went out. Italic subtitle: which
+   template produced it — e.g. subject "[HMS] Account permission elevation"
+   over the template type "Account permission elevation". */
+.emailSubject {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.templateType {
+  font-family: 'Rubik', sans-serif;
+  font-style: italic;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipientCell {
+  grid-area: recipient;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.recipientEmail {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.8);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ccEmail {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sentAt {
+  grid-area: sent;
+  justify-self: end;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .logItem,
+  .skeletonRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'status sent'
+      'template template'
+      'recipient recipient';
+    gap: 0.625rem 1rem;
+  }
+
+  .sentAt {
+    justify-self: end;
+  }
+}
+
+/* ── Detail modal ─────────────────────────────────────────── */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.modal {
+  width: min(60rem, 100%);
+  min-height: 32rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--white);
+  border-radius: 1.25rem;
+  padding: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalTitle {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.375rem;
+  color: rgba(0, 0, 0, 0.93);
+  margin: 0;
+}
+
+.closeButton {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 999px;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.closeButton:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.metaList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0 0 1.25rem;
+}
+
+/* 20px on top of the row's normal gap, isolating Status from the plainer
+   text rows below it — it's the one row that renders a badge, not text. */
+.metaRowSpaced {
+  margin-bottom: 1.25rem;
+}
+
+.metaRow {
+  display: flex;
+  gap: 1rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+}
+
+.metaLabel {
+  flex: 0 0 7.5rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.metaValue {
+  min-width: 0;
+  color: rgba(0, 0, 0, 0.85);
+  word-break: break-word;
+}
+
+.bodyLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0 0 0.5rem;
+}
+
+.bodyBox {
+  min-height: 14rem;
+  background: rgba(207, 207, 207, 0.26);
+  border-radius: 0.9375rem;
+  padding: 1.75rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.85);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.bodyMissing {
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+}
+
+.errorBox {
+  background: rgba(197, 131, 131, 0.2);
+  border-radius: 0.9375rem;
+  padding: 1rem 1.25rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #8c3833;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* body_html preview — see buildPreviewDocument in EmailLog.tsx for why
+   this needs to be an iframe rather than dangerouslySetInnerHTML. */
+.bodyFrame {
+  width: 100%;
+  min-height: 14rem;
+  border: none;
+  border-radius: 0.9375rem;
+  background: #f2f2f2;
+}

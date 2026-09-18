@@ -7,6 +7,7 @@ import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, ChevronRightFilled, ImageIcon } from './icons'
 import { fetchEquipmentInventorySummary, type EquipmentInventoryRow } from '../../lib/inventory'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonLabel } from '../skeleton/Skeleton'
 import styles from './ManageInventory.module.css'
 
 function matchesQuery(row: EquipmentInventoryRow, query: string): boolean {
@@ -82,14 +83,16 @@ export default function ManageInventory() {
         </div>
 
         <div className={styles.card}>
-          {isLoading && <p className={styles.status}>Loading…</p>}
+          {isLoading && <SkeletonLabel label="Loading inventory…" />}
           {!isLoading && error && <p className={styles.status}>{error}</p>}
           {!isLoading && !error && visibleRows.length === 0 && (
             <p className={styles.status}>No inventory items match your search.</p>
           )}
 
-          {!isLoading && !error && visibleRows.length > 0 && (
-            <table className={styles.table}>
+          {/* The header row is real even while loading, so only the body
+              swaps in place when the data arrives. */}
+          {!error && (isLoading || visibleRows.length > 0) && (
+            <table className={styles.table} aria-busy={isLoading}>
               <thead>
                 <tr>
                   <th className={styles.thImage} aria-hidden="true" />
@@ -103,7 +106,31 @@ export default function ManageInventory() {
                 </tr>
               </thead>
               <tbody>
-                {visibleRows.map(({ equipment, checkedOut }) => (
+                {isLoading &&
+                  Array.from({ length: 6 }, (_, index) => (
+                    <tr key={`skeleton-${index}`} className={styles.row} aria-hidden="true">
+                      <td className={styles.tdImage}>
+                        <Skeleton width="2.75rem" height="2rem" radius="0.375rem" />
+                      </td>
+                      <td className={styles.tdName}>
+                        <Skeleton width="60%" height="1.125rem" shape="pill" />
+                      </td>
+                      <td className={styles.tdSpacer} />
+                      <td className={styles.tdQty}>
+                        <Skeleton width="2ch" height="1.125rem" shape="pill" />
+                      </td>
+                      <td className={styles.tdQty}>
+                        <Skeleton width="2ch" height="1.125rem" shape="pill" />
+                      </td>
+                      <td className={styles.tdQty}>
+                        <Skeleton width="2ch" height="1.125rem" shape="pill" />
+                      </td>
+                      <td className={styles.tdSpacer} />
+                      <td className={styles.tdChevron} />
+                    </tr>
+                  ))}
+                {!isLoading &&
+                  visibleRows.map(({ equipment, checkedOut }) => (
                   <tr
                     key={equipment.id}
                     className={styles.row}

@@ -6,6 +6,7 @@ import { ProfileModal } from './ProfileModal'
 import { CheckmarkIcon, ChevronRightFilled, DocumentationIcon, HelpIconFilled, PlusIconSmallFilled } from './icons'
 import { fetchEquipment, fetchEquipmentAddonOptions, type EquipmentAddonOption } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutConfirmHardware.module.css'
 
 // Help & support always points at the club's Discord — same link used
@@ -178,7 +179,18 @@ export default function CheckoutConfirmHardware() {
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        {isLoading && <p className={styles.status}>Loading item…</p>}
+        {isLoading && (
+          <SkeletonScreen label="Loading item…" className={styles.layoutCentered}>
+            <div className={styles.itemColumn}>
+              <div className={styles.itemInfo}>
+                <Skeleton width="min(20rem, 100%)" height="15rem" radius="0.75rem" />
+                <Skeleton width="14rem" height="1.875rem" shape="pill" />
+                <Skeleton width="22rem" height="1.125rem" shape="pill" />
+                <Skeleton width="8rem" height="1.125rem" shape="pill" />
+              </div>
+            </div>
+          </SkeletonScreen>
+        )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
         {!isLoading && !error && equipment && (

@@ -1,9 +1,14 @@
 import type { LoanSummary } from "./types";
 import { CognitiveBrainIconFilled, DeviceIcon } from "./icons";
+import { Skeleton, SkeletonScreen } from "../skeleton/Skeleton";
 import styles from "./Home.module.css";
 
 interface MyHardwareCardProps {
   loan: LoanSummary | null;
+  /** While true the card shimmers instead of claiming there are no loans —
+      `loan` is also null before the fetch resolves, so the two states have
+      to be told apart explicitly. */
+  isLoading?: boolean;
   onMoreDetails: () => void;
 }
 
@@ -17,19 +22,34 @@ const statusClass: Record<LoanSummary["status"], string> = {
   OVERDUE: "hardware-card--overdue",
 };
 
-export function MyHardwareCard({ loan, onMoreDetails }: MyHardwareCardProps) {
+export function MyHardwareCard({ loan, isLoading = false, onMoreDetails }: MyHardwareCardProps) {
   return (
-    <section className={styles.hardwareCard}>
+    <section className={styles.hardwareCard} aria-busy={isLoading}>
       <h2 className={styles.hardwareLabel}>My hardware</h2>
 
-      {!loan && (
+      {isLoading && (
+        <SkeletonScreen label="Loading your hardware loan…">
+          <div className="hardware-card hardware-card--active">
+            <div className="hardware-card__thumb">
+              <Skeleton width={64} height={64} radius="var(--radius-md)" />
+            </div>
+            <div className="hardware-card__info" style={{ flex: 1 }}>
+              <Skeleton width="45%" height={15} shape="pill" style={{ marginBottom: 8 }} />
+              <Skeleton width="60%" height={13} shape="pill" style={{ marginBottom: 10 }} />
+              <Skeleton width="30%" height={13} shape="pill" />
+            </div>
+          </div>
+        </SkeletonScreen>
+      )}
+
+      {!isLoading && !loan && (
         <div className={styles.hardwareEmpty}>
           <CognitiveBrainIconFilled size={104} className={styles.hardwareEmptyIcon} />
           <p className={styles.hardwareEmptyText}>You don&rsquo;t have any active hardware loans</p>
         </div>
       )}
 
-      {loan && (
+      {!isLoading && loan && (
         <div className={`hardware-card ${statusClass[loan.status]}`}>
           <div className="hardware-card__thumb" aria-hidden="true">
             {loan.imageUrl ? <img src={loan.imageUrl} alt="" /> : <DeviceIcon />}

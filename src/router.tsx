@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { PageTransition } from './components/PageTransition'
+import { AppShellSkeleton } from './components/skeleton/AppShellSkeleton'
 import WelcomePage from './pages/WelcomePage'
 import ProfileSetupPage from './pages/ProfileSetupPage'
 import HomePage from './pages/HomePage'
 import BrowseInventoryPage from './pages/BrowseInventoryPage'
+import BrowseInventoryItemPage from './pages/BrowseInventoryItemPage'
 import CheckoutSelectHardwarePage from './pages/CheckoutSelectHardwarePage'
 import CheckoutConfirmHardwarePage from './pages/CheckoutConfirmHardwarePage'
 import CheckoutReturnDatePage from './pages/CheckoutReturnDatePage'
@@ -15,9 +17,13 @@ import MyHardwareLoansPage from './pages/MyHardwareLoansPage'
 import AdminHomePage from './pages/AdminHomePage'
 import AdminHardwareLoansPage from './pages/AdminHardwareLoansPage'
 import AdminLoanDetailPage from './pages/AdminLoanDetailPage'
+import AdminHandOffScanPage from './pages/AdminHandOffScanPage'
+import AdminHandOffPage from './pages/AdminHandOffPage'
 import AdminViewMembersPage from './pages/AdminViewMembersPage'
+import AdminAuditLogPage from './pages/AdminAuditLogPage'
 import AdminManageInventoryPage from './pages/AdminManageInventoryPage'
 import ManageInventoryItemPage from './pages/ManageInventoryItemPage'
+import AdminInventoryAuditPage from './pages/AdminInventoryAuditPage'
 import AdminMemberDetailPage from './pages/AdminMemberDetailPage'
 import AddInventoryItemPage from './pages/AddInventoryItemPage'
 import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
@@ -26,11 +32,12 @@ import GetReplacementLabelPage from './pages/GetReplacementLabelPage'
 import AdminManageUserEmailsPage from './pages/AdminManageUserEmailsPage'
 import AdminManageAdminEmailsPage from './pages/AdminManageAdminEmailsPage'
 import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
+import AdminEmailLogPage from './pages/AdminEmailLogPage'
 import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 import AdminCheckoutHardwarePage from './pages/AdminCheckoutHardwarePage'
 
 function LoadingScreen() {
-  return <div>Loading…</div>
+  return <AppShellSkeleton />
 }
 
 function ProfileFetchError() {
@@ -101,6 +108,7 @@ export function AppRouter() {
           <Route path="/setup" element={<SetupRoute><ProfileSetupPage /></SetupRoute>} />
           <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
           <Route path="/home/browse" element={<PrivateRoute><BrowseInventoryPage /></PrivateRoute>} />
+          <Route path="/home/browse/item" element={<PrivateRoute><BrowseInventoryItemPage /></PrivateRoute>} />
           <Route path="/home/loans" element={<PrivateRoute><MyHardwareLoansPage /></PrivateRoute>} />
           <Route path="/home/checkout" element={<PrivateRoute><CheckoutSelectHardwarePage /></PrivateRoute>} />
         <Route path="/home/checkout/confirm" element={<PrivateRoute><CheckoutConfirmHardwarePage /></PrivateRoute>} />
@@ -111,8 +119,12 @@ export function AppRouter() {
           <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
           <Route path="/adminHome/loans" element={<AdminRoute><AdminHardwareLoansPage /></AdminRoute>} />
           <Route path="/adminHome/loans/:id" element={<AdminRoute><AdminLoanDetailPage /></AdminRoute>} />
+          <Route path="/adminHome/loans/:id/hand-off" element={<AdminRoute><AdminHandOffScanPage /></AdminRoute>} />
+          <Route path="/adminHome/loans/:id/hand-off/agreement" element={<AdminRoute><AdminHandOffPage /></AdminRoute>} />
           <Route path="/adminHome/members" element={<AdminRoute><AdminViewMembersPage /></AdminRoute>} />
+          <Route path="/adminHome/audit-log" element={<AdminRoute><AdminAuditLogPage /></AdminRoute>} />
           <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />
+          <Route path="/adminHome/inventory/audit" element={<AdminRoute><AdminInventoryAuditPage /></AdminRoute>} />
           <Route path="/adminHome/inventory/:id" element={<AdminRoute><ManageInventoryItemPage /></AdminRoute>} />
           <Route path="/adminHome/members/:id" element={<AdminRoute><AdminMemberDetailPage /></AdminRoute>} />
           <Route path="/adminHome/add-item" element={<AdminRoute><AddInventoryItemPage /></AdminRoute>} />
@@ -121,6 +133,7 @@ export function AppRouter() {
           <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
           <Route path="/adminHome/emails/user" element={<AdminRoute><AdminManageUserEmailsPage /></AdminRoute>} />
           <Route path="/adminHome/emails/admin" element={<AdminRoute><AdminManageAdminEmailsPage /></AdminRoute>} />
+          <Route path="/adminHome/emails/log" element={<AdminRoute><AdminEmailLogPage /></AdminRoute>} />
           <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
           <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
           <Route path="/adminHome/checkout" element={<AdminRoute><AdminCheckoutHardwarePage /></AdminRoute>} />

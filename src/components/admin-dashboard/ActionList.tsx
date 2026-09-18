@@ -12,6 +12,8 @@ import {
   MailAllIconFilled,
   MailReplyIconFilled,
   ChevronRightFilled,
+  ScanIconFilled,
+  AuditLogIconFilled,
 } from "./icons";
 import styles from "./AdminHome.module.css";
 
@@ -32,6 +34,8 @@ const actionIcons: Record<IconKey, ReactElement> = {
   "mail-member": <MailNewIconFilled size={22} className={styles.actionRowIcon} />,
   "mail-admin": <MailAllIconFilled size={22} className={styles.actionRowIcon} />,
   "mail-log": <MailReplyIconFilled size={22} className={styles.actionRowIcon} />,
+  audit: <ScanIconFilled size={20} className={styles.actionRowIcon} />,
+  "audit-log": <AuditLogIconFilled size={20} className={styles.actionRowIcon} />,
 }
 
 export function ActionList({ groups, showCategoryLabels = true, onSelect }: ActionListProps) {

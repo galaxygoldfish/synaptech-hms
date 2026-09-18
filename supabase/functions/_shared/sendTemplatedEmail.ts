@@ -1,11 +1,64 @@
 import { createAdminClient } from "./db.ts";
-import { renderSegments, type EmailBodySegment } from "./render.ts";
+import { renderSegments, renderSegmentsHtml, type EmailBodySegment } from "./render.ts";
+import { buildSignatureHtml } from "./signature.ts";
 import { sendViaResend } from "./resend.ts";
 
 export interface SendTemplatedEmailInput {
   templateKey: string;
-  to: string;
+  /** One address, or several to send a single combined email to all of
+      them — see SendEmailInput in resend.ts. Used for "notify every admin"
+      dispatches, so 3 admins get one email each with one archive CC, not
+      3 separate emails each carrying their own duplicate CC. */
+  to: string | string[];
   fields: Record<string, string>;
+  /** Files to attach, base64-encoded — see SendEmailInput in resend.ts. */
+  attachments?: { filename: string; content: string }[];
+}
+
+// Every automated email is copied to this address so the club keeps its own
+// archive of what went out, independent of the in-app log. Override per
+// environment with the EMAIL_ARCHIVE_CC secret; set it to an empty string
+// to turn the archive copy off entirely.
+const DEFAULT_ARCHIVE_CC = "synaptechuw@gmail.com";
+
+// `sent_date`/`sent_time` — available on every template (see
+// 20260918040000_email_universal_date_time_fields.sql) since, unlike every
+// other field, they aren't pulled from a row: they're just "when did this
+// particular email go out", computed fresh right here. Pacific time, since
+// that's where Synaptech/UW actually is — Deno's default runtime clock is
+// UTC, which would otherwise show every recipient a time that's off by
+// several hours from their own.
+const SEND_TIME_ZONE = "America/Los_Angeles";
+
+// Exported for the unit test alongside this file.
+export function sentDateTimeFields(now: Date = new Date()): { sent_date: string; sent_time: string } {
+  return {
+    sent_date: now.toLocaleDateString("en-US", {
+      timeZone: SEND_TIME_ZONE,
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+    sent_time: now.toLocaleTimeString("en-US", {
+      timeZone: SEND_TIME_ZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }),
+  };
+}
+
+// Exported for the unit test alongside this file.
+export function archiveCcFor(recipients: string | string[]): string | undefined {
+  const configured = Deno.env.get("EMAIL_ARCHIVE_CC");
+  const cc = (configured ?? DEFAULT_ARCHIVE_CC).trim();
+  if (!cc) return undefined;
+  const list = Array.isArray(recipients) ? recipients : [recipients];
+  // No point copying an address that's already one of the recipients — it
+  // would just deliver the same message to the same inbox twice.
+  const alreadyIncluded = list.some((r) => r.trim().toLowerCase() === cc.toLowerCase());
+  if (alreadyIncluded) return undefined;
+  return cc;
 }
 
 // Loads the template row (respecting the enabled toggle from the admin
@@ -14,9 +67,13 @@ export interface SendTemplatedEmailInput {
 // break the caller's batch of other sends.
 export async function sendTemplatedEmail(
   admin: ReturnType<typeof createAdminClient>,
-  { templateKey, to, fields }: SendTemplatedEmailInput,
+  { templateKey, to, fields, attachments }: SendTemplatedEmailInput,
 ): Promise<void> {
-  if (!to) return;
+  // Normalized once, up front, so everything below — Resend's payload, the
+  // CC check, and the log row — works off the same clean list regardless
+  // of whether the caller passed one address or several.
+  const recipients = (Array.isArray(to) ? to : [to]).map((r) => r.trim()).filter(Boolean);
+  if (recipients.length === 0) return;
 
   const { data: template, error } = await admin
     .from("email_templates")
@@ -25,25 +82,57 @@ export async function sendTemplatedEmail(
     .maybeSingle();
 
   if (error) {
-    // eslint-disable-next-line no-console
     console.error(`Failed to load email template "${templateKey}":`, error);
     return;
   }
   if (!template || !template.enabled) return;
 
   const subject = template.subject || template.label;
-  const text = renderSegments((template.body ?? []) as EmailBodySegment[], fields);
+  const segments = (template.body ?? []) as EmailBodySegment[];
+
+  // Placed after the caller's own fields so they always win — no dispatch
+  // path has a legitimate reason to supply its own sent_date/sent_time,
+  // and this keeps that a system-computed value, not a caller-suppliable
+  // one, rather than merely a convention.
+  const allFields = { ...fields, ...sentDateTimeFields() };
+
+  // `text` stays exactly what it always was — the admin editor's segments
+  // rendered plain, nothing appended. `html` is the version that actually
+  // goes out: the same content wrapped for email-safe HTML, with the brand
+  // signature appended at send time only. Templates never store it, so it
+  // never appears back in the editor — see signature.ts.
+  const text = renderSegments(segments, allFields);
+  const html =
+    `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.5; color: #1c2430;">` +
+    renderSegmentsHtml(segments, allFields) +
+    `</div>` +
+    buildSignatureHtml();
+
+  const cc = archiveCcFor(recipients);
+
+  // Logged on both paths so the admin "Automated email log" screen shows
+  // the message exactly as sent, including for failures — which is
+  // usually the thing you need in order to debug one. body_html is what
+  // the log renders; body_text is kept as the plain-text fallback record.
+  // recipient_email is a single text column — a combined send's addresses
+  // are joined for display, same as they appear together in the one email
+  // Resend actually sent.
+  const logRow = {
+    template_key: templateKey,
+    recipient_email: recipients.join(", "),
+    cc_email: cc ?? null,
+    subject,
+    body_text: text,
+    body_html: html,
+  };
 
   try {
-    await sendViaResend({ to, subject, text });
-    await admin.from("email_log").insert({ template_key: templateKey, recipient_email: to, subject, status: "sent" });
+    await sendViaResend({ to: recipients, subject, text, html, cc, attachments });
+    await admin.from("email_log").insert({ ...logRow, status: "sent" });
   } catch (sendError) {
-    // eslint-disable-next-line no-console
-    console.error(`Failed to send "${templateKey}" to ${to}:`, sendError);
+    console.error(`Failed to send "${templateKey}" to ${recipients.join(", ")}:`, sendError);
     await admin.from("email_log").insert({
-      template_key: templateKey,
-      recipient_email: to,
-      subject,
+      ...logRow,
       status: "failed",
       error: String(sendError),
     });

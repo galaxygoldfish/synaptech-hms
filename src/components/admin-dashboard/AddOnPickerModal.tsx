@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Equipment } from '../../types'
 import { ChevronRightFilled, CloseIcon, SearchIcon } from './icons'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AddOnPickerModal.module.css'
 
 interface AddOnPickerModalProps {
@@ -46,7 +47,20 @@ export function AddOnPickerModal({ options, isLoading, error, onSelect, onClose 
         </div>
 
         <div className={styles.list}>
-          {isLoading && <p className={styles.status}>Loading inventory…</p>}
+          {isLoading && (
+            <SkeletonScreen label="Loading inventory…" className={styles.skeletonStack}>
+              {Array.from({ length: 3 }, (_, index) => (
+                <span key={index} className={styles.item}>
+                  <Skeleton width="5.625rem" height="5.625rem" radius="0.625rem" />
+                  <span className={styles.itemInfo}>
+                    <Skeleton width="55%" height="1.375rem" shape="pill" />
+                    <Skeleton width="80%" height="1.0625rem" shape="pill" />
+                    <Skeleton width="30%" height="1.0625rem" shape="pill" />
+                  </span>
+                </span>
+              ))}
+            </SkeletonScreen>
+          )}
           {!isLoading && error && <p className={styles.status}>{error}</p>}
           {!isLoading && !error && filtered.length === 0 && (
             <p className={styles.status}>No matching products found.</p>

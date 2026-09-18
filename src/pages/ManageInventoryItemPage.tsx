@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent 
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
+import { InfoTooltip } from '../components/InfoTooltip'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { AddOnPickerModal } from '../components/admin-dashboard/AddOnPickerModal'
 import { EquipmentUnitsTable } from '../components/admin-dashboard/EquipmentUnitsTable'
@@ -30,6 +31,7 @@ import {
 import { CATEGORY_OPTIONS } from '../lib/equipmentCategories'
 import type { Equipment, EquipmentCategory, UserProfile } from '../types'
 import formStyles from './AddInventoryItemPage.module.css'
+import { Skeleton, SkeletonScreen } from '../components/skeleton/Skeleton'
 import styles from './ManageInventoryItemPage.module.css'
 
 type ProductType = 'hardware' | 'consumable'
@@ -359,11 +361,42 @@ export default function ManageInventoryItemPage() {
     signOut()
   }
 
+  // Static chrome and field labels render for real; only the product's own
+  // image and values shimmer, so the form doesn't reflow when it arrives.
   if (isLoading) {
     return (
       <div className={formStyles.page}>
         <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
-        <p className={styles.status}>Loading…</p>
+
+        <div className={formStyles.topRow}>
+          <button type="button" className={formStyles.topBackButton} onClick={handleBackClick} aria-label="Back">
+            <ArrowLeftIcon size={20} />
+            <span>Back</span>
+          </button>
+          <h1 className={formStyles.heading}>Manage product details</h1>
+          <div />
+        </div>
+
+        <main className={formStyles.main}>
+          <SkeletonScreen label="Loading product details…">
+            <Skeleton height="17.5rem" radius="1.25rem" style={{ marginBottom: '1.5rem' }} />
+
+            <div className={formStyles.field}>
+              <span className={formStyles.label}>Product name (REQUIRED)</span>
+              <Skeleton height="3.25rem" radius="1.25rem" />
+            </div>
+
+            <div className={formStyles.field}>
+              <span className={formStyles.label}>One-sentence description of product (REQUIRED)</span>
+              <Skeleton height="6rem" radius="1.25rem" />
+            </div>
+
+            <div className={formStyles.field}>
+              <span className={formStyles.label}>Replacement value (REQUIRED)</span>
+              <Skeleton height="3.25rem" radius="1.25rem" />
+            </div>
+          </SkeletonScreen>
+        </main>
       </div>
     )
   }
@@ -580,7 +613,10 @@ export default function ManageInventoryItemPage() {
         {!isConsumable && (
           <>
             <div className={formStyles.yesNoRow}>
-              <span className={formStyles.yesNoLabel}>Does this item have any OPTIONAL add-ons?</span>
+              <span className={formStyles.yesNoLabel}>
+                Does this item have any OPTIONAL add-ons?
+                <InfoTooltip label="What is an optional add-on?" text="The user can select multiple of these, ideal for consumable items like batteries or electrodes" />
+              </span>
               <div className={formStyles.yesNoToggle}>
                 <button
                   type="button"
@@ -645,7 +681,10 @@ export default function ManageInventoryItemPage() {
             )}
 
             <div className={formStyles.yesNoRow}>
-              <span className={formStyles.yesNoLabel}>Does this item have any REQUIRED add-ons?</span>
+              <span className={formStyles.yesNoLabel}>
+                Does this item have any REQUIRED add-ons?
+                <InfoTooltip label="What is a required add-on?" text="The user must select exactly one of these, for things that this hardware product cannot function without" />
+              </span>
               <div className={formStyles.yesNoToggle}>
                 <button
                   type="button"

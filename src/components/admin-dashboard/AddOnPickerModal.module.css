@@ -199,3 +199,11 @@
     display: none;
   }
 }
+
+/* The real rows are direct children of .list and inherit its column gap;
+   the skeleton needs a wrapper, so it re-creates that spacing. */
+.skeletonStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+}

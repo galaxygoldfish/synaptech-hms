@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent 
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
+import { InfoTooltip } from '../components/InfoTooltip'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { AddOnPickerModal } from '../components/admin-dashboard/AddOnPickerModal'
 import {
@@ -381,7 +382,10 @@ export default function AddInventoryItemPage() {
         {!isConsumable && (
           <>
             <div className={styles.yesNoRow}>
-              <span className={styles.yesNoLabel}>Does this item have any OPTIONAL add-ons?</span>
+              <span className={styles.yesNoLabel}>
+                Does this item have any OPTIONAL add-ons?
+                <InfoTooltip label="What is an optional add-on?" text="The user can select multiple of these, ideal for consumable items like batteries or electrodes" />
+              </span>
               <div className={styles.yesNoToggle}>
                 <button
                   type="button"
@@ -438,7 +442,10 @@ export default function AddInventoryItemPage() {
             )}
 
             <div className={styles.yesNoRow}>
-              <span className={styles.yesNoLabel}>Does this item have any REQUIRED add-ons?</span>
+              <span className={styles.yesNoLabel}>
+                Does this item have any REQUIRED add-ons?
+                <InfoTooltip label="What is a required add-on?" text="The user must select exactly one of these, for things that this hardware product cannot function without" />
+              </span>
               <div className={styles.yesNoToggle}>
                 <button
                   type="button"

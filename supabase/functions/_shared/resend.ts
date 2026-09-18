@@ -3,12 +3,25 @@
 // providers later means replacing just this one file.
 
 export interface SendEmailInput {
-  to: string;
+  /** Multiple addresses send ONE email to all of them (Resend accepts an
+      array directly — max 50) rather than one email per address. Used for
+      "notify every admin" sends, where every admin sees the others in the
+      To line — acceptable for an internal notification, not a member-facing
+      one. */
+  to: string | string[];
   subject: string;
   text: string;
+  /** Optional HTML alternative — most clients prefer this when both are
+      present and fall back to `text` when they can't render HTML. */
+  html?: string;
+  /** Archive copy. Omitted from the request entirely when not set. */
+  cc?: string;
+  /** Files to attach, base64-encoded — e.g. a signed loan agreement PDF.
+      Omitted from the request entirely when not set. */
+  attachments?: { filename: string; content: string }[];
 }
 
-export async function sendViaResend({ to, subject, text }: SendEmailInput): Promise<void> {
+export async function sendViaResend({ to, subject, text, html, cc, attachments }: SendEmailInput): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured for this function");
 
@@ -25,7 +38,18 @@ export async function sendViaResend({ to, subject, text }: SendEmailInput): Prom
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to, subject, text }),
+    // `cc`/`html`/`attachments` are only included when present — Resend
+    // rejects a null/empty cc, and omitting html when there isn't one keeps
+    // this a plain-text-only send exactly as before.
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      text,
+      ...(html ? { html } : {}),
+      ...(cc ? { cc } : {}),
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
+    }),
   });
 
   if (!response.ok) {

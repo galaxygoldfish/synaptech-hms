@@ -3,15 +3,18 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
-import { ArrowLeftIcon, PlusIconSmallFilled, SaveIconFilled } from './icons'
+import { ArrowLeftIcon, InfoIcon, PlusIconSmallFilled, SaveIconFilled } from './icons'
 import {
+  EMAIL_ARCHIVE_CC_ADDRESS,
   EMAIL_FIELD_LABELS,
+  EMAIL_TEMPLATE_DESCRIPTIONS,
   fetchEmailTemplate,
   updateEmailTemplateContent,
   type EmailBodySegment,
   type EmailTemplate,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './EditEmailTemplate.module.css'
 
 const CLOSE_ICON_SVG =
@@ -25,12 +28,6 @@ function fieldLabel(field: string): string {
 // Mirrors the recipient logic in supabase/functions/send-email — user
 // templates always go to the one member tied to the triggering row, admin
 // templates go to every admin (see resolveEvent/fetchAdminEmails there).
-function recipientNote(category: EmailTemplate['category']): string {
-  return category === 'admin'
-    ? 'This email is sent to all admins.'
-    : 'This email is sent to the member associated with this request.'
-}
-
 function removeChipNode(node: HTMLElement) {
   node.remove()
 }
@@ -76,17 +73,118 @@ function segmentsToDom(container: HTMLElement, segments: EmailBodySegment[]) {
   }
 }
 
+// Pressing Enter in a plain contentEditable doesn't insert a newline
+// character — browsers wrap each subsequent line in its own block element
+// (a bare <div> in Chrome/Safari; a blank line becomes <div><br></div>).
+// Shift+Enter, by contrast, inserts a plain inline <br> with no wrapping
+// element. The previous version of this function only looked at direct
+// children, so anything past the first line — wrapped in one of those
+// <div>s — was neither a text node nor a chip and was silently dropped:
+// multi-line bodies survived exactly one line through a save/reload.
+//
+// This walks the full tree instead, converting the various ways a
+// line break can be represented into a single '\n' each: a bare <br>
+// contributes one, and stepping into a new block-level wrapper (anything
+// that isn't a chip or the container's first block) contributes one too —
+// except when that wrapper's only child is itself a <br>, where the two
+// would otherwise double-count a single blank line.
 function domToSegments(container: HTMLElement): EmailBodySegment[] {
   const segments: EmailBodySegment[] = []
-  container.childNodes.forEach((node) => {
+  let currentText = ''
+  // Whether any real content — text, a chip, or a line break — has been
+  // seen yet. Used only to avoid an accidental leading blank line if the
+  // very first block happens to be a wrapper (an edge case, not the
+  // common "start typing immediately" path).
+  let started = false
+
+  function flushText() {
+    if (currentText) {
+      segments.push({ type: 'text', value: currentText })
+      currentText = ''
+    }
+  }
+
+  function walk(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
       const value = node.textContent ?? ''
-      if (value) segments.push({ type: 'text', value })
-    } else if (node instanceof HTMLElement && node.dataset.field) {
-      segments.push({ type: 'chip', field: node.dataset.field })
+      if (value) started = true
+      currentText += value
+      return
     }
-  })
+    if (!(node instanceof HTMLElement)) return
+
+    if (node.dataset.field) {
+      flushText()
+      segments.push({ type: 'chip', field: node.dataset.field })
+      started = true
+      return
+    }
+
+    if (node.tagName === 'BR') {
+      currentText += '\n'
+      started = true
+      return
+    }
+
+    // Any other element is a block wrapper the browser inserted for a new
+    // line — entering one marks a line break, unless it's the first block
+    // in an otherwise-empty editor (nothing to break away from yet).
+    if (started) currentText += '\n'
+
+    const onlyChild = node.childNodes.length === 1 ? node.childNodes[0] : null
+    const isBlankLinePlaceholder =
+      onlyChild?.nodeType === Node.ELEMENT_NODE && (onlyChild as HTMLElement).tagName === 'BR'
+    if (isBlankLinePlaceholder) {
+      // <div><br></div>: an empty line. The block-transition newline just
+      // above already represents it — descending into the <br> too would
+      // add a second, redundant one.
+      started = true
+      return
+    }
+
+    node.childNodes.forEach(walk)
+  }
+
+  container.childNodes.forEach(walk)
+  flushText()
   return segments
+}
+
+/**
+ * Explains what the template being edited is actually for. Falls back to
+ * rendering nothing rather than guessing, so a template added to the
+ * database without a matching entry simply shows no panel.
+ */
+function AboutThisEmail({ templateKey }: { templateKey: string }) {
+  const description = EMAIL_TEMPLATE_DESCRIPTIONS[templateKey]
+  if (!description) return null
+
+  return (
+    <aside className={styles.aboutPanel}>
+      <InfoIcon size={20} className={styles.aboutIcon} />
+      <div className={styles.aboutBody}>
+        <p className={styles.aboutBlurb}>{description.blurb}</p>
+        <div className={styles.aboutFacts}>
+          <span className={styles.aboutFact}>
+            <span className={styles.aboutFactLabel}>
+              {description.dormant ? 'Status' : 'Sent'}
+            </span>
+            <span>{description.timing}</span>
+          </span>
+          <div className={styles.aboutFactRow}>
+            <span className={styles.aboutFact}>
+              <span className={styles.aboutFactLabel}>Goes to</span>
+              <span>{description.recipient}</span>
+            </span>
+            <span className={styles.aboutFact}>
+              <span className={styles.aboutFactLabel}>CC</span>
+              <span>{EMAIL_ARCHIVE_CC_ADDRESS}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  )
 }
 
 export default function EditEmailTemplate() {
@@ -119,7 +217,6 @@ export default function EditEmailTemplate() {
         if (cancelled) return
         setTemplate(data)
         setSubject(data?.subject ?? '')
-        if (editorRef.current) segmentsToDom(editorRef.current, data?.body ?? [])
         savedRangeRef.current = null
       })
       .catch((fetchError) => {
@@ -135,6 +232,18 @@ export default function EditEmailTemplate() {
       cancelled = true
     }
   }, [templateId])
+
+  // Populates the contentEditable body once the real editor is on screen.
+  // This can't happen inside the fetch above: while isLoading is true, the
+  // component renders the loading skeleton in place of the editor, so
+  // editorRef.current is still null when the fetch resolves — writing to it
+  // there was silently a no-op. The saved body was never lost, it just
+  // never made it onto the screen, which is why editing, saving, and
+  // coming back always showed a blank editor regardless of what was saved.
+  useEffect(() => {
+    if (isLoading || !template || !editorRef.current) return
+    segmentsToDom(editorRef.current, template.body)
+  }, [isLoading, template])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -203,12 +312,49 @@ export default function EditEmailTemplate() {
     }
   }
 
+  // The chrome (header, back button, field labels) is static, so it renders
+  // for real and only the template's own subject/body shimmer.
   if (isLoading) {
     return (
       <div className={styles.page}>
         <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
         <main className={styles.main}>
-          <p className={styles.status}>Loading…</p>
+          <div className={styles.topRow}>
+            <button type="button" className={styles.backButton} onClick={() => navigate(listPath)} aria-label="Back">
+              <ArrowLeftIcon size={20} />
+              <span>Back</span>
+            </button>
+            <SkeletonScreen label="Loading email template…">
+              <Skeleton width="16rem" height="1.75rem" shape="pill" />
+            </SkeletonScreen>
+            <div />
+          </div>
+
+          <div className={styles.aboutPanel} aria-hidden="true">
+            <InfoIcon size={20} className={styles.aboutIcon} />
+            <div className={styles.aboutBody}>
+              <Skeleton width="80%" height="1rem" shape="pill" />
+              <Skeleton width="60%" height="0.9375rem" shape="pill" />
+            </div>
+          </div>
+
+          <div className={styles.formSection}>
+            <span className={styles.fieldLabel}>Subject line</span>
+            <div className={styles.subjectInput} aria-hidden="true">
+              <Skeleton width="65%" height="1rem" shape="pill" />
+            </div>
+          </div>
+
+          <div className={styles.formSection}>
+            <span className={styles.fieldLabel}>Email body</span>
+            <div className={styles.editorWrap} aria-hidden="true">
+              <Skeleton width="85%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="95%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="70%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="90%" height="1rem" shape="pill" style={{ marginBottom: '1.1rem' }} />
+              <Skeleton width="45%" height="1rem" shape="pill" />
+            </div>
+          </div>
         </main>
       </div>
     )
@@ -241,6 +387,8 @@ export default function EditEmailTemplate() {
             <span>{isSaving ? 'Saving…' : 'Save'}</span>
           </button>
         </div>
+
+        <AboutThisEmail templateKey={template.key} />
 
         <div className={styles.formSection}>
           <label className={styles.fieldLabel} htmlFor="email-subject">
@@ -285,8 +433,6 @@ export default function EditEmailTemplate() {
               onInput={captureSelection}
             />
           </div>
-
-          <p className={styles.recipientNote}>{recipientNote(template.category)}</p>
 
           {saveError && <p className={styles.inlineError}>{saveError}</p>}
         </div>

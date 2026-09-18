@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { supabase } from '../lib/supabase'
+import { handOffLoanRequestItem } from '../lib/loanRequests'
 
 export type CheckoutStep = 'scan' | 'loading' | 'attest' | 'finalizing' | 'error' | 'success'
 
@@ -186,76 +186,26 @@ export function useHardwareCheckout() {
     setStep('finalizing')
 
     try {
-      const response = await fetch(pendingApproval.agreementUrl)
-      if (!response.ok) throw new Error('Agreement download failed')
-
-      const pdf = await PDFDocument.load(await response.arrayBuffer())
-      const page = pdf.addPage([595.28, 841.89])
-      const font = await pdf.embedFont(StandardFonts.Helvetica)
-      const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold)
-      const approvedAt = new Date()
-      const approvedDate = approvedAt.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+      // The hand-off itself — stamping the certificate onto the signed
+      // agreement and moving the request to approved — lives in
+      // handOffLoanRequestItem so this flow and the "Mark as handed off"
+      // button on the loan detail screen can't drift apart. Only the legacy
+      // `loans` row below is specific to this scan-based path.
+      await handOffLoanRequestItem({
+        itemId: pendingApproval.itemId,
+        adminId: pendingApproval.managerId,
+        adminName: pendingApproval.managerName,
       })
 
-      page.drawText('Certificate of Approval', {
-        x: 72,
-        y: 720,
-        size: 24,
-        font: boldFont,
-        color: rgb(0.11, 0.3, 0.54),
-      })
-      page.drawText('This signed hardware loan agreement was reviewed and approved.', {
-        x: 72,
-        y: 665,
-        size: 12,
-        font,
-      })
-      page.drawText(`Hardware: ${pendingApproval.itemName}`, { x: 72, y: 610, size: 12, font })
-      page.drawText(`Serial number: ${pendingApproval.serial}`, { x: 72, y: 580, size: 12, font })
-      page.drawText(`Approved by: ${pendingApproval.managerName}`, { x: 72, y: 520, size: 12, font })
-      page.drawText(`Approved on: ${approvedDate}`, { x: 72, y: 490, size: 12, font })
-
-      const approvedBytes = await pdf.save()
-      const approvedBuffer = new ArrayBuffer(approvedBytes.byteLength)
-      new Uint8Array(approvedBuffer).set(approvedBytes)
-      const approvedPath = pendingApproval.agreementPath.replace(/\.pdf$/i, '') + '-approved.pdf'
-      const { error: uploadError } = await supabase.storage
-        .from(LOAN_AGREEMENTS_BUCKET)
-        .upload(approvedPath, new Blob([approvedBuffer], { type: 'application/pdf' }), {
-          contentType: 'application/pdf',
-          upsert: true,
-        })
-      if (uploadError) throw uploadError
-
-      const { error: itemUpdateError } = await supabase
-        .from('loan_request_items')
-        .update({ signed_agreement_path: approvedPath })
-        .eq('id', pendingApproval.itemId)
-      if (itemUpdateError) throw itemUpdateError
-
-      const { error: requestUpdateError } = await supabase
-        .from('loan_requests')
-        .update({
-          status: 'approved',
-          reviewed_at: approvedAt.toISOString(),
-          reviewed_by: pendingApproval.managerId,
-        })
-        .eq('id', pendingApproval.requestId)
-      if (requestUpdateError) throw requestUpdateError
-
-      // 4. Mark the legacy loan as actively checked out only after the PDF
-      // has been stamped and the request item points at the approved copy.
       if (pendingApproval.loanId) {
+        const approvedAt = new Date().toISOString()
         const { error: updateError } = await supabase
           .from('loans')
           .update({
             status: 'active',
-            checked_out_at: approvedAt.toISOString(),
+            checked_out_at: approvedAt,
             approved_by: pendingApproval.managerId,
-            approved_at: approvedAt.toISOString(),
+            approved_at: approvedAt,
           })
           .eq('id', pendingApproval.loanId)
 

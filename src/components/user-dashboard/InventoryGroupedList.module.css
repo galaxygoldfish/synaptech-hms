@@ -126,3 +126,12 @@
     right: 1.125rem;
   }
 }
+
+/* The real list renders sibling <section>s straight into the page's flex
+   column; the skeleton needs one wrapper, so it re-creates that column's
+   spacing to avoid the groups sitting flush while loading. */
+.skeletonGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}

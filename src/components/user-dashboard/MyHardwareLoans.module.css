@@ -297,3 +297,14 @@
     color: #6b7280;
   }
 }
+
+/* Non-interactive twin of .loanItem used while the list loads. */
+.skeletonRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: #f7f7f7;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.5rem;
+}

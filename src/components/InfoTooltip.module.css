@@ -1,0 +1,75 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.4375rem;
+}
+
+/* Quiet until you look for it: this explains a control, it isn't one of the
+   things on the page to be done. */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  color: rgba(0, 0, 0, 0.7);
+  background: rgba(131, 156, 197, 0.22);
+}
+
+/* Above the icon, so it never covers the control it describes. Dark, like
+   the scan result plate — a tooltip has to read as floating over the page
+   rather than as another panel on it. */
+.bubble {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: max-content;
+  max-width: min(20rem, 70vw);
+  background: rgba(0, 0, 0, 0.88);
+  color: var(--white);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.8125rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.22);
+}
+
+/* The little pointer down to the icon. */
+.bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 0.375rem solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.88);
+}
+
+/* Near the left edge of a narrow screen a centred bubble would overflow, so
+   it anchors to the icon instead. */
+@media (max-width: 40rem) {
+  .bubble {
+    left: 0;
+    transform: none;
+  }
+
+  .bubble::after {
+    left: 0.6875rem;
+    transform: none;
+  }
+}
