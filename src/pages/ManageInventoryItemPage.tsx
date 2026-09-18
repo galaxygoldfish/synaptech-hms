@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent 
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
+import { InfoTooltip } from '../components/InfoTooltip'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { AddOnPickerModal } from '../components/admin-dashboard/AddOnPickerModal'
 import { EquipmentUnitsTable } from '../components/admin-dashboard/EquipmentUnitsTable'
@@ -612,7 +613,10 @@ export default function ManageInventoryItemPage() {
         {!isConsumable && (
           <>
             <div className={formStyles.yesNoRow}>
-              <span className={formStyles.yesNoLabel}>Does this item have any OPTIONAL add-ons?</span>
+              <span className={formStyles.yesNoLabel}>
+                Does this item have any OPTIONAL add-ons?
+                <InfoTooltip label="What is an optional add-on?" text="The user can select multiple of these, ideal for consumable items like batteries or electrodes" />
+              </span>
               <div className={formStyles.yesNoToggle}>
                 <button
                   type="button"
@@ -677,7 +681,10 @@ export default function ManageInventoryItemPage() {
             )}
 
             <div className={formStyles.yesNoRow}>
-              <span className={formStyles.yesNoLabel}>Does this item have any REQUIRED add-ons?</span>
+              <span className={formStyles.yesNoLabel}>
+                Does this item have any REQUIRED add-ons?
+                <InfoTooltip label="What is a required add-on?" text="The user must select exactly one of these, for things that this hardware product cannot function without" />
+              </span>
               <div className={formStyles.yesNoToggle}>
                 <button
                   type="button"

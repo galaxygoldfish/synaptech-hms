@@ -49,6 +49,23 @@ export function InfoIcon({ size = 18, className }: IconProps) {
   );
 }
 
+// Same stroke weight and circle as InfoIcon, so the two read as one family.
+export function QuestionIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="16.4" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
