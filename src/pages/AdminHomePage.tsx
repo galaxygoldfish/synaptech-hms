@@ -92,6 +92,14 @@ export default function AdminHomePage() {
       navigate('/adminHome/get-labels')
       return
     }
+    if (actionId === 'inventory-audit') {
+      navigate('/adminHome/inventory/audit')
+      return
+    }
+    if (actionId === 'app-audit-log') {
+      navigate('/adminHome/audit-log')
+      return
+    }
     if (actionId === 'configure-member-emails') {
       navigate('/adminHome/emails/user')
       return

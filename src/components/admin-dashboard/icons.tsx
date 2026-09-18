@@ -207,6 +207,19 @@ const actionIconPaths: Record<IconKey, ReactElement> = {
       <path d="M9 21h6" stroke={stroke} strokeWidth="1.4" strokeLinecap="round" />
     </>
   ),
+  audit: (
+    <>
+      <path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 12h16" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  "audit-log": (
+    <>
+      <rect x="4" y="3.5" width="16" height="18" rx="1.6" stroke={stroke} strokeWidth="1.5" />
+      <path d="M9 3.5V2.5a1.5 1.5 0 011.5-1.5h3a1.5 1.5 0 011.5 1.5v1" stroke={stroke} strokeWidth="1.5" />
+      <path d="M8.5 11h7M8.5 14.5h7M8.5 18h4" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
 };
 
 export function ActionIcon({ icon, size = 18 }: { icon: IconKey; size?: number }) {
@@ -388,6 +401,22 @@ export function TrashIconFilled({ size = 20, color = "#474747", className }: Ico
         d="M5.66 8h12.68l-.82 11.44A2.25 2.25 0 0115.29 21.5H8.71a2.25 2.25 0 01-2.24-2.06L5.66 8zm4.09 2.75a.75.75 0 00-.75.75v6.5a.75.75 0 001.5 0v-6.5a.75.75 0 00-.75-.75zm4.5 0a.75.75 0 00-.75.75v6.5a.75.75 0 001.5 0v-6.5a.75.75 0 00-.75-.75z"
         fill={color}
       />
+    </svg>
+  );
+}
+
+export function ScanIconFilled({ size = 16, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path fillRule="evenodd" clipRule="evenodd" d="M15 5H14V2H11V1H15V5ZM11 6.5H12V5C12 4.73478 11.8946 4.48043 11.7071 4.29289C11.5196 4.10536 11.2652 4 11 4H5C4.73478 4 4.48043 4.10536 4.29289 4.29289C4.10536 4.48043 4 4.73478 4 5V6.5H5V5H11V6.5ZM15 7.5H1V8.5H15V7.5ZM11 12H5C4.73478 12 4.48043 11.8946 4.29289 11.7071C4.10536 11.5196 4 11.2652 4 11V9.5H5V11H11V9.5H12V11C12 11.2652 11.8946 11.5196 11.7071 11.7071C11.5196 11.8946 11.2652 12 11 12ZM1 5H2V2H5V1H1V5ZM5 15H1V11H2V14H5V15ZM11 15H15V11H14V14H11V15Z" fill={color} />
+    </svg>
+  );
+}
+
+export function AuditLogIconFilled({ size = 16, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path fillRule="evenodd" clipRule="evenodd" d="M11 2.5H12.5C12.7652 2.5 13.0196 2.60536 13.2071 2.79289C13.3946 2.98043 13.5 3.23478 13.5 3.5V14C13.5 14.2652 13.3946 14.5196 13.2071 14.7071C13.0196 14.8946 12.7652 15 12.5 15H3.5C3.23478 15 2.98043 14.8946 2.79289 14.7071C2.60536 14.5196 2.5 14.2652 2.5 14V3.5C2.5 3.23478 2.60536 2.98043 2.79289 2.79289C2.98043 2.60536 3.23478 2.5 3.5 2.5H5V2C5 1.73478 5.10536 1.48043 5.29289 1.29289C5.48043 1.10536 5.73478 1 6 1H10C10.2652 1 10.5196 1.10536 10.7071 1.29289C10.8946 1.48043 11 1.73478 11 2V2.5ZM10 2H6V4H10V2ZM3.5 14H12.5V3.5H11V5H5V3.5H3.5V14ZM7 6.5H11V7.5H7V6.5ZM7 9H11V10H7V9ZM6 11.5H5V12.5H6V11.5ZM11 11.5H7V12.5H11V11.5ZM6 9H5V10H6V9ZM6 6.5H5V7.5H6V6.5Z" fill={color} />
     </svg>
   );
 }
