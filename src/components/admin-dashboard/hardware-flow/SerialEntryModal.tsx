@@ -1,7 +1,7 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { SERIAL_PREFIX, SERIAL_SUFFIX_LENGTH } from '../../../lib/serialNumber'
 import modalStyles from '../../Modal.module.css'
-import styles from './CheckoutHardware.module.css'
+import styles from './HardwareFlow.module.css'
 
 /** Masked, and the length of a real suffix — never an actual serial from the
     inventory, which reads as a value to keep rather than an example. */
@@ -27,6 +27,9 @@ interface SerialEntryModalProps {
  * as a form made them look like different kinds of thing. Built on
  * Modal.module.css like the app's other dialogs — the field is the only part
  * ConfirmActionModal couldn't have rendered, which is why this isn't one.
+ *
+ * Shared by the checkout and return flows: a serial typed at the desk means
+ * the same thing whichever direction the hardware is going.
  */
 export function SerialEntryModal({
   isOpen,

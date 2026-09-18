@@ -1,8 +1,13 @@
-/* "Check out hardware" — the barcode step reached from the admin dashboard.
+/* The two desk flows an admin runs with hardware in their hands — "Check out
+   hardware" and "Return hardware". They are the same screens in a different
+   direction: find the loan a unit belongs to by barcode, typed serial or
+   list, confirm it, then record it. One stylesheet, so a barcode result, a
+   loan row and a confirmation look the same whichever way the hardware is
+   travelling.
+
    Page furniture (back row, heading, cards) follows the other admin screens;
    the viewfinder and its result markers are the same ones the hand-off scan
-   and the inventory audit use, so a barcode result looks the same wherever
-   an admin meets one. */
+   and the inventory audit use. */
 
 .page {
   min-height: 100vh;
@@ -438,6 +443,13 @@
   margin: 0;
 }
 
+/* Hardware coming back late is the one thing on a return confirmation an
+   admin might need to act on, so the date says so rather than leaving them
+   to work it out from today's. */
+.confirmValueOverdue {
+  color: #b9433c;
+}
+
 /* The black Bungee pill the member-facing checkout steps and the agreement
    sign-off end on, but alone and full width: there is no second choice here
    to balance it against. */
@@ -677,4 +689,69 @@
   background: #f4f4f4;
   border-radius: 0.9375rem;
   padding: 1.125rem 1.5rem;
+}
+
+/* ── Finished ─────────────────────────────────────────────── */
+/* The same shape as the "Successfully added to inventory" screen: a mark, a
+   sentence, and one way out. */
+
+.successMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.successPage {
+  min-height: 100vh;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+
+.successCheckmark {
+  width: clamp(5.5rem, 12vw, 8.875rem);
+  height: auto;
+}
+
+.successHeading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+  color: rgba(0, 0, 0, 0.98);
+  margin: 0;
+}
+
+.successDetailGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.successDetail {
+  max-width: 34rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 0;
+}
+
+.successDoneButton {
+  margin-top: 0.75rem;
+  background: #000;
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 1.125rem 2.5rem;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.successDoneButton:hover {
+  background: #1f2937;
 }

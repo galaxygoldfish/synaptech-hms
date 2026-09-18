@@ -1,6 +1,7 @@
 import {
   bucketForLoanItem,
   matchCheckoutSerial,
+  matchReturnSerial,
   type AdminLoanRequestItemSummary,
 } from '../lib/loanRequests'
 
@@ -101,5 +102,58 @@ describe('matchCheckoutSerial', () => {
     const elsewhere = item({ id: 'other', status: 'pending', serialNumber: 'SYN-QQ92KD10T' })
     const unassigned = item({ id: 'none', status: 'pending', serialNumber: null })
     expect(matchCheckoutSerial([elsewhere, unassigned], 'SYN-HJXPP41T5').outcome).toBe('no_match')
+  })
+})
+
+describe('matchReturnSerial', () => {
+  it('finds the open loan a serial is out on', () => {
+    const out = item({ returnDate: '2099-01-01' })
+    expect(matchReturnSerial([out], 'SYN-HJXPP41T5')).toEqual({
+      outcome: 'ready',
+      serial: 'SYN-HJXPP41T5',
+      loan: out,
+    })
+  })
+
+  // Overdue hardware is exactly what a return flow is for. Refusing it
+  // because it is late would leave the one loan an admin most wants closed
+  // as the one they cannot close.
+  it('takes back an overdue loan the same as one still in date', () => {
+    expect(matchReturnSerial([item({ returnDate: '2020-01-01' })], 'SYN-HJXPP41T5').outcome).toBe(
+      'ready',
+    )
+  })
+
+  // Saying "not out on loan" would send an admin looking for a record that
+  // does exist, so this state gets named.
+  it('tells a request that was never handed over from hardware that is simply not out', () => {
+    const requested = item({ status: 'pending' })
+    const match = matchReturnSerial([requested], 'SYN-HJXPP41T5')
+    expect(match.outcome).toBe('not_handed_over')
+    expect(match.loan).toBe(requested)
+  })
+
+  // The double return: scanning the same unit twice must refuse the second.
+  it('leaves an already-returned loan to the inventory lookup', () => {
+    const match = matchReturnSerial([item({ returnedAt: '2026-08-30T12:00:00Z' })], 'SYN-HJXPP41T5')
+    expect(match).toEqual({ outcome: 'no_match', serial: 'SYN-HJXPP41T5', loan: null })
+  })
+
+  // The mirror of matchCheckoutSerial's precedence: one unit lent, returned
+  // and lent again carries a row for each, and the open one is the return.
+  it("prefers the open loan over the unit's closed history", () => {
+    const closed = item({ id: 'old', returnedAt: '2026-08-30T12:00:00Z' })
+    const open = item({ id: 'new', returnDate: '2099-01-01' })
+    expect(matchReturnSerial([open, closed], 'SYN-HJXPP41T5').loan).toBe(open)
+  })
+
+  it('ignores a denied request', () => {
+    expect(matchReturnSerial([item({ status: 'denied' })], 'SYN-HJXPP41T5').outcome).toBe('no_match')
+  })
+
+  it('ignores loans on other units, and items with no serial at all', () => {
+    const elsewhere = item({ id: 'other', serialNumber: 'SYN-QQ92KD10T', returnDate: '2099-01-01' })
+    const unassigned = item({ id: 'none', serialNumber: null, returnDate: '2099-01-01' })
+    expect(matchReturnSerial([elsewhere, unassigned], 'SYN-HJXPP41T5').outcome).toBe('no_match')
   })
 })

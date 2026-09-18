@@ -655,3 +655,65 @@ export function matchCheckoutSerial(
 
   return { outcome: 'no_match', serial, loan: null }
 }
+
+/**
+ * What a serial number means for the admin "return hardware" flow — the
+ * mirror of matchCheckoutSerial, asked in the other direction.
+ *
+ * 'no_match' again says only that no loan in the list is about this unit,
+ * which the scan screen resolves against inventory before it says anything.
+ */
+export type ReturnMatchOutcome =
+  /** It's out with someone and hasn't been recorded back yet. */
+  | 'ready'
+  /** Requested but never handed over, so there is nothing to give back. */
+  | 'not_handed_over'
+  /** No open loan in the list is about this unit. */
+  | 'no_match'
+
+export interface ReturnMatch {
+  outcome: ReturnMatchOutcome
+  /** The normalised serial that was looked up, as stored. */
+  serial: string
+  /** The loan the outcome is about — null when nothing matched. */
+  loan: AdminLoanRequestItemSummary | null
+}
+
+/**
+ * Picks the one loan a serial is about for a return. An outstanding loan
+ * wins: that's the hardware being handed back, whether it's due next week or
+ * was due last month. Only if there is none does an unfulfilled request
+ * matter, and then only to explain the refusal — hardware that was never
+ * collected cannot be returned, and saying so beats "not out on loan", which
+ * would send an admin looking for a record that does exist.
+ *
+ * Loans already recorded as returned never match, so scanning the same unit
+ * twice is a refusal rather than a second return. markLoanRequestItemReturned
+ * guards the write for the same reason; this is the half the admin sees.
+ */
+export function matchReturnSerial(
+  loans: AdminLoanRequestItemSummary[],
+  serial: string,
+): ReturnMatch {
+  const forUnit = loans.filter(
+    (loan) => loan.serialNumber && normalizeSerialNumber(loan.serialNumber) === serial,
+  )
+
+  // fetchAllLoanRequestItems returns newest request first, and filter keeps
+  // that order, so the first match of a kind is the most recent one.
+  const out = forUnit.find((loan) => {
+    const bucket = bucketForLoanItem(loan)
+    return bucket === 'active' || bucket === 'overdue'
+  })
+  if (out) return { outcome: 'ready', serial, loan: out }
+
+  const requested = forUnit.find((loan) => bucketForLoanItem(loan) === 'requests')
+  if (requested) return { outcome: 'not_handed_over', serial, loan: requested }
+
+  return { outcome: 'no_match', serial, loan: null }
+}
+
+/** True for a loan whose return date has already passed. */
+export function isOverdue(loan: Pick<AdminLoanRequestItemSummary, 'status' | 'returnDate' | 'returnedAt'>): boolean {
+  return bucketForLoanItem(loan) === 'overdue'
+}

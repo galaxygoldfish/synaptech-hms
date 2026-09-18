@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { FlowPage } from '../hardware-flow/FlowPage'
 import { ScanColumn, type ScanFeedback } from '../hardware-flow/ScanColumn'
 import { SerialEntryModal } from '../hardware-flow/SerialEntryModal'
-import { LoanConfirmCard } from '../hardware-flow/LoanConfirmCard'
 import { useBarcodeScanner } from '../../../hooks/useBarcodeScanner'
 import { fetchEquipmentUnitBySerial } from '../../../lib/inventory'
 import {
   fetchAllLoanRequestItems,
-  matchCheckoutSerial,
+  matchReturnSerial,
   type AdminLoanRequestItemSummary,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
@@ -16,43 +15,26 @@ import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
 import styles from '../hardware-flow/HardwareFlow.module.css'
 
 /**
- * Step 1 of "Check out hardware", reached from the admin dashboard: work out
- * which loan the hardware in your hands belongs to.
+ * Step 1 of "Return hardware": work out which loan the hardware being handed
+ * back belongs to. The mirror of CheckoutScan, and built the same way — every
+ * loan loaded up front so a scan is answered locally and instantly, with
+ * inventory asked only about a serial that matched no loan at all.
  *
- * Unlike the hand-off scan — which starts from a loan and only has to check
- * that the serial matches it — this starts from the barcode and has to find
- * the loan. So every loan item is loaded up front and the lookup happens
- * locally: a scan is answered instantly, and scanning a shelf of the wrong
- * things costs nothing. Inventory is only asked about a serial that matched
- * no loan at all, to tell "nobody requested this" apart from "this isn't our
- * hardware".
+ * What differs is what counts as an answer. Here the loan has to be out:
+ * a request nobody collected can't come back, and a loan already recorded as
+ * returned can't come back twice.
  *
- * Step 2 is the agreement (LoanAgreementSignOff), which is where anything is
- * actually recorded. Nothing on this screen writes.
+ * Step 2 (ReturnConfirm) is where the return is recorded. Nothing here
+ * writes.
  */
 
-// Long enough to register as a result rather than a flicker, short enough
-// not to hold up someone standing there with the hardware in their hands.
-// Matches the hand-off scan's holds, since it's the same decision.
 const SUCCESS_HOLD_MS = 900
 const FAILURE_HOLD_MS = 2200
 
-function formatTimestampDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-}
-
-function formatCalendarDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-/** How the serial was established, carried through to the agreement step. */
+/** How the serial was established, carried through to the confirm step. */
 export type SerialSource = 'scan' | 'manual'
 
-export default function CheckoutScan() {
+export default function ReturnScan() {
   const navigate = useNavigate()
 
   const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
@@ -63,9 +45,8 @@ export default function CheckoutScan() {
   // Bumped after a barcode that didn't resolve, to restart the camera loop —
   // it stops at the first thing it sees.
   const [scanAttempt, setScanAttempt] = useState(0)
-  /** The loan a barcode resolved to, waiting for the admin to confirm it. */
-  const [confirmed, setConfirmed] = useState<AdminLoanRequestItemSummary | null>(null)
-  const [confirmedVia, setConfirmedVia] = useState<SerialSource>('scan')
+  /** Set once a barcode resolves, to stop the camera while we navigate. */
+  const [isResolved, setResolved] = useState(false)
 
   const [isSerialModalOpen, setSerialModalOpen] = useState(false)
   const [manualSerial, setManualSerial] = useState('')
@@ -114,9 +95,12 @@ export default function CheckoutScan() {
     setFeedback({ kind, message })
     holdTimer.current = setTimeout(() => {
       setFeedback(null)
-      // Restart the camera loop, which stopped when it read this barcode.
       setScanAttempt((attempt) => attempt + 1)
     }, FAILURE_HOLD_MS)
+  }
+
+  function goToConfirm(loan: AdminLoanRequestItemSummary, source: SerialSource) {
+    navigate(`/adminHome/return/${loan.id}/confirm`, { state: { serialVerifiedBy: source } })
   }
 
   /**
@@ -127,49 +111,50 @@ export default function CheckoutScan() {
   async function resolveSerial(rawValue: string, source: SerialSource) {
     // The camera loop can fire again while a result is still on screen;
     // ignore it rather than stacking overlays and timers.
-    if (feedback || confirmed || isResolving) return
+    if (feedback || isResolved || isResolving) return
 
     const serial = normalizeSerialNumber(rawValue)
     if (!serial || serial === SERIAL_PREFIX) return
 
-    const match = matchCheckoutSerial(loans, serial)
+    const match = matchReturnSerial(loans, serial)
 
     if (match.outcome === 'ready' && match.loan) {
       const loan = match.loan
       setManualError(null)
+      setResolved(true)
       if (source === 'manual') {
         setManualSerial('')
         setSerialModalOpen(false)
-        setConfirmedVia('manual')
-        setConfirmed(loan)
+        goToConfirm(loan, source)
         return
       }
-      setFeedback({ kind: 'success', message: `${loan.itemName} for ${loan.memberName}` })
+      setFeedback({ kind: 'success', message: `${loan.itemName} from ${loan.memberName}` })
       holdTimer.current = setTimeout(() => {
         setFeedback(null)
-        setConfirmedVia('scan')
-        setConfirmed(loan)
+        goToConfirm(loan, source)
       }, SUCCESS_HOLD_MS)
       return
     }
 
-    if (match.outcome === 'already_out' && match.loan) {
+    // Requested but never collected. Saying "not out on loan" here would send
+    // an admin looking for a record that does exist, so it names the state.
+    if (match.outcome === 'not_handed_over' && match.loan) {
       reject(
         'warning',
-        `${match.loan.itemName} is already checked out to ${match.loan.memberName}`,
+        `${match.loan.itemName} was never handed over to ${match.loan.memberName}`,
         source,
       )
       return
     }
 
-    // Nothing in the loans matched. Whether that's "in stock, nobody asked
-    // for it" or "not our hardware" needs inventory, which is why this is the
+    // Nothing in the loans matched. Whether that's "already back on the
+    // shelf" or "not our hardware" needs inventory, which is why this is the
     // one path that goes to the network.
     setResolving(true)
     try {
       const known = await fetchEquipmentUnitBySerial(serial)
       if (known) {
-        reject('warning', `${known.equipment.name} has no open checkout request`, source)
+        reject('warning', `${known.equipment.name} is not out on loan`, source)
       } else {
         reject('failure', `${serial} is not recognised in inventory`, source)
       }
@@ -184,22 +169,12 @@ export default function CheckoutScan() {
 
   const { videoRef, isSupported, permissionError } = useBarcodeScanner(
     (value) => void resolveSerial(value, 'scan'),
-    !isLoading && !error && confirmed === null,
+    !isLoading && !error && !isResolved,
     scanAttempt,
   )
 
-  function handleBack() {
-    if (!confirmed) {
-      navigate('/adminHome')
-      return
-    }
-    setConfirmed(null)
-    // The camera stopped on the barcode that got us here.
-    setScanAttempt((attempt) => attempt + 1)
-  }
-
   return (
-    <FlowPage heading="Check out hardware" onBack={handleBack}>
+    <FlowPage heading="Return hardware" onBack={() => navigate('/adminHome')}>
       {isLoading && (
         <SkeletonScreen label="Loading hardware loans…" className={styles.skeletonStack}>
           <div className={styles.scanColumn}>
@@ -212,10 +187,10 @@ export default function CheckoutScan() {
 
       {!isLoading && error && <p className={styles.status}>{error}</p>}
 
-      {!isLoading && !error && confirmed === null && (
+      {!isLoading && !error && (
         <>
           <p className={styles.subtext}>
-            Scan the barcode on the item you are handing over. If it has been requested, the loan it
+            Scan the barcode on the item being handed back. If it is out on loan, the loan it
             belongs to is found for you.
           </p>
 
@@ -224,37 +199,15 @@ export default function CheckoutScan() {
             isSupported={isSupported}
             permissionError={permissionError}
             feedback={feedback}
-            caption="Please scan the hardware item barcode that you are checking out"
+            caption="Please scan the hardware item barcode that is being returned"
             pickLabel="Pick the loan from the database"
             onEnterSerial={() => {
               setManualError(null)
               setSerialModalOpen(true)
             }}
-            onPickFromDatabase={() => navigate('/adminHome/checkout/pick')}
+            onPickFromDatabase={() => navigate('/adminHome/return/pick')}
           />
         </>
-      )}
-
-      {!isLoading && !error && confirmed && (
-        <LoanConfirmCard
-          itemName={confirmed.itemName}
-          serialNumber={confirmed.serialNumber}
-          imageUrl={confirmed.imageUrl}
-          rows={[
-            { label: 'Handing to', value: confirmed.memberName },
-            { label: 'Requested on', value: formatTimestampDate(confirmed.requestedAt) },
-            {
-              label: 'Due back',
-              value: confirmed.returnDate ? formatCalendarDate(confirmed.returnDate) : 'Not set',
-            },
-          ]}
-          actionLabel="continue"
-          onAction={() =>
-            navigate(`/adminHome/checkout/${confirmed.id}/agreement`, {
-              state: { serialVerifiedBy: confirmedVia },
-            })
-          }
-        />
       )}
 
       <SerialEntryModal

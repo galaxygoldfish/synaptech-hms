@@ -36,6 +36,8 @@ import AdminManageAdminEmailsPage from './pages/AdminManageAdminEmailsPage'
 import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
 import AdminEmailLogPage from './pages/AdminEmailLogPage'
 import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
+import AdminReturnPickLoanPage from './pages/AdminReturnPickLoanPage'
+import AdminReturnConfirmPage from './pages/AdminReturnConfirmPage'
 import AdminCheckoutHardwarePage from './pages/AdminCheckoutHardwarePage'
 import AdminCheckoutPickLoanPage from './pages/AdminCheckoutPickLoanPage'
 import AdminCheckoutAgreementPage from './pages/AdminCheckoutAgreementPage'
@@ -144,6 +146,8 @@ export function AppRouter() {
           <Route path="/adminHome/emails/log" element={<AdminRoute><AdminEmailLogPage /></AdminRoute>} />
           <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
           <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
+          <Route path="/adminHome/return/pick" element={<AdminRoute><AdminReturnPickLoanPage /></AdminRoute>} />
+          <Route path="/adminHome/return/:id/confirm" element={<AdminRoute><AdminReturnConfirmPage /></AdminRoute>} />
           <Route path="/adminHome/checkout" element={<AdminRoute><AdminCheckoutHardwarePage /></AdminRoute>} />
           <Route path="/adminHome/checkout/pick" element={<AdminRoute><AdminCheckoutPickLoanPage /></AdminRoute>} />
           <Route path="/adminHome/checkout/:id/agreement" element={<AdminRoute><AdminCheckoutAgreementPage /></AdminRoute>} />
