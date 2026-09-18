@@ -71,39 +71,43 @@ npm run preview    # Preview a production build locally
 
 ## Deployment
 
-The web app deploys to Cloudflare Pages at **hardware.synaptechuw.org** — its own
-subdomain, and therefore its own origin, which is why nothing in the app is aware of
-being deployed: the build stays at the site root, `BrowserRouter` needs no `basename`,
-and the Google sign-in `redirectTo` in [`AuthContext`](src/context/AuthContext.tsx) can
-keep using `window.location.origin`. Serving it from a path
-(`synaptechuw.org/hardware`) would mean changing all three.
+The web app deploys to Cloudflare as a **Worker serving static assets** — not a Pages
+project, which is what the dashboard creates for a repository import now. The deploy
+command is `npx wrangler deploy` and the settings live in
+[`wrangler.jsonc`](wrangler.jsonc), committed so that every deploy is identical and the
+non-interactive build never hits Wrangler's setup prompt.
 
 | Setting | Value |
 | --- | --- |
-| Framework preset | Vite |
 | Build command | `npm run build` |
 | Output directory | `dist` |
+| Deploy command | `npx wrangler deploy` |
 | Environment variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
 
-[`public/_redirects`](public/_redirects) points every unmatched path at `index.html`
-with a 200, which is what makes it a rewrite rather than a redirect — the member keeps
-the URL they asked for. Pages matches real static assets first, so `/assets/*` is
-unaffected. Without it, client-side routes 404 on a hard refresh or a shared link. Vite
-copies `public/` into the build verbatim, so it needs no wiring.
+Client-side routing is handled by `assets.not_found_handling:
+"single-page-application"` in that config: a request for `/adminHome/loans/123` has no
+file behind it, so the asset layer serves `index.html` with a 200 and React Router
+resolves it. **Do not add a `public/_redirects`** with the usual `/* /index.html 200`
+rule — Workers Assets rejects it as an infinite loop, because it already rewrites
+`/index.html` to `/` and the rule would match its own output. That failure happens at
+deploy time, after a successful build.
 
-[`.nvmrc`](.nvmrc) pins the build image's Node. Pages defaults to a version old enough
-that this project's toolchain (Vite 8, TypeScript 6) fails to build, and the error it
-produces doesn't obviously point at Node.
+[`.nvmrc`](.nvmrc) pins the build image's Node. The toolchain (Vite 8, TypeScript 6)
+needs a recent version, and the error from an old one doesn't obviously point at Node.
+
+Because the env vars are `VITE_`-prefixed they are read at **build** time, not run time:
+changing one in the Cloudflare dashboard does nothing until the next deploy.
 
 Two things live outside this repo and are easy to miss:
 
-- **DNS** — add `hardware.synaptechuw.org` under the Pages project's Custom domains.
-  With the zone already on Cloudflare the CNAME is created for you.
-- **Supabase Auth → URL Configuration** — Site URL set to
-  `https://hardware.synaptechuw.org` and the same origin added to Redirect URLs.
-  Without it Google sign-in completes and then bounces the user somewhere else. The
-  Google Cloud console callback is unaffected: it points at Supabase's
-  `/auth/v1/callback`, not at this app.
+- **DNS** — the Worker answers on `<name>.<subdomain>.workers.dev` immediately, which is
+  enough to test. For `hardware.synaptechuw.org`, add it as a custom domain on the
+  Worker; with the zone already on Cloudflare the DNS record is created for you.
+- **Supabase Auth → URL Configuration** — Site URL and Redirect URLs must list whichever
+  origin is actually being used, including the `workers.dev` one while testing. Google
+  sign-in otherwise completes and bounces the user somewhere else. The Google Cloud
+  console callback is unaffected: it points at Supabase's `/auth/v1/callback`, not at
+  this app.
 
 Run any unapplied [migrations](supabase/migrations) before the first deploy — the app
 reads columns that only exist once they have.

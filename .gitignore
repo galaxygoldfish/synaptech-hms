@@ -55,3 +55,6 @@ Desktop.ini
 *.temp
 .npm
 .npmcache
+
+# Cloudflare Wrangler local state
+.wrangler/
