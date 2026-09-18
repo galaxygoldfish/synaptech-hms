@@ -332,9 +332,32 @@
     padding: 1.5rem 1.25rem 1.75rem;
   }
 
+  /* The 20rem floor is wider than a phone's card; the search takes its own
+     full-width line and shrinks to fit it. */
+  .searchWrap {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  /* Image and name/serial share the top line; the status badge drops to its
+     own line beneath them so the serial never has to compete for width. */
+  .loanItem,
+  .skeletonRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'thumb info'
+      'badge badge'
+      'member member'
+      'date date';
+  }
+
   .loanItem {
-    gap: 1.25rem;
+    gap: 0.5rem 1.25rem;
     padding: 1rem;
+  }
+
+  .loanBadgeWrap {
+    width: auto;
   }
 
   .loanThumb {
@@ -346,10 +369,15 @@
     font-size: 1.1875rem;
   }
 
-  .loanSerial,
   .loanMember,
   .loanDateWrap {
     font-size: 1rem;
+  }
+
+  /* One line, always: a serial that wraps mid-string is unreadable. */
+  .loanSerial {
+    font-size: 0.9375rem;
+    white-space: nowrap;
   }
 }
 
@@ -366,4 +394,27 @@
   background: #f4f4f4;
   border-radius: 0.9375rem;
   padding: 1.125rem 1.5rem;
+}
+
+/* Declared after .skeletonRow so they win over its desktop grid; the same
+   collapse the real rows get above. */
+@media (max-width: 1200px) {
+  .skeletonRow {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'thumb info badge'
+      'member member member'
+      'date date date';
+  }
+}
+
+@media (max-width: 640px) {
+  .skeletonRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'thumb info'
+      'badge badge'
+      'member member'
+      'date date';
+  }
 }

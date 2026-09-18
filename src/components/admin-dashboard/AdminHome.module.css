@@ -79,11 +79,12 @@
 
 @media (max-width: 480px) {
   .statRow {
-    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 
 .statCard {
+  position: relative;
   border-radius: 1.25rem;
   border: 3px solid transparent;
   padding: 1.75rem 1rem;
@@ -109,6 +110,27 @@
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
   opacity: 0.7;
+}
+
+/* Phone: just the number in each box, in a 2x2 grid. The label is hidden
+   visually but stays in the DOM, since it is what names each card button for
+   screen readers; the colour of the card carries the meaning on screen. */
+@media (max-width: 480px) {
+  .statCardValue {
+    margin-bottom: 0;
+    font-size: 3rem;
+  }
+
+  .statCardLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .statCardBlue {
@@ -155,6 +177,10 @@
 
 .searchBarInput {
   flex: 1;
+  /* An input won't shrink below its default width unless told it may, which
+     pushed the bar out of narrow containers. */
+  min-width: 0;
+  text-overflow: ellipsis;
   border: none;
   outline: none;
   background: transparent;

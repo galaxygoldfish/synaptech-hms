@@ -183,8 +183,8 @@
 }
 
 .privilegeBadgeAdmin {
-  background: rgba(197, 131, 131, 0.17);
-  color: rgba(195, 126, 126, 0.93);
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 @media (max-width: 640px) {

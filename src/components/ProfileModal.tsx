@@ -20,7 +20,9 @@ export function ProfileModal({ user, onClose, onLogOut }: ProfileModalProps) {
           <PersonIcon className={styles.avatarIcon} />
           <div>
             <div className={styles.name}>{user.name}</div>
-            <span className={styles.badge}>{user.role}</span>
+            <span className={user.role === "ADMINISTRATOR" ? `${styles.badge} ${styles.badgeAdmin}` : styles.badge}>
+              {user.role}
+            </span>
           </div>
         </div>
 

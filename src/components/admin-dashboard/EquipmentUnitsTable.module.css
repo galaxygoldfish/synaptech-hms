@@ -156,7 +156,27 @@
 @media (max-width: 640px) {
   .table th,
   .table td {
-    padding: 0.625rem 0.875rem;
+    padding: 0.625rem 0.5rem;
     font-size: 0.9375rem;
+  }
+
+  /* One size for every serial, and never wrapped: the row is tight enough
+     that a longer serial used to break onto a second line. */
+  .table .tdSerial {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .chip {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.625rem;
+  }
+
+  .thAction {
+    width: 2.25rem;
+  }
+
+  .actionButton {
+    padding: 0.25rem;
   }
 }

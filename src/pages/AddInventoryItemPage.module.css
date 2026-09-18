@@ -362,8 +362,12 @@
     gap: 1rem;
   }
 
+  /* Scales with the screen so the question and its help button stay on one
+     line down to a 320px phone. */
   .yesNoLabel {
     text-align: center;
+    white-space: nowrap;
+    font-size: clamp(0.75rem, 3.7vw, 1.125rem);
   }
 
   .yesNoToggle {

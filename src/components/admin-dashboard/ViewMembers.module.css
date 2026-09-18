@@ -117,8 +117,8 @@
 }
 
 .roleBadgeAdmin {
-  background: rgba(197, 131, 131, 0.44);
-  color: #a3453f;
+  background: var(--green-bg);
+  color: var(--green-fg);
 }
 
 .memberName {

@@ -1,6 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { QuestionIcon } from './admin-dashboard/icons'
 import styles from './InfoTooltip.module.css'
+
+// Breathing room kept between the bubble and the screen edge.
+const VIEWPORT_MARGIN = 12
 
 interface InfoTooltipProps {
   /** What the question mark explains. */
@@ -26,9 +29,41 @@ export function InfoTooltip({ label, text }: InfoTooltipProps) {
   const [isFocused, setFocused] = useState(false)
   const [isPinned, setPinned] = useState(false)
   const wrapperRef = useRef<HTMLSpanElement>(null)
+  const bubbleRef = useRef<HTMLSpanElement>(null)
+  const [shift, setShift] = useState(0)
+  const shiftRef = useRef(0)
   const tooltipId = useId()
 
   const isOpen = isHovered || isFocused || isPinned
+
+  // The bubble is centred on the icon, but the icon can sit anywhere — on a
+  // phone a centred label puts it near either edge. Once the bubble is on
+  // screen, measure it and slide it back inside the viewport; the arrow is
+  // counter-shifted in CSS so it keeps pointing at the icon. A layout effect,
+  // so the correction lands before the first paint rather than flashing.
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    const bubble = bubbleRef.current
+    if (!bubble) return
+
+    function reposition() {
+      if (!bubble) return
+      const rect = bubble.getBoundingClientRect()
+      // Where the bubble would sit with no correction applied.
+      const left = rect.left - shiftRef.current
+      const right = rect.right - shiftRef.current
+      const viewportWidth = document.documentElement.clientWidth
+      let next = 0
+      if (left < VIEWPORT_MARGIN) next = VIEWPORT_MARGIN - left
+      else if (right > viewportWidth - VIEWPORT_MARGIN) next = viewportWidth - VIEWPORT_MARGIN - right
+      shiftRef.current = next
+      setShift(next)
+    }
+
+    reposition()
+    window.addEventListener('resize', reposition)
+    return () => window.removeEventListener('resize', reposition)
+  }, [isOpen, text])
 
   useEffect(() => {
     if (!isOpen) return
@@ -70,7 +105,13 @@ export function InfoTooltip({ label, text }: InfoTooltipProps) {
         <QuestionIcon size={18} />
       </button>
       {isOpen && (
-        <span className={styles.bubble} id={tooltipId} role="tooltip">
+        <span
+          className={styles.bubble}
+          id={tooltipId}
+          role="tooltip"
+          ref={bubbleRef}
+          style={{ '--bubble-shift': `${shift}px` } as CSSProperties}
+        >
           {text}
         </span>
       )}
