@@ -8,6 +8,7 @@ Synaptech HMS is a hardware management system for Synaptech that helps the club 
 - Member-side dashboard for viewing current hardware loans and requesting checkouts
 - Google OAuth sign-in restricted to `@uw.edu` accounts, with role-based routing
 - Centralized views for inventory status and actions
+- Barcode-driven inventory audits of the hardware storage facility, with a per-audit report kept as a snapshot
 - An app-wide audit log of every change, recorded server-side by Postgres triggers
 
 ## Tech Stack
@@ -81,6 +82,13 @@ Checkout submissions live in three more tables:
 - `loan_requests` — one row per checkout submission: `user_id`, `status` (`'pending'` | `'approved'` | `'denied'`, defaults to `'pending'` until an admin reviews it), `requested_at`, and `reviewed_at`/`reviewed_by`/`review_note` once reviewed
 - `loan_request_items` — one row per `equipment` item bundled into a request (the primary item plus any optional/required add-ons — `item_role`), each with its own `equipment_unit_id` (the serial offered at submission), `return_date` (hardware only), and `signed_agreement_path`
 - `loan_request_availability` — one row per hour the member marked free in the 14-day pickup availability grid (`available_date`, `available_hour`)
+
+Inventory audits live in two more:
+
+- `inventory_audits` — one row per completed audit: who ran it, when, an optional note, and the counts it found
+- `inventory_audit_entries` — one row per unit the audit accounted for, plus one per unrecognised barcode, each with its `status` and a copy of the serial number, product name and borrower's name as they read at the time
+
+Both are append-only and admin-readable, written only by the `record_inventory_audit` function — see [Inventory audits](#inventory-audits).
 
 These model the request phase the checkout flow captures (submit → admin approves/denies) plus the hand-back at the end of it: `loan_request_items.returned_at`/`returned_by` record that a physical item came back, per item rather than per request, since a request can bundle several items with their own return dates. A request's status stays `'approved'` throughout — "is it back?" is answered by `returned_at`, not by the parent's status — and `bucketForLoanItem` in [`src/lib/loanRequests.ts`](src/lib/loanRequests.ts) is the single place that turns those fields into the Active / Overdue / Requests / Returns / Returned states the list, the detail screen and the dashboard stat cards all read. The return columns and their triggers are in [`supabase/migrations/20260922000000_loan_item_return.sql`](supabase/migrations/20260922000000_loan_item_return.sql).
 
@@ -178,6 +186,36 @@ Reading section 9 back needs the signature to exist. Until [`supabase/migrations
 When a checkout bundles several items, each one is a loan in its own right — its own serial, return date and hand-off — so the "Also included in this request" list opens straight into them.
 
 Recording a hand-off happens in the barcode "Check out hardware" flow, which calls `handOffLoanRequestItem`: it stamps a Certificate of Approval onto the member's signed agreement and moves the request to `approved`. Recording a return means setting `loan_request_items.returned_at`, which frees the unit for checkout, closes the loan and sends the member their return confirmation — `markLoanRequestItemReturned` does exactly that, but **nothing in the UI calls it yet**, so the Returned state is currently only reachable by setting the column directly.
+
+## Inventory audits
+
+An inventory audit is someone standing in the hardware storage facility scanning everything on the shelf. The admin "Inventory audit" screen (`/adminHome/inventory/audit`) lists past audits newest first with a single badge for each — **All accounted for**, **N missing**, or **N discrepancies** — and a **New audit** button that opens the live scan at `/adminHome/inventory/audit/new`. Clicking a past audit opens its report at `/adminHome/inventory/audit/:id`.
+
+The scan screen loads every serialised hardware unit, marks each one as expected on the shelf or out on loan, then counts down as barcodes arrive. Hardware is scanned in any order and each barcode counts once; the running lists are **Missing** (selected by default — it's the one you walk the shelf against, and the only one that gets shorter as you work), **Confirmed**, **Checked out** and **Flagged**. Each read lands on the viewfinder as a marker the way the hand-off scan does: a green tick for a unit counted, a neutral tick for a label scanned twice, an amber warning for a unit found on the shelf that the records say is out on loan, and a red cross for a barcode matching nothing in inventory. It uses the same `useBarcodeScanner` hook as the checkout, return and hand-off flows — see [Hardware loans](#hardware-loans) for how that works and why the polyfill is there — differing only in that it never stops: every read restarts the camera loop, because an audit is dozens of scans in a row rather than one verification. Serial numbers are normalised through `normalizeSerialNumber` in [`src/lib/serialNumber.ts`](src/lib/serialNumber.ts), shared with those three flows, so a label reading `HJXPP41T5` matches a unit stored as `SYN-HJXPP41T5`. Typing a serial by hand does the same thing as scanning it, for a camera that won't focus, a peeling label, or a browser with no scanner at all.
+
+Five outcomes are recorded per unit, and they're what the report is built from:
+
+| Outcome | What it means |
+| --- | --- |
+| Confirmed | Expected on the shelf, and scanned |
+| Missing | The records placed it in stock, but it was never scanned |
+| Checked out | Out on an approved loan, so its absence is accounted for |
+| Found in stock | Scanned on the shelf although the records say it's out on loan — a return that was never recorded, or the wrong unit handed over |
+| Not recognised | A barcode matching no unit in inventory |
+
+"Out on loan" is the same rule as everywhere else in the app: reserved on an approved `loan_requests` row whose `loan_request_items.returned_at` is still null. Consumables never appear — they have no `equipment_units` rows to scan, and `quantity_total` is their whole stock record.
+
+Nothing is written until **Finish audit**. A half-saved audit abandoned by a phone going to sleep mid-shelf would be indistinguishable from a real finding of mass disappearance, and an audit is only meaningful as a complete statement about a moment. Finishing records **every** unit in inventory, not just the scanned ones: a report that listed only what turned up couldn't be read back as "these two were missing", and the absences are the finding.
+
+### Why a report is a snapshot
+
+`inventory_audits` and `inventory_audit_entries` copy in the serial number, the product name and the borrower's name alongside the foreign keys, the same way `audit_log` snapshots its actor. The interesting question about a three-month-old audit is *what did we find that day*; recomputing it against today's inventory would answer a different question every time it was opened, and would answer nothing at all for a unit since deleted. The report screen therefore re-checks none of it, and says as much under the list. The one thing it doesn't show is the product photo — an image fetched today for a unit that has since been re-photographed would be the only part of the page not from that day.
+
+Rows arrive solely through `record_inventory_audit(p_entries jsonb, p_note text)`, a `SECURITY DEFINER` function: the audit row and its entries land in one transaction, the counts are derived from the entries server-side so they can't disagree with them, and neither table carries an insert, update or delete policy or grant. An admin can read every audit and write none of them directly; a member can read none. Recording one also writes an `inventory_audit.recorded` entry to `audit_log`, so it shows up on the App audit log beside everything else.
+
+### Applying the migration
+
+[`supabase/migrations/20260924000000_inventory_audits.sql`](supabase/migrations/20260924000000_inventory_audits.sql), the same way as the others — paste it into the Supabase SQL editor (see the note at the end of [App audit log](#app-audit-log) about why `supabase db push` is not interchangeable here). It depends on `equipment`/`equipment_units`, `loan_request_items` and the `audit_write` helper from `20260921000000_audit_log.sql`, so run those first. It needs no secrets and is safe to re-run.
 
 ## App audit log
 

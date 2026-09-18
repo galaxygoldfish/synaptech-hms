@@ -24,6 +24,8 @@ import AdminAuditLogPage from './pages/AdminAuditLogPage'
 import AdminManageInventoryPage from './pages/AdminManageInventoryPage'
 import ManageInventoryItemPage from './pages/ManageInventoryItemPage'
 import AdminInventoryAuditPage from './pages/AdminInventoryAuditPage'
+import AdminInventoryAuditScanPage from './pages/AdminInventoryAuditScanPage'
+import AdminInventoryAuditReportPage from './pages/AdminInventoryAuditReportPage'
 import AdminMemberDetailPage from './pages/AdminMemberDetailPage'
 import AddInventoryItemPage from './pages/AddInventoryItemPage'
 import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
@@ -125,6 +127,10 @@ export function AppRouter() {
           <Route path="/adminHome/audit-log" element={<AdminRoute><AdminAuditLogPage /></AdminRoute>} />
           <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />
           <Route path="/adminHome/inventory/audit" element={<AdminRoute><AdminInventoryAuditPage /></AdminRoute>} />
+          {/* "new" is a static segment, so React Router ranks it above the
+              :id route below it regardless of their order here. */}
+          <Route path="/adminHome/inventory/audit/new" element={<AdminRoute><AdminInventoryAuditScanPage /></AdminRoute>} />
+          <Route path="/adminHome/inventory/audit/:id" element={<AdminRoute><AdminInventoryAuditReportPage /></AdminRoute>} />
           <Route path="/adminHome/inventory/:id" element={<AdminRoute><ManageInventoryItemPage /></AdminRoute>} />
           <Route path="/adminHome/members/:id" element={<AdminRoute><AdminMemberDetailPage /></AdminRoute>} />
           <Route path="/adminHome/add-item" element={<AdminRoute><AddInventoryItemPage /></AdminRoute>} />

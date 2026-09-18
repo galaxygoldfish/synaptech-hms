@@ -8,11 +8,10 @@ import { ArrowLeftIcon, ChevronRightIcon, ImagePlaceholderIconFilled, ScanIconFi
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import { fetchEquipmentUnitBySerial } from '../../lib/inventory'
 import { fetchLoanRequestItemDetail, type AdminLoanRequestDetail } from '../../lib/loanRequests'
+import { normalizeSerialNumber } from '../../lib/serialNumber'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HandOffAgreement.module.css'
-
-const SERIAL_PREFIX = 'SYN-'
 
 // Long enough to register as a result rather than a flicker, short enough
 // not to hold up someone standing there with the hardware in their hands.
@@ -49,14 +48,6 @@ function ScanMarker({ feedback }: { feedback: ScanFeedback }) {
       </span>
     </div>
   )
-}
-
-// Same normalisation the scan-based checkout and return flows use, so a
-// barcode that reads "HJXPP41T5" matches a serial stored as "SYN-HJXPP41T5".
-function normalizeSerial(raw: string): string {
-  const trimmed = raw.trim().toUpperCase()
-  if (!trimmed) return ''
-  return trimmed.startsWith(SERIAL_PREFIX) ? trimmed : `${SERIAL_PREFIX}${trimmed}`
 }
 
 export default function HandOffScan() {
@@ -132,7 +123,7 @@ export default function HandOffScan() {
     // The loop can fire again while a result is still on screen; ignore it
     // rather than stacking overlays and timers.
     if (!detail || feedback) return
-    const scanned = normalizeSerial(rawValue)
+    const scanned = normalizeSerialNumber(rawValue)
 
     // An item with no unit assigned has nothing to check against, so any
     // barcode would be as good as none — those go through attestation.
@@ -141,7 +132,7 @@ export default function HandOffScan() {
       return
     }
 
-    if (scanned === normalizeSerial(detail.serialNumber)) {
+    if (scanned === normalizeSerialNumber(detail.serialNumber)) {
       setFeedback({ kind: 'success' })
       holdTimer.current = setTimeout(() => goToAgreement('scan'), SUCCESS_HOLD_MS)
       return

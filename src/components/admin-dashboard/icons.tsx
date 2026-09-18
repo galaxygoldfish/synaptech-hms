@@ -438,6 +438,14 @@ export function AuditLogIconFilled({ size = 16, color = "#474747", className }: 
   );
 }
 
+export function CheckmarkIconFilled({ size = 18, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size * (15.3881 / 22.5)} viewBox="0 0 22.5 15.3881" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M8.4375 15.3881L0 6.95062L1.32563 5.625L8.4375 12.7359L21.1744 0L22.5 1.32562L8.4375 15.3881Z" fill={color} />
+    </svg>
+  );
+}
+
 export function CheckmarkCircleIconFilled({ size = 124, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 124.25 124.25" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
