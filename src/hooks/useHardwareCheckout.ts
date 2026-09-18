@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { handOffLoanRequestItem } from '../lib/loanRequests'
+import { normalizeSerialNumber, SERIAL_PREFIX } from '../lib/serialNumber'
 
 export type CheckoutStep = 'scan' | 'loading' | 'attest' | 'finalizing' | 'error' | 'success'
 
-const SERIAL_PREFIX = 'SYN-'
 const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
 
 interface PendingApproval {
@@ -17,12 +17,6 @@ interface PendingApproval {
   serial: string
   managerId: string
   managerName: string
-}
-
-function normalizeSerial(raw: string) {
-  const trimmed = raw.trim().toUpperCase()
-  if (!trimmed) return ''
-  return trimmed.startsWith(SERIAL_PREFIX) ? trimmed : `${SERIAL_PREFIX}${trimmed}`
 }
 
 /**
@@ -45,7 +39,7 @@ export function useHardwareCheckout() {
   const cancelledRef = useRef(false)
 
   const submitSerial = useCallback(async (rawSerial: string, managerId: string, managerName: string) => {
-    const serial = normalizeSerial(rawSerial)
+    const serial = normalizeSerialNumber(rawSerial)
     if (!serial || serial === SERIAL_PREFIX) {
       setErrorMessage('Please provide a serial number.')
       setStep('error')

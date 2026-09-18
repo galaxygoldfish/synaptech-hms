@@ -283,13 +283,17 @@
   margin: 0;
 }
 
+/* Grey, not the app's blue: blue is what this app tints the thing it wants
+   you to reach for, and this is the way past the scan rather than the way
+   through it. The row grey and its hover are the same pair every list row
+   uses. */
 .attestButton {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  background: rgba(131, 156, 197, 0.17);
+  background: #f4f4f4;
   border: none;
   border-radius: 0.9375rem;
   padding: 1rem 1.25rem;
@@ -299,7 +303,7 @@
 }
 
 .attestButton:hover {
-  background: rgba(131, 156, 197, 0.3);
+  background: #ececec;
 }
 
 .attestButtonLabel {

@@ -1,0 +1,974 @@
+/* Shared by all three inventory-audit screens — the history list
+   (InventoryAudit.tsx), the live scan (InventoryAuditScan.tsx) and a past
+   report (InventoryAuditReport.tsx) — the way HandOffScan and
+   HandOffAgreement share one module. They are one flow, and a row or badge
+   has to look identical whether you're watching it fill or reading it back
+   three months later.
+
+   The page frame, card, toolbar, filter chips and row grid follow
+   AuditLog.module.css; the camera frame, overlay and result marker follow
+   HandOffAgreement.module.css. What's new here is the five-way outcome
+   badge and the progress bar. */
+
+.page {
+  min-height: 100vh;
+  background: var(--white);
+  padding-bottom: 3rem;
+}
+
+.main {
+  width: 100%;
+  padding: 0.5rem clamp(1.25rem, 4vw, 2.4375rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ── Top row (back button + centered heading) ────────────────── */
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.backButton:hover {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.heading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .backButton {
+    padding: 0.8125rem;
+  }
+
+  .backButton span {
+    display: none;
+  }
+
+  .heading {
+    font-size: 1.375rem;
+  }
+
+  .finishButton {
+    padding: 0.8125rem;
+  }
+
+  .finishButton span {
+    display: none;
+  }
+}
+
+/* ── Card + toolbar ───────────────────────────────────────── */
+
+.card {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Stretch, not center: the search bar and the "New audit" button have to be
+   the same height, and their natural heights differ by a couple of pixels
+   because one is sized by an icon and an <input> and the other by a line of
+   text. Letting the taller one set the height is exact and stays exact
+   through a font or icon change, where matching padding by arithmetic
+   wouldn't. */
+.toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  flex: 1;
+  min-width: 14rem;
+}
+
+/* The wrapper stretches; this passes that height down to the search bar
+   itself, which is the element that actually draws the border. */
+.searchWrap > * {
+  height: 100%;
+}
+
+/* The "+" that starts an audit. Borrows the member-facing "check out
+   hardware" card's blue — same border and ink — so the one button on this
+   screen that begins something reads as the app's start-a-thing colour
+   rather than a fourth shade of blue.
+
+   Its border width, radius and padding are the search bar's (.searchBar in
+   AdminHome.module.css) so the two match visually; the toolbar's
+   `align-items: stretch` is what makes their heights identical to the pixel,
+   which is why setting this in Bungee — a wider face on a taller line box
+   than the search bar's Rubik — doesn't pull the pair out of alignment. */
+.newAuditButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  /* The search bar's own icon-to-text gap, since the two sit side by side. */
+  gap: 1rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: 3px solid rgba(131, 153, 197, 0.86);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.75rem;
+  color: #536a8a;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.0625rem;
+}
+
+.newAuditButton:hover:not(:disabled) {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.newAuditButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4375rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filterRow::-webkit-scrollbar {
+  display: none;
+}
+
+.filterChip {
+  flex-shrink: 0;
+  height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1.5625rem;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-radius: 1.25rem;
+  background: none;
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.filterChip:hover {
+  border-color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.filterChipActive {
+  border-color: rgba(83, 106, 138, 0.7);
+  background: rgba(131, 156, 197, 0.44);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* The count in a chip is the useful part while walking a shelf, so it stays
+   legible at the smaller sizes rather than shrinking with the label. */
+.filterChipCount {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 640px) {
+  .filterChip {
+    height: 2.75rem;
+    padding: 0 1rem;
+    font-size: 0.9375rem;
+    border-width: 2px;
+  }
+
+  .filterChipCount {
+    font-size: 0.8125rem;
+  }
+}
+
+.status {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  padding: 3rem 0;
+  max-width: 34rem;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.count {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+
+.inlineError {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: #b9433c;
+  margin: 0;
+}
+
+/* ── Outcome badges ───────────────────────────────────────── */
+/* The same rectangle-and-Rubik badge as the loan-status badges on "View
+   hardware loans" and the category badges on the app audit log, reusing
+   that palette: green for settled, red for a shortfall, yellow for
+   something needing a look, blue-grey for accounted-for elsewhere. */
+
+.badge {
+  display: inline-block;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.7);
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.4375rem;
+  white-space: nowrap;
+}
+
+.badgeConfirmed {
+  background: rgba(161, 208, 167, 0.44);
+}
+
+.badgeMissing {
+  background: rgba(208, 161, 161, 0.44);
+}
+
+.badgeCheckedOut {
+  background: rgba(131, 156, 197, 0.44);
+}
+
+.badgeFoundCheckedOut {
+  background: rgba(208, 206, 161, 0.44);
+}
+
+.badgeUnrecognized {
+  background: rgba(166, 161, 208, 0.44);
+}
+
+/* ── Audit history rows ───────────────────────────────────── */
+
+.auditList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* Three cells: how it came out, what it found, and when. The outcome leads,
+   because that's what a reader scans this list for; the date closes the row
+   as plain text, the way the app audit log ends its rows. */
+.auditItem,
+.auditSkeletonRow {
+  width: 100%;
+  display: grid;
+  /* The outcome column is a fixed width, not auto: the chips differ in width
+     ("3 missing" against "All accounted for") and a column of rows whose
+     headlines each start somewhere different is hard to read down. The same
+     reason "View hardware loans" gives its status badge a fixed slot. */
+  grid-template-columns: 10.5rem minmax(0, 1fr) auto;
+  grid-template-areas: 'outcome summary time';
+  align-items: center;
+  gap: 1.5rem;
+  background: #f4f4f4;
+  border: none;
+  border-radius: 0.9375rem;
+  padding: 1rem 1.375rem;
+  font: inherit;
+  text-align: left;
+}
+
+.auditItem {
+  cursor: pointer;
+}
+
+.auditItem:hover {
+  background: #ececec;
+}
+
+.outcomeChip {
+  grid-area: outcome;
+  justify-self: start;
+}
+
+.performedAt {
+  grid-area: time;
+  justify-self: end;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.summaryCell {
+  grid-area: summary;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.summaryText {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0;
+}
+
+.summarySub {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  /* One cell per line. Outcome and date won't share a row here: the chip and
+     a nowrap timestamp together need more width than a phone has, and an
+     end-aligned date wider than its cell overflows back over the chip. */
+  .auditItem,
+  .auditSkeletonRow {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'outcome'
+      'summary'
+      'time';
+    gap: 0.5rem;
+  }
+
+  .performedAt {
+    justify-self: start;
+  }
+}
+
+/* ── Scan screen ──────────────────────────────────────────── */
+
+.scanLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.75rem;
+}
+
+@media (max-width: 62rem) {
+  .scanLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.scanColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.scanFrame {
+  position: relative;
+  width: 100%;
+  /* Same 40:21 as the hand-off viewfinder. */
+  aspect-ratio: 40 / 21;
+  border: 3px dashed #d5d8dd;
+  border-radius: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f4f5f7;
+}
+
+.scanVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Blurring the live picture while a result is up makes the marker the only
+   thing in focus, and stops the camera visibly hunting for another barcode
+   behind an answer that's already been given. */
+.scanVideoBlurred {
+  filter: blur(8px) brightness(0.92);
+}
+
+.scanPlaceholder {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #c3c9d3;
+  text-align: center;
+  padding: 0 1.5rem;
+  margin: 0;
+}
+
+.scanOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+}
+
+.scanMarker {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.25);
+}
+
+.scanMarkerSuccess {
+  background: #2bc217;
+}
+
+.scanMarkerFailure {
+  background: #d0342c;
+}
+
+/* Amber, not red: a unit found on the shelf that the records say is out is a
+   discrepancy worth stopping over, not a rejected scan. */
+.scanMarkerWarning {
+  background: #d99b1c;
+}
+
+/* Neutral: scanning the same label twice is a non-event, and colouring it
+   like one would train the auditor to ignore the marker entirely. */
+.scanMarkerRepeat {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.scanMarkerGlyph {
+  width: 3.5rem;
+  height: 3.5rem;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Sits on its own dark plate: the text is over a live camera picture, which
+   can be any colour from one frame to the next. */
+.scanFeedbackText {
+  max-width: 85%;
+  background: rgba(0, 0, 0, 0.62);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.875rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+  text-align: center;
+}
+
+.scanCaption {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 40rem) {
+  .scanMarker {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+
+  .scanMarkerGlyph {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .scanFeedbackText {
+    font-size: 0.9375rem;
+  }
+}
+
+/* ── Manual serial entry ──────────────────────────────────── */
+/* The same SYN- prefixed field as "Get a replacement label", for the same
+   reason the hand-off screen offers a manual attestation: a camera that
+   won't focus, a peeling label, or a browser without a scanner can't be
+   allowed to stop an audit. */
+
+.manualEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.manualLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.manualRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0.625rem;
+}
+
+.serialField {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: #f4f4f4;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.9375rem;
+  padding: 0.75rem 1rem;
+}
+
+.serialPrefix {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.serialInput {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.manualAddButton {
+  flex-shrink: 0;
+  background: rgba(131, 156, 197, 0.17);
+  border: 3px solid rgba(131, 156, 197, 0.17);
+  border-radius: 0.9375rem;
+  padding: 0 1.25rem;
+  color: #4a647f;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+}
+
+.manualAddButton:hover:not(:disabled) {
+  background: rgba(131, 156, 197, 0.28);
+}
+
+.manualAddButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Progress ─────────────────────────────────────────────── */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progressHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.progressLabel {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.progressSub {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.progressTrack {
+  height: 0.75rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* rgb(131, 156, 197) at full strength — the app's blue, which every other
+   tinted surface here is an alpha of. */
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: #839cc5;
+  transition: width 200ms ease-out;
+}
+
+/* ── Unit rows (both the live lists and a past report) ────── */
+
+.unitList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Capped and scrollable: a full audit is hundreds of units, and a list that
+   pushes the camera and the Finish button off the screen would make the one
+   thing the auditor is holding in their hands the hardest to reach. */
+.unitListScroll {
+  max-height: 32rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.unitRow {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  background: #f4f4f4;
+  border-radius: 0.9375rem;
+  padding: 0.75rem 1.125rem;
+}
+
+.unitThumb,
+.unitThumbEmpty {
+  width: 3.25rem;
+  height: 2.375rem;
+  border-radius: 0.5rem;
+}
+
+.unitThumb {
+  object-fit: contain;
+}
+
+.unitThumbEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.unitInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.unitName {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unitMeta {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unitTrailing {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.unitTime {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  /* The outcome badge stays on the row with the photo and the name rather
+     than wrapping onto a line of its own: it only means anything read
+     against the item it belongs to, and a row per unit is already the unit
+     of scanning here. The name and serial ellipse to make room for it.
+
+     Stacked rather than side by side, because a confirmed row carries a scan
+     time as well as a badge, and the two together are wider than a phone can
+     spare from the name. */
+  .unitTrailing {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+  }
+}
+
+/* ── Note field + finish ──────────────────────────────────── */
+
+.noteField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.noteInput {
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+  background: #f4f4f4;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.9375rem;
+  padding: 0.75rem 1rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.9);
+  outline: none;
+}
+
+.noteInput:focus {
+  border-color: rgba(131, 156, 197, 0.6);
+}
+
+/* The finish action lives in the top row, in the third grid cell that
+   otherwise just balances the centred heading. Same green Save button as
+   "Manage product details" (.saveButton in ManageInventoryItemPage.module.css)
+   — this is the same gesture in the same place, so it's the same control,
+   with a tick instead of a disk. Collapses to the icon alone on a phone,
+   exactly as the Save and Delete pair does. */
+.headerActions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.finishButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(161, 208, 167, 0.5);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+
+.finishButton:hover:not(:disabled) {
+  background: rgba(161, 208, 167, 0.7);
+}
+
+.finishButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Report summary tiles ─────────────────────────────────── */
+/* The answer to "what did this audit find" in one glance, before the
+   itemised list below it. */
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: #f4f4f4;
+  border: 3px solid transparent;
+  border-radius: 0.9375rem;
+  padding: 1.125rem 1.375rem;
+}
+
+/* Tinted to match the badge the same outcome carries in the list below, so
+   "2" under Missing and a red "Missing" badge read as the same fact — and
+   bordered on the dashboard's stat-card formula (.statCard in
+   AdminHome.module.css): the same hue at 0.44 behind a 3px edge of it at
+   0.86. These are that screen's counters, one level down. */
+.tileConfirmed {
+  background: rgba(161, 208, 167, 0.44);
+  border-color: rgba(161, 208, 167, 0.86);
+}
+
+.tileMissing {
+  background: rgba(208, 161, 161, 0.44);
+  border-color: rgba(208, 161, 161, 0.86);
+}
+
+.tileCheckedOut {
+  background: rgba(131, 156, 197, 0.44);
+  border-color: rgba(131, 156, 197, 0.86);
+}
+
+.tileDiscrepancies {
+  background: rgba(208, 206, 161, 0.44);
+  border-color: rgba(208, 206, 161, 0.86);
+}
+
+.tileValue {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 2rem;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* A dark ink of the tile's own hue, so the number carries the tone rather
+   than leaving the fill to do it alone. These are the dashboard stat cards'
+   four inks (.statCardGreen/Red/Blue/Olive in AdminHome.module.css) — the
+   same tone families, so the app has one dark green rather than two. */
+.tileConfirmed .tileValue {
+  color: #0b5b0a;
+}
+
+.tileMissing .tileValue {
+  color: #7a1f1f;
+}
+
+.tileCheckedOut .tileValue {
+  color: #103a66;
+}
+
+.tileDiscrepancies .tileValue {
+  color: #525712;
+}
+
+.tileLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+
+/* ── Report meta ──────────────────────────────────────────── */
+
+/* Definition rows in the app's own format: one tinted pill per fact, term on
+   the left and value on the right — the same rows the loan detail screen uses
+   (.row / .rowLabel / .rowValue in LoanDetail.module.css), which is the other
+   place an admin reads a record's particulars off a card. */
+.metaList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: #f4f4f4;
+  border-radius: 0.75rem;
+  padding: 1.125rem 1.5rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.metaLabel {
+  color: rgba(0, 0, 0, 0.93);
+  white-space: nowrap;
+}
+
+.metaValue {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.93);
+  text-align: right;
+  word-break: break-word;
+}
+
+.metaSub {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 640px) {
+  /* Term over value rather than across from it — at this width the two
+     collide, and a right-aligned value with nothing to its left reads as
+     stray. */
+  .metaRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 1rem 1.125rem;
+    font-size: 1rem;
+  }
+
+  .metaValue {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+.sectionLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+/* Screen-reader-only text. Matches the .srOnly rule in Skeleton.module.css
+   and AuditLog.module.css. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

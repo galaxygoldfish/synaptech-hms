@@ -4,14 +4,28 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
-import { ArrowLeftIcon, ChevronRightFilled, ImageIcon } from './icons'
+import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled } from './icons'
 import { fetchEquipmentInventorySummary, type EquipmentInventoryRow } from '../../lib/inventory'
 import type { UserProfile } from '../../types'
-import { Skeleton, SkeletonLabel } from '../skeleton/Skeleton'
+import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageInventory.module.css'
 
 function matchesQuery(row: EquipmentInventoryRow, query: string): boolean {
   return row.equipment.name.toLowerCase().includes(query)
+}
+
+/**
+ * One of the three counts on a row. The label sits under the number rather
+ * than in a header row above the list: these are pill rows, not a table, and
+ * a column heading a phone has scrolled past explains nothing.
+ */
+function Count({ value, label, tone }: { value: number; label: string; tone: string }) {
+  return (
+    <span className={`${styles.count} ${tone}`}>
+      <span className={styles.countValue}>{value}</span>
+      <span className={styles.countLabel}>{label}</span>
+    </span>
+  )
 }
 
 export default function ManageInventory() {
@@ -72,100 +86,94 @@ export default function ManageInventory() {
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <div className={styles.toolbar}>
-          <button type="button" className={styles.backButton} onClick={() => navigate('/adminHome')} aria-label="Back">
+        <div className={styles.topRow}>
+          <button
+            type="button"
+            className={styles.backButton}
+            onClick={() => navigate('/adminHome')}
+            aria-label="Back"
+          >
             <ArrowLeftIcon size={20} />
             <span>Back</span>
           </button>
-          <div className={styles.searchWrap}>
-            <SearchBar value={query} onChange={setQuery} placeholder="Search hardware inventory" />
-          </div>
+          <h1 className={styles.heading}>Manage hardware inventory</h1>
+          <div />
         </div>
 
         <div className={styles.card}>
-          {isLoading && <SkeletonLabel label="Loading inventory…" />}
+          <div className={styles.toolbar}>
+            <div className={styles.searchWrap}>
+              <SearchBar value={query} onChange={setQuery} placeholder="Search hardware inventory" />
+            </div>
+          </div>
+
+          {isLoading && (
+            <SkeletonScreen label="Loading inventory…">
+              <ul className={styles.itemList}>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <li key={index}>
+                    <div className={styles.skeletonRow}>
+                      <Skeleton width="4.5rem" height="3.25rem" radius="0.625rem" style={{ gridArea: 'thumb' }} />
+                      <Skeleton width="45%" height="1.5rem" shape="pill" style={{ gridArea: 'info' }} />
+                      <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'total' }} />
+                      <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'out' }} />
+                      <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'in' }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </SkeletonScreen>
+          )}
+
           {!isLoading && error && <p className={styles.status}>{error}</p>}
-          {!isLoading && !error && visibleRows.length === 0 && (
+
+          {!isLoading && !error && rows.length === 0 && (
+            <p className={styles.status}>
+              There is no hardware in the catalogue yet. Add an item and it will appear here with its
+              stock counts.
+            </p>
+          )}
+
+          {!isLoading && !error && rows.length > 0 && visibleRows.length === 0 && (
             <p className={styles.status}>No inventory items match your search.</p>
           )}
 
-          {/* The header row is real even while loading, so only the body
-              swaps in place when the data arrives. */}
-          {!error && (isLoading || visibleRows.length > 0) && (
-            <table className={styles.table} aria-busy={isLoading}>
-              <thead>
-                <tr>
-                  <th className={styles.thImage} aria-hidden="true" />
-                  <th className={styles.thName}>Name</th>
-                  <th className={styles.thSpacer} aria-hidden="true" />
-                  <th className={styles.thQty}>Total qty</th>
-                  <th className={styles.thQty}>Checked out</th>
-                  <th className={styles.thQty}>In stock</th>
-                  <th className={styles.thSpacer} aria-hidden="true" />
-                  <th className={styles.thChevron} aria-hidden="true" />
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading &&
-                  Array.from({ length: 6 }, (_, index) => (
-                    <tr key={`skeleton-${index}`} className={styles.row} aria-hidden="true">
-                      <td className={styles.tdImage}>
-                        <Skeleton width="2.75rem" height="2rem" radius="0.375rem" />
-                      </td>
-                      <td className={styles.tdName}>
-                        <Skeleton width="60%" height="1.125rem" shape="pill" />
-                      </td>
-                      <td className={styles.tdSpacer} />
-                      <td className={styles.tdQty}>
-                        <Skeleton width="2ch" height="1.125rem" shape="pill" />
-                      </td>
-                      <td className={styles.tdQty}>
-                        <Skeleton width="2ch" height="1.125rem" shape="pill" />
-                      </td>
-                      <td className={styles.tdQty}>
-                        <Skeleton width="2ch" height="1.125rem" shape="pill" />
-                      </td>
-                      <td className={styles.tdSpacer} />
-                      <td className={styles.tdChevron} />
-                    </tr>
-                  ))}
-                {!isLoading &&
-                  visibleRows.map(({ equipment, checkedOut }) => (
-                  <tr
-                    key={equipment.id}
-                    className={styles.row}
-                    role="button"
-                    tabIndex={0}
+          {!isLoading && !error && visibleRows.length > 0 && (
+            <ul className={styles.itemList}>
+              {visibleRows.map(({ equipment, checkedOut }) => (
+                <li key={equipment.id}>
+                  <button
+                    type="button"
+                    className={styles.itemRow}
                     onClick={() => navigate(`/adminHome/inventory/${equipment.id}`)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        navigate(`/adminHome/inventory/${equipment.id}`)
-                      }
-                    }}
                   >
-                    <td className={styles.tdImage}>
-                      {equipment.image_url ? (
-                        <img src={equipment.image_url} alt="" className={styles.itemThumb} />
-                      ) : (
-                        <ImageIcon size={20} />
-                      )}
-                    </td>
-                    <td className={styles.tdName}>{equipment.name}</td>
-                    <td className={styles.tdSpacer} aria-hidden="true" />
-                    <td className={`${styles.tdQty} ${styles.colTotal}`}>{equipment.quantity_total}</td>
-                    <td className={`${styles.tdQty} ${styles.colCheckedOut}`}>{checkedOut}</td>
-                    <td className={`${styles.tdQty} ${styles.colInStock}`}>
-                      {equipment.quantity_total - checkedOut}
-                    </td>
-                    <td className={styles.tdSpacer} aria-hidden="true" />
-                    <td className={styles.tdChevron}>
-                      <ChevronRightFilled size={8} className={styles.chevronIcon} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    {equipment.image_url ? (
+                      <img src={equipment.image_url} alt="" className={styles.itemThumb} />
+                    ) : (
+                      <span className={styles.itemThumbEmpty}>
+                        <ImagePlaceholderIconFilled size={24} />
+                      </span>
+                    )}
+
+                    <span className={styles.itemInfo}>
+                      <span className={styles.itemName}>{equipment.name}</span>
+                    </span>
+
+                    <Count value={equipment.quantity_total} label="total" tone={styles.countTotal} />
+                    <Count value={checkedOut} label="checked out" tone={styles.countOut} />
+                    <Count
+                      value={equipment.quantity_total - checkedOut}
+                      label="in stock"
+                      tone={styles.countIn}
+                    />
+
+                    <span className={styles.chevron}>
+                      <ChevronRightFilled size={9} />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </main>

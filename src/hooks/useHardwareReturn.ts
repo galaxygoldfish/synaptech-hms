@@ -1,15 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { normalizeSerialNumber, SERIAL_PREFIX } from '../lib/serialNumber'
 
 export type ReturnStep = 'scan' | 'serial' | 'loading' | 'error' | 'success'
-
-const SERIAL_PREFIX = 'SYN-'
-
-function normalizeSerial(raw: string) {
-  const trimmed = raw.trim().toUpperCase()
-  if (!trimmed) return ''
-  return trimmed.startsWith(SERIAL_PREFIX) ? trimmed : `${SERIAL_PREFIX}${trimmed}`
-}
 
 /**
  * Drives the admin "return hardware" sequence: scan or type a serial,
@@ -41,7 +34,7 @@ export function useHardwareReturn() {
   }, [])
 
   const submitSerial = useCallback(async (rawSerial: string) => {
-    const serial = normalizeSerial(rawSerial)
+    const serial = normalizeSerialNumber(rawSerial)
     if (!serial || serial === SERIAL_PREFIX) {
       setErrorMessage('Please provide a serial number.')
       setStep('error')
