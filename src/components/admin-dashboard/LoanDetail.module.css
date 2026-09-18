@@ -155,15 +155,57 @@
   background: rgba(166, 161, 208, 0.44);
 }
 
+/* Both of these are end states rather than something outstanding, so they
+   stay neutral instead of taking a fifth and sixth colour. */
+.badgeReturned {
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.badgeDenied {
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.5);
+}
+
 @media (max-width: 640px) {
+  /* At this width the badge and the item's meta line fought for the same
+     row and overlapped — the badge won't shrink and the meta line had
+     nothing stopping it running underneath. A two-row grid gives the badge
+     its own line instead of relying on flex-wrap, which couldn't break the
+     row while the thumb, name and badge were all on it. */
   .itemCard {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'thumb info'
+      'badge badge';
+    align-items: center;
     padding: 1.125rem 1.25rem;
-    gap: 1rem;
+    gap: 0.875rem 1rem;
+  }
+
+  .itemThumb {
+    grid-area: thumb;
+  }
+
+  .itemInfo {
+    grid-area: info;
+  }
+
+  .statusBadge {
+    grid-area: badge;
+    justify-self: start;
   }
 
   .itemName {
     font-size: 1.25rem;
+    white-space: normal;
+  }
+
+  .itemMeta {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    font-size: 1rem;
   }
 }
 
@@ -242,12 +284,21 @@
   .row,
   .memberRow {
     padding: 1.125rem 1.25rem;
+    gap: 0.75rem;
   }
 
   .rowLabel,
   .rowValue,
   .rowValueLink {
     font-size: 1.0625rem;
+  }
+
+  /* Wrapping beats the ellipsis here: at this width even "September 8 2026"
+     was being cut off, and a truncated date is worse than a two-line one. */
+  .rowValue,
+  .rowValueLink {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -281,22 +332,51 @@
   white-space: nowrap;
 }
 
-/* ── Secondary actions (availability, signed agreement) ───── */
+/* ── Actions (hand off / return, availability, agreement) ─── */
 
-.agreementRow {
+/* One zone directly under the item card: an admin arrives here to do
+   something to this loan, so what they can do sits with what it is rather
+   than below every detail row. */
+.actionRow {
   width: min(64rem, 100%);
   margin: 0 auto;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.secondaryActions {
-  display: flex;
-  justify-content: center;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+/* Matches the save/delete buttons on "manage inventory item" — the app's
+   established page-level action, rather than a shape only this screen has. */
+.primaryAction {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(161, 208, 167, 0.5);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.primaryAction:hover:not(:disabled) {
+  background: rgba(161, 208, 167, 0.7);
+}
+
+.primaryAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionNote {
+  width: min(64rem, 100%);
+  margin: 0 auto;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.5);
 }
 
 .agreementButton {
@@ -323,10 +403,11 @@
 }
 
 .inlineError {
+  width: min(64rem, 100%);
+  margin: 0 auto;
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
   color: #b9433c;
-  margin: 0;
 }
 
 /* The page's cards are direct children of the main flex column; the

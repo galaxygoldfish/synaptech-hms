@@ -44,6 +44,51 @@ function DetailRow({ label, value }: DetailRowProps) {
   )
 }
 
+/**
+ * A home address, hidden until an admin asks for it.
+ *
+ * Not removed, because it isn't decorative: it's printed on the loan
+ * agreement each member signs (see AgreementPreview.tsx), and it's what the
+ * club has to go on when hardware doesn't come back. Taking the row away
+ * wouldn't even remove admin access — the signed PDF is downloadable from
+ * the loan detail screen — it would only make a legitimate lookup harder.
+ *
+ * What's worth changing is the default: opening someone's profile to check
+ * their Discord handle shouldn't also put their home address on screen, in
+ * a room, on a shared laptop, over a screen share.
+ */
+function AddressRow({ address }: { address: string }) {
+  const [isRevealed, setRevealed] = useState(false)
+
+  return (
+    <div className={styles.row}>
+      <span className={styles.rowLabel}>Address</span>
+      <span className={styles.rowValueGroup}>
+        {isRevealed ? (
+          <span className={styles.rowValue}>{address}</span>
+        ) : (
+          // Fixed-length mask: the real length of an address is itself a
+          // detail worth not leaking, and a ragged row of dots would give it.
+          <span className={styles.rowValueHidden} aria-hidden="true">
+            ••••••••••••
+          </span>
+        )}
+        <button
+          type="button"
+          className={styles.revealButton}
+          onClick={() => setRevealed((wasRevealed) => !wasRevealed)}
+          aria-expanded={isRevealed}
+          // Someone tabbing between buttons hears only the label, and
+          // "Reveal" on its own doesn't say reveal what.
+          aria-label={isRevealed ? 'Hide home address' : 'Reveal home address'}
+        >
+          {isRevealed ? 'Hide' : 'Reveal'}
+        </button>
+      </span>
+    </div>
+  )
+}
+
 export default function MemberDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -178,7 +223,7 @@ export default function MemberDetail() {
               <DetailRow label="Student ID" value={member.student_id} />
               <DetailRow label="Discord" value={member.discord} />
               <DetailRow label="Phone #" value={member.phone} />
-              <DetailRow label="Address" value={member.address} />
+              <AddressRow address={member.address} />
               <DetailRow label="Registration date" value={formatRegistrationDate(member.created_at)} />
               <div className={styles.row}>
                 <span className={styles.rowLabel}>Privilege level</span>

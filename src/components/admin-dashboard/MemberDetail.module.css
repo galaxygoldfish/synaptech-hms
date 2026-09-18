@@ -112,6 +112,58 @@
   white-space: nowrap;
 }
 
+/* Holds the masked-or-revealed value next to its Reveal control, so the
+   pair sits where every other row's value sits. */
+.rowValueGroup {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.875rem;
+}
+
+/* Sized up and spaced out because a bullet sits well below Rubik's cap
+   height — at the rows' own 1.25rem the mask read as an almost-empty row
+   rather than as a value being withheld. */
+.rowValueHidden {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1.5rem;
+  line-height: 1.25rem;
+  color: rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.125rem;
+  white-space: nowrap;
+}
+
+/* Deliberately quiet: this is a considered action, not the thing the row is
+   for. Same tinted-pill shape as the secondary buttons on the loan detail
+   screen. */
+.revealButton {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.9375rem;
+  background: rgba(131, 156, 197, 0.17);
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.revealButton:hover {
+  background: rgba(131, 156, 197, 0.3);
+}
+
+@media (max-width: 640px) {
+  .rowValueHidden {
+    font-size: 1.0625rem;
+  }
+
+  .revealButton {
+    padding: 0.4375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+
 .privilegeBadge {
   flex-shrink: 0;
   display: inline-flex;

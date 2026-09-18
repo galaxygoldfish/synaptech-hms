@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
+import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, CalendarIcon, ChevronRightIcon, PersonIcon } from './icons'
 import {
   bucketForLoanItem,
@@ -22,6 +23,7 @@ const FILTERS: { value: LoanFilter; label: string }[] = [
   { value: 'overdue', label: 'Overdue' },
   { value: 'requests', label: 'Requests' },
   { value: 'returns', label: 'Returns' },
+  { value: 'returned', label: 'Returned' },
 ]
 
 const FILTER_VALUES = FILTERS.map((f) => f.value)
@@ -30,11 +32,17 @@ function parseFilter(value: string | null): LoanFilter {
   return (FILTER_VALUES as string[]).includes(value ?? '') ? (value as LoanFilter) : 'all'
 }
 
+function matchesQuery(loan: AdminLoanRequestItemSummary, query: string): boolean {
+  const haystack = [loan.itemName, loan.serialNumber ?? '', loan.memberName].join(' ').toLowerCase()
+  return haystack.includes(query)
+}
+
 const BADGE_CLASS: Record<LoanBucket, string> = {
   active: styles.badgeActive,
   overdue: styles.badgeOverdue,
   requests: styles.badgeRequests,
   returns: styles.badgeReturns,
+  returned: styles.badgeReturned,
 }
 
 const BADGE_LABEL: Record<LoanBucket, string> = {
@@ -42,6 +50,7 @@ const BADGE_LABEL: Record<LoanBucket, string> = {
   overdue: 'Overdue',
   requests: 'Checkout requested',
   returns: 'Return requested',
+  returned: 'Returned',
 }
 
 function formatTimestampDate(iso: string): string {
@@ -56,6 +65,9 @@ function formatCalendarDate(iso: string): string {
 
 function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanBucket | null): string {
   if (bucket === 'requests') return `Requested on ${formatTimestampDate(loan.requestedAt)}`
+  // A closed loan's due date stopped mattering the moment it came back, so
+  // the row shows when that was instead.
+  if (bucket === 'returned' && loan.returnedAt) return `Returned on ${formatTimestampDate(loan.returnedAt)}`
   if (loan.returnDate) return `${formatTimestampDate(loan.requestedAt)} - ${formatCalendarDate(loan.returnDate)}`
   return formatTimestampDate(loan.requestedAt)
 }
@@ -70,6 +82,7 @@ export default function HardwareLoans() {
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<LoanFilter>(() => parseFilter(searchParams.get('filter')))
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -104,40 +117,50 @@ export default function HardwareLoans() {
   }, [profile])
 
   const visibleLoans = useMemo(() => {
+    const trimmed = query.trim().toLowerCase()
     return loans
       .map((loan) => ({ loan, bucket: bucketForLoanItem(loan) }))
       .filter((entry): entry is { loan: AdminLoanRequestItemSummary; bucket: LoanBucket } => {
         if (entry.bucket === null) return false
-        return filter === 'all' || entry.bucket === filter
+        if (filter !== 'all' && entry.bucket !== filter) return false
+        return !trimmed || matchesQuery(entry.loan, trimmed)
       })
-  }, [loans, filter])
+  }, [loans, filter, query])
 
   function handleLogOut() {
     setProfileOpen(false)
     signOut()
   }
 
-  function handleRowClick(loan: AdminLoanRequestItemSummary, bucket: LoanBucket) {
-    if (bucket !== 'requests' || !profile) return
-    navigate('/adminHome/checkout', { state: { requestItemId: loan.id } })
+  function handleRowClick(loan: AdminLoanRequestItemSummary) {
+    navigate(`/adminHome/loans/${loan.id}`)
   }
 
-  const emptyMessage =
-    filter === 'all' ? 'There are no hardware loans yet' : `There are no ${filter} hardware loans`
+  const emptyMessage = query.trim()
+    ? 'No hardware loans match your search'
+    : filter === 'all'
+      ? 'There are no hardware loans yet'
+      : `There are no ${filter} hardware loans`
 
   return (
     <div className={styles.page}>
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <button type="button" className={styles.backButton} onClick={() => navigate('/adminHome')} aria-label="Back">
-          <ArrowLeftIcon size={20} />
-          <span>Back</span>
-        </button>
+        <div className={styles.topRow}>
+          <button type="button" className={styles.backButton} onClick={() => navigate('/adminHome')} aria-label="Back">
+            <ArrowLeftIcon size={20} />
+            <span>Back</span>
+          </button>
+          <h1 className={styles.heading}>Hardware loans</h1>
+          <div />
+        </div>
 
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardLabel}>Hardware loans</span>
+            <div className={styles.searchWrap}>
+              <SearchBar value={query} onChange={setQuery} placeholder="Search by item, serial or member" />
+            </div>
             <div className={styles.chipRow}>
               {FILTERS.map((option) => {
                 const isActive = filter === option.value
@@ -190,9 +213,8 @@ export default function HardwareLoans() {
                   <button
                     type="button"
                     className={styles.loanItem}
-                    onClick={() => void handleRowClick(loan, bucket)}
-                    disabled={bucket !== 'requests' || isLoading}
-                    aria-label={bucket === 'requests' ? `Check out ${loan.itemName}` : loan.itemName}
+                    onClick={() => handleRowClick(loan)}
+                    aria-label={`View loan details for ${loan.itemName}`}
                   >
                     {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}
 

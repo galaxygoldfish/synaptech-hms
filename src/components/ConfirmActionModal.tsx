@@ -30,7 +30,17 @@ export default function ConfirmActionModal({
 
   return (
     <div className={`${styles.overlay} ${styles.overlayWelcome}`} onClick={onCancel}>
-      <div className={wide ? `${styles.modal} ${styles.modalWide}` : styles.modal} onClick={(event) => event.stopPropagation()}>
+      {/* Announced as a dialog, named by its own heading — matching the
+          modals elsewhere in the app (EmailLog's detail modal, say). Without
+          this it was an anonymous div, so assistive tech gave no signal that
+          a confirmation had taken over the screen. */}
+      <div
+        className={wide ? `${styles.modal} ${styles.modalWide}` : styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-label={heading}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={styles.headerRow}>
           <h2 className={styles.heading}>{heading}</h2>
         </div>

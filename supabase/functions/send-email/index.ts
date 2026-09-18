@@ -243,6 +243,67 @@ async function resolveEvent(
       return dispatch;
     }
 
+    // Set by markLoanRequestItemReturned (src/lib/loanRequests.ts) when an
+    // admin records a hand-back, via the trigger in
+    // 20260922000000_loan_item_return.sql. This is the event the
+    // successful-return-confirmation and hardware-returned templates have
+    // been waiting for since they were seeded — until the return flow
+    // existed there was nothing to fire them.
+    case "loan_item.returned": {
+      const item = unwrap(
+        await admin
+          .from("loan_request_items")
+          .select("loan_request_id, equipment_id, equipment_unit_id, returned_at, returned_by")
+          .eq("id", recordId)
+          .maybeSingle(),
+        "loan_item.returned: fetching loan_request_items row",
+      );
+      if (!item) return [];
+
+      const request = unwrap(
+        await admin.from("loan_requests").select("user_id").eq("id", item.loan_request_id).maybeSingle(),
+        "loan_item.returned: fetching loan_requests row",
+      );
+      if (!request) return [];
+
+      const [profileResult, equipmentResult] = await Promise.all([
+        admin.from("profiles").select("uw_email, first_name, last_name").eq("id", request.user_id).maybeSingle(),
+        admin.from("equipment").select("name").eq("id", item.equipment_id).maybeSingle(),
+      ]);
+      const profile = unwrap(profileResult, "loan_item.returned: fetching profile");
+      const equipment = unwrap(equipmentResult, "loan_item.returned: fetching equipment");
+      if (!profile || !equipment) return [];
+
+      let serial = "";
+      if (item.equipment_unit_id) {
+        const unit = unwrap(
+          await admin.from("equipment_units").select("serial_number").eq("id", item.equipment_unit_id).maybeSingle(),
+          "loan_item.returned: fetching equipment_units row",
+        );
+        serial = unit?.serial_number ?? "";
+      }
+
+      // returned_by is the receiving admin, recorded on the row itself —
+      // the same shape as loan_request.approved's reviewed_by, so actorId
+      // isn't needed here even though the trigger passes one.
+      const fields = {
+        user_name: `${profile.first_name} ${profile.last_name}`,
+        hardware_name: equipment.name,
+        hardware_serial: serial,
+        return_date: item.returned_at ? formatDate(item.returned_at) : "",
+        admin_name: await fetchActorName(admin, item.returned_by),
+      };
+
+      const dispatch: Dispatch = [
+        { templateKey: "successful-return-confirmation", to: profile.uw_email, fields },
+      ];
+      const adminEmails = await fetchAdminEmails(admin);
+      if (adminEmails.length > 0) {
+        dispatch.push({ templateKey: "hardware-returned", to: adminEmails, fields });
+      }
+      return dispatch;
+    }
+
     case "equipment.created":
     case "equipment.updated": {
       const equipment = unwrap(

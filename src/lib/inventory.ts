@@ -84,9 +84,8 @@ export async function setEquipmentQuantityTotal(equipmentId: string, quantityTot
   if (error) throw error
 }
 
-// Every unit of this equipment currently out on an approved (not yet
-// returned) loan — see fetchEquipmentInventorySummary for why "approved"
-// alone is the right check.
+// Every unit of this equipment currently out on an approved loan that
+// hasn't come back yet.
 export async function fetchEquipmentCheckedOutCount(equipmentId: string): Promise<number> {
   const { data: approvedRequests, error: requestsError } = await supabase
     .from('loan_requests')
@@ -102,6 +101,7 @@ export async function fetchEquipmentCheckedOutCount(equipmentId: string): Promis
     .select('id')
     .eq('equipment_id', equipmentId)
     .in('loan_request_id', approvedRequestIds)
+    .is('returned_at', null)
 
   if (itemsError) throw itemsError
   return items?.length ?? 0
@@ -147,11 +147,10 @@ export interface EquipmentUnitWithStatus {
 }
 
 // Every physical unit of a hardware product, each labeled available or
-// checked out based on whether it's reserved on an approved (not yet
-// returned) loan — the same "approved == still out" rule as
-// fetchEquipmentCheckedOutCount, just resolved down to the individual
-// unit via loan_request_items.equipment_unit_id instead of counted in
-// aggregate.
+// checked out based on whether it's reserved on an approved loan that
+// hasn't been returned — the same rule as fetchEquipmentCheckedOutCount,
+// just resolved down to the individual unit via
+// loan_request_items.equipment_unit_id instead of counted in aggregate.
 export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promise<EquipmentUnitWithStatus[]> {
   const { data: units, error: unitsError } = await supabase
     .from('equipment_units')
@@ -177,6 +176,7 @@ export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promis
       .select('equipment_unit_id')
       .eq('equipment_id', equipmentId)
       .in('loan_request_id', approvedRequestIds)
+      .is('returned_at', null)
 
     if (itemsError) throw itemsError
     for (const item of items ?? []) {
@@ -240,10 +240,10 @@ export interface EquipmentInventoryRow {
 }
 
 // Every catalog item plus how many of its units are currently out on an
-// approved loan, for the "manage hardware inventory" table. There's no
-// "returned" status yet (see bucketForLoanItem in loanRequests.ts) — every
-// approved loan_request_item is still out — so checkedOut is just a count
-// of approved items per equipment_id.
+// approved loan, for the "manage hardware inventory" table. An item is out
+// from the moment its request is approved until an admin records its return
+// (loan_request_items.returned_at — see the 20260922000000 migration), so
+// checkedOut counts approved, not-yet-returned items per equipment_id.
 export async function fetchEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
   const equipment = await listEquipment()
   if (equipment.length === 0) return []
@@ -262,6 +262,7 @@ export async function fetchEquipmentInventorySummary(): Promise<EquipmentInvento
       .from('loan_request_items')
       .select('equipment_id')
       .in('loan_request_id', approvedRequestIds)
+      .is('returned_at', null)
 
     if (itemsError) throw itemsError
     for (const item of items ?? []) {

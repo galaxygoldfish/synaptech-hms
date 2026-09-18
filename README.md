@@ -82,13 +82,15 @@ Checkout submissions live in three more tables:
 - `loan_request_items` — one row per `equipment` item bundled into a request (the primary item plus any optional/required add-ons — `item_role`), each with its own `equipment_unit_id` (the serial offered at submission), `return_date` (hardware only), and `signed_agreement_path`
 - `loan_request_availability` — one row per hour the member marked free in the 14-day pickup availability grid (`available_date`, `available_hour`)
 
-These model the *request* phase the checkout flow in this app actually captures (submit → admin approves/denies). Once approved, that's the natural point to create an `active`/`overdue`/`returned`-style `loans` row tracking the physical checkout of the assigned `equipment_units` row — not built yet, since nothing in the app surfaces that lifecycle today.
+These model the request phase the checkout flow captures (submit → admin approves/denies) plus the hand-back at the end of it: `loan_request_items.returned_at`/`returned_by` record that a physical item came back, per item rather than per request, since a request can bundle several items with their own return dates. A request's status stays `'approved'` throughout — "is it back?" is answered by `returned_at`, not by the parent's status — and `bucketForLoanItem` in [`src/lib/loanRequests.ts`](src/lib/loanRequests.ts) is the single place that turns those fields into the Active / Overdue / Requests / Returns / Returned states the list, the detail screen and the dashboard stat cards all read. The return columns and their triggers are in [`supabase/migrations/20260922000000_loan_item_return.sql`](supabase/migrations/20260922000000_loan_item_return.sql).
 
 Product photos are uploaded to a public `equipment-images` Storage bucket; signed loan agreement PDFs go to a private `loan-agreements` bucket, one object per item at `${user_id}/${loan_request_id}/${equipment_id}.pdf`, readable by its owner and by admins.
 
 The `email_log` columns recording the message body and archive CC are added by [`supabase/migrations/20260916010000_email_log_detail.sql`](supabase/migrations/20260916010000_email_log_detail.sql) — run it before deploying the functions, or sends will fail to log.
 
 Every change to those tables is recorded in `audit_log` — see [App audit log](#app-audit-log) below.
+
+A member's home address is masked behind a **Reveal** control on the admin "Member details" screen. It isn't removed, because it's printed on the loan agreement each member signs and is what the club has to go on when hardware doesn't come back — the point is that opening someone's profile to check their Discord handle shouldn't also put their home address on screen. The signed agreement PDF still carries it in full.
 
 Row-level security restricts each table to the rows a user is allowed to see/edit (e.g. members can only read/create their own `loan_requests` and can't edit them after submitting; only admins can review a request or edit `equipment`, `equipment_units`, and `equipment_addons`; only the profile owner can read/write their own `profiles` row).
 
@@ -107,7 +109,9 @@ This app has no server of its own — it's Vite + React talking directly to Supa
 - **`send-email`** — takes `{ event, recordId }`, resolves it to the right template(s)/recipient(s)/dynamic fields, renders, sends via [Resend](https://resend.com), and logs the result. Invoked by Postgres triggers (via `pg_net`) on `profiles` (created, role changed to admin), `loan_request_items` (primary item requested), `loan_requests` (status → `approved`, which this app treats as the handoff event — see that migration's comments), and `equipment` (created/updated). Deployed with JWT verification off and its own `auth: 'secret'` check (via [`@supabase/server`](https://supabase.com/docs/guides/functions/auth)) instead, since its caller — Postgres's `pg_net` — presents a project secret key on `apikey`, not a user JWT.
 - **`send-scheduled-reminders`** — runs once a day, computed rather than triggered: finds approved loans due in exactly 7 days, due today, or overdue, and sends `return-reminder-*`/`hardware-item-overdue`. Idempotent via the `reminder_*_sent_at` columns on `loan_request_items`. Still deployed with the platform's default JWT verification — nothing has been wired up yet to call it, so its auth story is revisited once it's actually scheduled.
 
-Not every template has a trigger yet: `hardware-return-requested`, `successful-return-confirmation`, and `hardware-returned` are editable from the UI but stay dormant, because there's no return-request/return-completion flow in the app yet for them to fire on. (`checkout-request-approval` was in the same situation — no separate approval step for it to fire on — until it was removed entirely.)
+`successful-return-confirmation` and `hardware-returned` fire on `loan_item.returned`, which the trigger in [`supabase/migrations/20260922000000_loan_item_return.sql`](supabase/migrations/20260922000000_loan_item_return.sql) raises when an admin records a hand-back — redeploy `send-email` after applying that migration, or the event arrives at a function that doesn't know the case and is ignored.
+
+`hardware-return-requested` is the one template still dormant: members have no way to raise a return request in the app yet (returns get arranged over Discord and recorded by an admin), so nothing fires it. (`checkout-request-approval` was in the same situation — no separate approval step for it to fire on — until it was removed entirely.)
 
 ### One-time setup
 
@@ -145,6 +149,20 @@ Not every template has a trigger yet: `hardware-return-requested`, `successful-r
    Use a secret key here, not the legacy `service_role` key: it's revocable on its own, without regenerating the project's JWT secret (which would also invalidate the `anon` key the frontend uses). See [Migrating to publishable and secret API keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) if your project only has legacy keys so far.
 6. Schedule `send-scheduled-reminders` to run daily — via Supabase's Dashboard (Edge Functions → Cron) or `pg_cron` calling it through `pg_net`. Whichever you use, its auth needs the same treatment as `send-email` above (a secret key + `--no-verify-jwt`) unless the scheduling mechanism you pick already authenticates its own calls.
 
+## Hardware loans
+
+The admin "Hardware loans" list (`/adminHome/loans`) searches by item name, serial number or member, filters by state, and opens each row into a loan detail screen at `/adminHome/loans/:id` — the hardware item and its serial, the member with their email and Discord handle, the signed agreement, and whatever action that loan is waiting for:
+
+| State | What the screen offers |
+| --- | --- |
+| Checkout requested | **Mark as handed off**, plus the member's checkout availability |
+| Active / Overdue | **Mark as returned** |
+| Return requested | **Mark as returned**, plus the member's return availability |
+| Returned | Nothing to do — shows when it came back and who received it |
+| Denied | Nothing to do — shows the review note |
+
+Both actions confirm against the **exact serial number** first, because several units of one product are indistinguishable on a shelf and handing over the wrong one puts the wrong hardware against someone's name. Confirming a hand-off also attests that the member signed the agreement correctly, and stamps a Certificate of Approval onto their signed PDF — the same `handOffLoanRequestItem` the barcode "check out hardware" flow calls, so approving in one place can't mean something different from approving in the other. Confirming a return sets `returned_at`, which frees the unit for checkout, closes the loan, and sends the member their return confirmation.
+
 ## App audit log
 
 The admin "App audit log" screen (`/adminHome/audit-log`) is a single, searchable history of what has happened in the app: who did it, what it affected, and which fields changed. It covers sign-ups, role changes and profile edits; hardware items, units and add-on links being created, edited or removed; checkout requests being submitted, approved, denied or deleted, and the items on them; and edits to the email templates (including a template being turned on or off). Rows are filterable by Members / Inventory / Loans / Emails and open to a detail view with the field-level before-and-after.
@@ -175,7 +193,7 @@ select public.prune_audit_log(12);  -- run it once, by hand
 
 ### Applying the migration
 
-Paste [`supabase/migrations/20260921000000_audit_log.sql`](supabase/migrations/20260921000000_audit_log.sql) into the Supabase SQL editor, the same way the other migrations in this repo have been applied. It needs no secrets or deployed functions, and it is safe to re-run.
+Paste [`supabase/migrations/20260921000000_audit_log.sql`](supabase/migrations/20260921000000_audit_log.sql) into the Supabase SQL editor, the same way the other migrations in this repo have been applied, followed by [`supabase/migrations/20260922000000_loan_item_return.sql`](supabase/migrations/20260922000000_loan_item_return.sql) (which redefines one of the audit triggers, so it has to come second). Neither needs secrets, and both are safe to re-run.
 
 `supabase db push` is **not** interchangeable here: it applies every local migration the remote `supabase_migrations.schema_migrations` table has no record of, and since this project's migrations were run by hand in the SQL editor, that table doesn't know about them — so a push would attempt to replay all of them, not just this one. Check with `supabase migration list` (read-only) before pushing anything. To move to CLI-managed migrations, mark the already-applied ones with `supabase migration repair --status applied <version>` for each, then `supabase db push` handles this and future migrations normally.
 

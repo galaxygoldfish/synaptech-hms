@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { fetchAvailableEquipmentUnit } from './inventory'
+import { stampApprovedAgreement } from './loanAgreementApproval'
 import type { LoanRequest, LoanRequestItemRole, LoanRequestStatus } from '../types'
 
 const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
@@ -172,9 +173,13 @@ export interface AdminLoanRequestDetail {
   signedAgreementPath: string | null
   reviewedAt: string | null
   reviewNote: string | null
+  returnedAt: string | null
+  returnedByName: string | null
   memberId: string
   memberName: string
   memberEmail: string
+  /** For the "reach out on Discord or email" step of the checkout process. */
+  memberDiscord: string | null
   reviewerName: string | null
   otherItems: AdminLoanRequestOtherItem[]
 }
@@ -188,7 +193,9 @@ export interface AdminLoanRequestDetail {
 export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminLoanRequestDetail> {
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
-    .select('id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path')
+    .select(
+      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, returned_at, returned_by',
+    )
     .eq('id', itemId)
     .single()
   if (itemError) throw itemError
@@ -220,7 +227,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
 
   const { data: member, error: memberError } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, uw_email')
+    .select('id, first_name, last_name, uw_email, discord')
     .eq('id', request.user_id)
     .single()
   if (memberError) throw memberError
@@ -234,6 +241,17 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
       .maybeSingle()
     if (reviewerError) throw reviewerError
     if (reviewer) reviewerName = `${reviewer.first_name} ${reviewer.last_name}`
+  }
+
+  let returnedByName: string | null = null
+  if (item.returned_by) {
+    const { data: receiver, error: receiverError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', item.returned_by)
+      .maybeSingle()
+    if (receiverError) throw receiverError
+    if (receiver) returnedByName = `${receiver.first_name} ${receiver.last_name}`
   }
 
   const { data: siblingItems, error: siblingsError } = await supabase
@@ -274,9 +292,12 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     signedAgreementPath: item.signed_agreement_path,
     reviewedAt: request.reviewed_at,
     reviewNote: request.review_note,
+    returnedAt: item.returned_at,
+    returnedByName,
     memberId: member.id,
     memberName: `${member.first_name} ${member.last_name}`,
     memberEmail: member.uw_email,
+    memberDiscord: member.discord,
     reviewerName,
     otherItems,
   }
@@ -319,42 +340,120 @@ export interface AdminLoanRequestItemSummary {
   status: LoanRequestStatus
   requestedAt: string
   returnDate: string | null
+  returnedAt: string | null
   memberName: string
 }
 
-// Completes an admin pickup without requiring the physical unit barcode. The
-// request item identifies the parent request, whose approved status is what
-// the member dashboard uses to show the hardware as checked out.
-export async function checkoutLoanRequestItem(itemId: string, adminId: string): Promise<void> {
+export interface HandOffLoanRequestItemInput {
+  itemId: string
+  adminId: string
+  /** Printed on the approval certificate as who attested the agreement. */
+  adminName: string
+}
+
+/**
+ * Records a hand-off: stamps a Certificate of Approval onto the member's
+ * signed agreement, points the item at that approved copy, and moves the
+ * parent request to 'approved' — which is what both dashboards read as "this
+ * hardware is out". This is the whole of the hand-off, shared by the two
+ * places an admin can perform one: the barcode-scan flow
+ * (useHardwareCheckout) and the "Mark as handed off" button on the loan
+ * detail screen. Approving in one place must not mean something subtly
+ * different from approving in the other, so neither owns a copy of it.
+ *
+ * Not atomic, for the same reason submitLoanRequest isn't: storage and two
+ * tables can't share a transaction from the browser. The order is chosen so
+ * a failure leaves the loan un-approved rather than approved with an
+ * unstamped agreement — the certificate is uploaded and linked first, and
+ * the status moves last.
+ */
+export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput): Promise<void> {
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
-    .select('loan_request_id')
-    .eq('id', itemId)
+    .select('loan_request_id, equipment_id, equipment_unit_id, signed_agreement_path')
+    .eq('id', input.itemId)
     .single()
 
   if (itemError) throw itemError
+  if (!item.signed_agreement_path) {
+    throw new Error('This item has no signed agreement to approve.')
+  }
 
-  const { error: updateError } = await supabase
+  const [{ data: equipment }, unit] = await Promise.all([
+    supabase.from('equipment').select('name').eq('id', item.equipment_id).single(),
+    item.equipment_unit_id
+      ? supabase.from('equipment_units').select('serial_number').eq('id', item.equipment_unit_id).single()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const approvedAt = new Date()
+  const approvedPath = await stampApprovedAgreement({
+    agreementUrl: await fetchSignedAgreementUrl(item.signed_agreement_path),
+    agreementPath: item.signed_agreement_path,
+    itemName: equipment?.name ?? 'this hardware item',
+    serialNumber: unit?.data?.serial_number ?? 'Not assigned',
+    adminName: input.adminName,
+    approvedAt,
+  })
+
+  const { error: itemUpdateError } = await supabase
+    .from('loan_request_items')
+    .update({ signed_agreement_path: approvedPath })
+    .eq('id', input.itemId)
+  if (itemUpdateError) throw itemUpdateError
+
+  const { error: requestUpdateError } = await supabase
     .from('loan_requests')
     .update({
       status: 'approved',
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: adminId,
+      reviewed_at: approvedAt.toISOString(),
+      reviewed_by: input.adminId,
     })
     .eq('id', item.loan_request_id)
 
-  if (updateError) throw updateError
+  if (requestUpdateError) throw requestUpdateError
 }
 
-export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns'
+/**
+ * Records that a physical item came back. Per item rather than per request:
+ * a request can bundle several items with their own return dates, and they
+ * come back separately (see the 20260922000000 migration). The parent
+ * request stays 'approved' — "is it back?" is answered by returned_at.
+ *
+ * Setting returned_at is also what fires the member's return-confirmation
+ * email and the admin copy, via the trigger in that migration.
+ */
+export async function markLoanRequestItemReturned(itemId: string, adminId: string): Promise<void> {
+  const { error } = await supabase
+    .from('loan_request_items')
+    .update({ returned_at: new Date().toISOString(), returned_by: adminId })
+    .eq('id', itemId)
+    // Guards the double-click and the two-admins-at-once case: the trigger
+    // only emails on the null -> set transition anyway, but this also keeps
+    // the recorded time and admin the first one, not the last.
+    .is('returned_at', null)
 
-// Shared by the admin "Hardware loans" list and the dashboard stat cards so
-// their counts can never drift apart. Denied requests never became a loan,
-// so they're excluded entirely (null). There's no "returns" bucket
-// populated yet — nothing in the app has a return-request flow — so it
-// never matches here; the bucket exists for when that's built.
-export function bucketForLoanItem(loan: Pick<AdminLoanRequestItemSummary, 'status' | 'returnDate'>): LoanBucket | null {
+  if (error) throw error
+}
+
+export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns' | 'returned'
+
+// Shared by the admin "Hardware loans" list, the loan detail screen and the
+// dashboard stat cards so their counts can never drift apart. Denied
+// requests never became a loan, so they're excluded entirely (null).
+//
+// 'returned' is terminal and checked first: an item that came back late is
+// returned, not overdue, and nothing about it is outstanding any more.
+//
+// 'returns' (a member has asked to give something back but hasn't yet) still
+// never matches — that's the one step of the flow with no trigger, because
+// members have no way to raise a return request in the app yet. The bucket
+// is kept for when that's built; the detail screen already renders it.
+export function bucketForLoanItem(
+  loan: Pick<AdminLoanRequestItemSummary, 'status' | 'returnDate' | 'returnedAt'>,
+): LoanBucket | null {
   if (loan.status === 'denied') return null
+  if (loan.returnedAt) return 'returned'
   if (loan.status === 'pending') return 'requests'
   if (loan.returnDate) {
     const today = new Date()
@@ -382,7 +481,7 @@ export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSu
   const requestIds = requests.map((request) => request.id)
   const { data: items, error: itemsError } = await supabase
     .from('loan_request_items')
-    .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date')
+    .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at')
     .in('loan_request_id', requestIds)
 
   if (itemsError) throw itemsError
@@ -440,6 +539,7 @@ export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSu
         status: request.status as LoanRequestStatus,
         requestedAt: request.requested_at,
         returnDate: item.return_date,
+        returnedAt: item.returned_at,
         memberName: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown member',
       },
     ]
