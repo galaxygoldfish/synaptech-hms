@@ -232,7 +232,6 @@ export default function CheckoutAvailability() {
 
       <main className={styles.main}>
         <h1 className={styles.heading}>Add your pickup availability</h1>
-        <p className={styles.subtext}>You must enter your availability for the next two weeks in the table below</p>
         <p className={styles.subtext}>Click all hours that you&rsquo;re available, even if only partially available during that hour</p>
         <p className={styles.subtext}>This information is collected to help our Hardware Managers schedule a pickup with you</p>
 

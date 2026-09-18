@@ -16,9 +16,12 @@ export interface SendEmailInput {
   html?: string;
   /** Archive copy. Omitted from the request entirely when not set. */
   cc?: string;
+  /** Files to attach, base64-encoded — e.g. a signed loan agreement PDF.
+      Omitted from the request entirely when not set. */
+  attachments?: { filename: string; content: string }[];
 }
 
-export async function sendViaResend({ to, subject, text, html, cc }: SendEmailInput): Promise<void> {
+export async function sendViaResend({ to, subject, text, html, cc, attachments }: SendEmailInput): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured for this function");
 
@@ -35,10 +38,18 @@ export async function sendViaResend({ to, subject, text, html, cc }: SendEmailIn
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    // `cc`/`html` are only included when present — Resend rejects a
-    // null/empty cc, and omitting html when there isn't one keeps this a
-    // plain-text-only send exactly as before.
-    body: JSON.stringify({ from, to, subject, text, ...(html ? { html } : {}), ...(cc ? { cc } : {}) }),
+    // `cc`/`html`/`attachments` are only included when present — Resend
+    // rejects a null/empty cc, and omitting html when there isn't one keeps
+    // this a plain-text-only send exactly as before.
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      text,
+      ...(html ? { html } : {}),
+      ...(cc ? { cc } : {}),
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
+    }),
   });
 
   if (!response.ok) {

@@ -1,0 +1,178 @@
+.preview {
+  max-height: 32rem;
+  overflow-y: auto;
+  margin-top: 1.75rem;
+  padding: 1.5rem 1.75rem;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  background: var(--white);
+}
+
+.title {
+  font-family: 'Bungee', var(--display-font-fallback);
+  font-size: 1.125rem;
+  color: var(--welcome-blue);
+  margin: 0 0 0.75rem;
+}
+
+.sectionHeading {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.85);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.paragraph {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.75);
+  margin: 0 0 0.5rem;
+}
+
+.list {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.list li {
+  margin-bottom: 0.35rem;
+}
+
+/* ── Key/value rows (borrower + hardware info) ───────────────── */
+
+.kv {
+  margin: 0 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.kvRow {
+  display: flex;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.kvRow:first-child {
+  border-top: none;
+}
+
+.kvLabel {
+  flex: 0 0 45%;
+  padding: 0.5rem 0.75rem;
+  background: #eef2f8;
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.kvValue {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.85);
+  overflow-wrap: break-word;
+}
+
+.kvMuted .kvLabel {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.kvMuted .kvValue {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* ── Tables (e.g. section 6's liability cap grid) ─────────────── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.5rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+}
+
+.table th,
+.table td {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0.625rem;
+  text-align: center;
+}
+
+.table th {
+  background: #d6e5f8;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.table td {
+  color: rgba(0, 0, 0, 0.75);
+}
+
+/* ── Signature fields ─────────────────────────────────────────── */
+
+.signatureRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.field {
+  flex: 1 1 14rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.fieldLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.fieldInput {
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: var(--black);
+  background: var(--white);
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--welcome-blue);
+}
+
+.internalNote {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.4);
+  margin: 0 0 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .preview {
+    padding: 1.125rem 1.25rem;
+    max-height: 26rem;
+  }
+
+  .kvLabel {
+    flex-basis: 55%;
+  }
+}

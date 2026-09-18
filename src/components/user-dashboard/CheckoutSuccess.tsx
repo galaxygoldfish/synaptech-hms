@@ -39,7 +39,6 @@ export default function CheckoutSuccess() {
           </div>
           <h1 className={styles.heading}>Success!</h1>
           <p className={styles.subtext}>Your request to check out hardware was submitted successfully</p>
-          <p className={styles.subtext}>You can check on the status of your request in My Hardware Loans on the home page</p>
 
           <p className={styles.footnote}>
             Once your request is approved, you will be notified by email at{' '}

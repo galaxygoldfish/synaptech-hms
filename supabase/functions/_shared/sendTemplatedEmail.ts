@@ -11,6 +11,8 @@ export interface SendTemplatedEmailInput {
       3 separate emails each carrying their own duplicate CC. */
   to: string | string[];
   fields: Record<string, string>;
+  /** Files to attach, base64-encoded — see SendEmailInput in resend.ts. */
+  attachments?: { filename: string; content: string }[];
 }
 
 // Every automated email is copied to this address so the club keeps its own
@@ -65,7 +67,7 @@ export function archiveCcFor(recipients: string | string[]): string | undefined 
 // break the caller's batch of other sends.
 export async function sendTemplatedEmail(
   admin: ReturnType<typeof createAdminClient>,
-  { templateKey, to, fields }: SendTemplatedEmailInput,
+  { templateKey, to, fields, attachments }: SendTemplatedEmailInput,
 ): Promise<void> {
   // Normalized once, up front, so everything below — Resend's payload, the
   // CC check, and the log row — works off the same clean list regardless
@@ -125,7 +127,7 @@ export async function sendTemplatedEmail(
   };
 
   try {
-    await sendViaResend({ to: recipients, subject, text, html, cc });
+    await sendViaResend({ to: recipients, subject, text, html, cc, attachments });
     await admin.from("email_log").insert({ ...logRow, status: "sent" });
   } catch (sendError) {
     console.error(`Failed to send "${templateKey}" to ${recipients.join(", ")}:`, sendError);

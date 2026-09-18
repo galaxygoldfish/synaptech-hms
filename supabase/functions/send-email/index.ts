@@ -16,12 +16,40 @@
 // described in supabase/migrations/20260917000000_email_trigger_vault_secrets.sql
 // so notify_email_event knows this function's URL and that key.
 
+import { Buffer } from "node:buffer";
 import { withSupabase } from "npm:@supabase/server";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { fetchAdminEmails, formatDate } from "../_shared/db.ts";
 import { sendTemplatedEmail, type SendTemplatedEmailInput } from "../_shared/sendTemplatedEmail.ts";
 
 type Dispatch = SendTemplatedEmailInput[];
+
+// Same private bucket src/lib/loanRequests.ts uploads signed agreements to
+// at checkout — see LOAN_AGREEMENTS_BUCKET there.
+const LOAN_AGREEMENTS_BUCKET = "loan-agreements";
+
+// Downloads a hardware item's signed agreement PDF from Storage and
+// base64-encodes it for Resend's `attachments` field. Returns undefined
+// for a consumable item (no path at all) or if the download fails — a
+// storage hiccup shouldn't stop the confirmation email itself from going
+// out, just mean it goes out without the attachment.
+async function fetchSignedAgreementAttachment(
+  admin: SupabaseClient,
+  signedAgreementPath: string | null,
+  equipmentName: string,
+): Promise<{ filename: string; content: string }[] | undefined> {
+  if (!signedAgreementPath) return undefined;
+
+  const { data: pdfBlob, error } = await admin.storage.from(LOAN_AGREEMENTS_BUCKET).download(signedAgreementPath);
+  if (error || !pdfBlob) {
+    console.error(`loan_item.requested: failed to download signed agreement at ${signedAgreementPath}:`, error);
+    return undefined;
+  }
+
+  const content = Buffer.from(await pdfBlob.arrayBuffer()).toString("base64");
+  const filename = `${equipmentName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item"}-loan-agreement.pdf`;
+  return [{ filename, content }];
+}
 
 // Every query below used to destructure only `data`, silently discarding
 // `error` — a genuine query failure (bad grant, RLS denial, whatever) then
@@ -96,7 +124,7 @@ async function resolveEvent(
       const item = unwrap(
         await admin
           .from("loan_request_items")
-          .select("loan_request_id, equipment_id, equipment_unit_id, return_date")
+          .select("loan_request_id, equipment_id, equipment_unit_id, return_date, signed_agreement_path")
           .eq("id", recordId)
           .maybeSingle(),
         "loan_item.requested: fetching loan_request_items row",
@@ -134,8 +162,16 @@ async function resolveEvent(
         loan_due_date: item.return_date ? formatDate(item.return_date) : "",
       };
 
+      // Only the member-facing confirmation gets the PDF attached — admins
+      // already have a "download signed agreement" action on the loan
+      // detail screen, so there's no need to duplicate the file into their
+      // inbox too. A download failure here shouldn't block the email
+      // itself from going out, so it's logged and swallowed rather than
+      // thrown.
+      const attachments = await fetchSignedAgreementAttachment(admin, item.signed_agreement_path, equipment.name);
+
       const dispatch: Dispatch = [
-        { templateKey: "checkout-request-confirmation", to: profile.uw_email, fields },
+        { templateKey: "checkout-request-confirmation", to: profile.uw_email, fields, attachments },
       ];
       const adminEmails = await fetchAdminEmails(admin);
       // One email to every admin together, not one separately-CC'd email

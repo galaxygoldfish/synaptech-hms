@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
-import { CloudUploadIcon, DocumentIcon, DownloadIcon, TrashIcon } from './icons'
+import { AgreementPreview } from './AgreementPreview'
+import { CheckmarkIcon } from './icons'
 import { fetchAvailableSerialNumber, fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
-import { buildLoanAgreementPdf, downloadLoanAgreementPdf } from '../../lib/loanAgreementPdf'
+import { buildLoanAgreementPdf } from '../../lib/loanAgreementPdf'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutSignAgreement.module.css'
@@ -24,6 +25,10 @@ function formatDate(iso: string): string {
 
 function formatCurrency(value: number | null): string {
   return value == null ? 'N/A' : `$${value.toFixed(2)}`
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 interface CheckoutState {
@@ -45,53 +50,9 @@ function readCheckoutState(state: unknown): CheckoutState | null {
   }
 }
 
-interface SignedAgreementDropzoneProps {
-  onFileSelected: (file: File) => void
-}
-
-// Only ever rendered before a file has been chosen — once one is uploaded,
-// the parent swaps this out for the filename + delete view entirely.
-function SignedAgreementDropzone({ onFileSelected }: SignedAgreementDropzoneProps) {
-  const [isDragging, setDragging] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  function handleFiles(files: FileList | null) {
-    const selected = files?.[0]
-    if (selected) onFileSelected(selected)
-  }
-
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        onChange={(event) => handleFiles(event.target.files)}
-        style={{ display: 'none' }}
-      />
-      <button
-        type="button"
-        className={isDragging ? `${styles.dropzone} ${styles.dropzoneActive}` : styles.dropzone}
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(event) => {
-          event.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(event: DragEvent<HTMLButtonElement>) => {
-          event.preventDefault()
-          setDragging(false)
-          handleFiles(event.dataTransfer.files)
-        }}
-      >
-        <CloudUploadIcon size={26} className={styles.dropzoneIcon} />
-        <span className={styles.dropzoneLabel}>
-          <span className={styles.dropzoneLabelDesktop}>Drag signed agreement here to upload</span>
-          <span className={styles.dropzoneLabelMobile}>Click here to upload your signed agreement form</span>
-        </span>
-      </button>
-    </>
-  )
+interface SignatureEntry {
+  name: string
+  date: string
 }
 
 export default function CheckoutSignAgreement() {
@@ -106,8 +67,9 @@ export default function CheckoutSignAgreement() {
   const [serials, setSerials] = useState<Record<string, string | null>>({})
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({})
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [signatures, setSignatures] = useState<Record<string, SignatureEntry>>({})
+  const [activeItemId, setActiveItemId] = useState<string | null>(null)
+  const [isSubmitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!checkoutState) return
@@ -152,16 +114,45 @@ export default function CheckoutSignAgreement() {
   }, [checkoutState, navigate])
 
   const hardwareItems = useMemo(() => items.filter((item) => item.product_type === 'hardware'), [items])
+  const consumableItems = useMemo(() => items.filter((item) => item.product_type !== 'hardware'), [items])
+
+  // Seed a blank signature entry (today's date, but no name — the
+  // borrower must type their own signature) for any hardware item that
+  // doesn't have one yet, and make sure a tab is always selected once
+  // items are available.
+  useEffect(() => {
+    if (hardwareItems.length === 0) return
+    setSignatures((current) => {
+      let changed = false
+      const next = { ...current }
+      for (const item of hardwareItems) {
+        if (!next[item.id]) {
+          next[item.id] = { name: '', date: todayIso() }
+          changed = true
+        }
+      }
+      return changed ? next : current
+    })
+    setActiveItemId((current) => (current && hardwareItems.some((item) => item.id === current) ? current : hardwareItems[0].id))
+  }, [hardwareItems])
+
   const canSubmit =
-    !isLoading && !error && hardwareItems.length > 0 && hardwareItems.every((item) => Boolean(uploadedFiles[item.id]))
+    !isLoading &&
+    !error &&
+    !isSubmitting &&
+    hardwareItems.length > 0 &&
+    hardwareItems.every((item) => {
+      const entry = signatures[item.id]
+      return Boolean(entry && entry.name.trim() && entry.date)
+    })
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
     return {
-      name: `${profile.first_name} ${profile.last_name}`,
-      role: profile.role === 'admin' ? 'ADMINISTRATOR' : 'MEMBER',
-      email: profile.uw_email,
-      handle: profile.discord,
+      name:     `${profile.first_name} ${profile.last_name}`,
+      role:     profile.role === 'admin' ? 'ADMINISTRATOR' : 'MEMBER',
+      email:    profile.uw_email,
+      handle:   profile.discord,
       location: profile.address,
     }
   }, [profile])
@@ -171,48 +162,58 @@ export default function CheckoutSignAgreement() {
     signOut()
   }
 
-  function handleRemoveFile(itemId: string) {
-    setUploadedFiles((current) => {
-      const next = { ...current }
-      delete next[itemId]
-      return next
-    })
+  function updateSignature(itemId: string, patch: Partial<SignatureEntry>) {
+    setSignatures((current) => ({
+      ...current,
+      [itemId]: { ...current[itemId], ...patch } as SignatureEntry,
+    }))
   }
 
-  async function handleDownload(item: Equipment) {
-    if (!profile || !checkoutState) return
-    setDownloadingId(item.id)
+  async function handleNext() {
+    if (!canSubmit || !checkoutState || !profile) return
+    setSubmitting(true)
+    setError(null)
     try {
-      const returnDateIso = checkoutState.returnDates[item.id]
-      const pdf = await buildLoanAgreementPdf({
-        fullName: `${profile.first_name} ${profile.last_name}`,
-        studentId: profile.student_id,
-        studentEmail: profile.uw_email,
-        phone: profile.phone,
-        address: profile.address,
-        productName: item.name,
-        serialNumber: serials[item.id] ?? 'TBD',
-        loanDate: formatDate(new Date().toISOString().slice(0, 10)),
-        returnDate: returnDateIso ? formatDate(returnDateIso) : 'TBD',
-        replacementValue: formatCurrency(item.replacement_value),
+      const entries = await Promise.all(
+        hardwareItems.map(async (item) => {
+          const signature = signatures[item.id]
+          const returnDateIso = checkoutState.returnDates[item.id]
+          const pdf = await buildLoanAgreementPdf({
+            fullName: `${profile.first_name} ${profile.last_name}`,
+            studentId: profile.student_id,
+            studentEmail: profile.uw_email,
+            phone: profile.phone,
+            address: profile.address,
+            productName: item.name,
+            serialNumber: serials[item.id] ?? 'TBD',
+            loanDate: formatDate(todayIso()),
+            returnDate: returnDateIso ? formatDate(returnDateIso) : 'TBD',
+            replacementValue: formatCurrency(item.replacement_value),
+            signatureName: signature.name.trim(),
+            signatureDate: formatDate(signature.date),
+          })
+          const blob = pdf.output('blob') as Blob
+          const file = new File([blob], `${slugify(item.name)}-loan-agreement.pdf`, { type: 'application/pdf' })
+          return [item.id, file] as const
+        }),
+      )
+      const signedAgreements = Object.fromEntries(entries)
+      navigate('/home/checkout/availability', {
+        state: { ...checkoutState, signedAgreements },
       })
-      downloadLoanAgreementPdf(pdf, `${slugify(item.name)}-loan-agreement.pdf`)
-    } catch (downloadError) {
+    } catch (submitError) {
       // eslint-disable-next-line no-console
-      console.error('Failed to generate loan agreement PDF:', downloadError)
+      console.error('Failed to prepare signed loan agreements:', submitError)
+      setError('Could not prepare your signed agreement. Please try again.')
     } finally {
-      setDownloadingId(null)
+      setSubmitting(false)
     }
   }
 
-  function handleNext() {
-    if (!canSubmit || !checkoutState) return
-    navigate('/home/checkout/availability', {
-      state: { ...checkoutState, signedAgreements: uploadedFiles },
-    })
-  }
-
   if (!checkoutState) return null
+
+  const activeItem = hardwareItems.find((item) => item.id === activeItemId) ?? hardwareItems[0] ?? null
+  const activeSignature = activeItem ? signatures[activeItem.id] : null
 
   return (
     <div className={styles.page}>
@@ -220,9 +221,7 @@ export default function CheckoutSignAgreement() {
 
       <main className={styles.main}>
         <h1 className={styles.heading}>Sign the Hardware Loan Agreement</h1>
-        <p className={styles.subtext}>You must sign a Hardware Loan Agreement for each hardware product that you check out</p>
-        <p className={styles.subtext}>Download the document, add your signature, then upload it to the corresponding item</p>
-        <p className={`${styles.subtext} ${styles.subtextMobileOnly}`}>This might be easier to do on a computer</p>
+        <p className={styles.subtext}>Review the agreement below, then type your name and the date to sign electronically</p>
 
         {isLoading && (
           <SkeletonScreen label="Loading your checkout items…">
@@ -244,75 +243,71 @@ export default function CheckoutSignAgreement() {
         )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
-        {!isLoading && !error && items.length > 0 && (
-          <div className={styles.card}>
-            <p className={styles.cardTitle}>Items to be checked out</p>
-            <ul className={styles.itemList}>
-              {items.map((item) => {
-                const needsSignature = item.product_type === 'hardware'
-                return (
-                  <li key={item.id} className={styles.itemRow}>
-                    {item.image_url && <img src={item.image_url} alt="" className={styles.itemThumb} />}
+        {!isLoading && !error && activeItem && activeSignature && profile && (
+          <>
+            {hardwareItems.length > 1 && (
+              <div className={styles.tabRow}>
+                {hardwareItems.map((item) => {
+                  const isActive = item.id === activeItem.id
+                  const isSigned = Boolean(signatures[item.id]?.name.trim() && signatures[item.id]?.date)
+                  const tabClassName = [
+                    styles.tab,
+                    isSigned ? styles.tabComplete : styles.tabIncomplete,
+                    isActive ? styles.tabActive : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={tabClassName}
+                      onClick={() => setActiveItemId(item.id)}
+                      aria-pressed={isActive}
+                    >
+                      {item.name}
+                      {isSigned && <CheckmarkIcon size={14} className={styles.tabCheckmark} />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
-                    <div className={styles.itemMain}>
-                      <p className={styles.itemName}>{item.name}</p>
+            <AgreementPreview
+              fullName={`${profile.first_name} ${profile.last_name}`}
+              studentId={profile.student_id}
+              studentEmail={profile.uw_email}
+              phone={profile.phone}
+              address={profile.address}
+              productName={activeItem.name}
+              serialNumber={serials[activeItem.id] ?? 'TBD'}
+              loanDate={formatDate(todayIso())}
+              returnDate={
+                checkoutState.returnDates[activeItem.id] ? formatDate(checkoutState.returnDates[activeItem.id]) : 'TBD'
+              }
+              replacementValue={formatCurrency(activeItem.replacement_value)}
+              signatureName={activeSignature.name}
+              signatureDate={activeSignature.date}
+              onSignatureNameChange={(value) => updateSignature(activeItem.id, { name: value })}
+              onSignatureDateChange={(value) => updateSignature(activeItem.id, { date: value })}
+            />
 
-                      {needsSignature ? (
-                        uploadedFiles[item.id] ? (
-                          <div className={styles.uploadedArea}>
-                            <span className={styles.uploadedFile}>
-                              <DocumentIcon size={20} className={styles.uploadedFileIcon} />
-                              <span className={styles.uploadedFileName}>{uploadedFiles[item.id].name}</span>
-                            </span>
-                            <button
-                              type="button"
-                              className={styles.deleteButton}
-                              onClick={() => handleRemoveFile(item.id)}
-                            >
-                              <TrashIcon size={18} />
-                              Delete
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            className={styles.downloadButton}
-                            onClick={() => handleDownload(item)}
-                            disabled={downloadingId === item.id}
-                          >
-                            <DownloadIcon size={20} />
-                            {downloadingId === item.id
-                              ? 'Preparing…'
-                              : `Download Hardware Loan Agreement for ${item.name}`}
-                          </button>
-                        )
-                      ) : (
-                        <p className={styles.consumableNote}>
-                          You don&rsquo;t need to sign the Hardware Loan Agreement as this item is consumable
-                        </p>
-                      )}
-                    </div>
-
-                    {needsSignature && !uploadedFiles[item.id] && (
-                      <SignedAgreementDropzone
-                        onFileSelected={(file) =>
-                          setUploadedFiles((current) => ({ ...current, [item.id]: file }))
-                        }
-                      />
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
+            {consumableItems.length > 0 && (
+              <p className={styles.consumableNote}>
+                {consumableItems.map((item) => item.name).join(', ')}{' '}
+                {consumableItems.length === 1 ? "doesn't" : "don't"} need a signature — consumable item
+                {consumableItems.length === 1 ? '' : 's'}.
+              </p>
+            )}
+          </>
         )}
 
         <div className={styles.actions}>
           <button type="button" className={styles.backButton} onClick={() => navigate(-1)}>
             back
           </button>
-          <button type="button" className={styles.submitButton} onClick={handleNext} disabled={!canSubmit}>
-            next
+          <button type="button" className={styles.submitButton} onClick={() => void handleNext()} disabled={!canSubmit}>
+            {isSubmitting ? 'preparing…' : 'next'}
           </button>
         </div>
       </main>
