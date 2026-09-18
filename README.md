@@ -8,6 +8,7 @@ Synaptech HMS is a hardware management system for Synaptech that helps the club 
 - Member-side dashboard for viewing current hardware loans and requesting checkouts
 - Google OAuth sign-in restricted to `@uw.edu` accounts, with role-based routing
 - Centralized views for inventory status and actions
+- An app-wide audit log of every change, recorded server-side by Postgres triggers
 
 ## Tech Stack
 
@@ -87,6 +88,8 @@ Product photos are uploaded to a public `equipment-images` Storage bucket; signe
 
 The `email_log` columns recording the message body and archive CC are added by [`supabase/migrations/20260916010000_email_log_detail.sql`](supabase/migrations/20260916010000_email_log_detail.sql) — run it before deploying the functions, or sends will fail to log.
 
+Every change to those tables is recorded in `audit_log` — see [App audit log](#app-audit-log) below.
+
 Row-level security restricts each table to the rows a user is allowed to see/edit (e.g. members can only read/create their own `loan_requests` and can't edit them after submitting; only admins can review a request or edit `equipment`, `equipment_units`, and `equipment_addons`; only the profile owner can read/write their own `profiles` row).
 
 The `equipment`/`equipment_units` columns and the `equipment_addons` table, RLS policies, and storage bucket/policies are defined in [`supabase/migrations/20260817000000_equipment_inventory.sql`](supabase/migrations/20260817000000_equipment_inventory.sql) — written defensively (`if not exists` throughout) since this repo has no prior migration history to confirm the exact shape already live in Supabase. The `category` column was added afterward in [`supabase/migrations/20260817010000_equipment_category.sql`](supabase/migrations/20260817010000_equipment_category.sql), and the table-level grants (RLS policies alone aren't sufficient — see that migration's comment) in [`supabase/migrations/20260817020000_equipment_grants.sql`](supabase/migrations/20260817020000_equipment_grants.sql). The `loan_requests`/`loan_request_items`/`loan_request_availability` tables, their RLS policies and grants, and the `loan-agreements` bucket are defined in [`supabase/migrations/20260817030000_loan_requests.sql`](supabase/migrations/20260817030000_loan_requests.sql). Run all four via the Supabase SQL editor or CLI against your project, in order. Admin visibility over `profiles` (the "View registered members" and "Member details" screens) comes from [`supabase/migrations/20260916000000_profiles_admin_visibility_fix.sql`](supabase/migrations/20260916000000_profiles_admin_visibility_fix.sql), which supersedes the read/update policies in `20260817040000`/`20260817050000` — those were written as a policy on `profiles` that selects from `profiles`, which Postgres rejects as infinite recursion. Run it too; without it an admin sees only their own row.
@@ -141,6 +144,40 @@ Not every template has a trigger yet: `hardware-return-requested`, `successful-r
 
    Use a secret key here, not the legacy `service_role` key: it's revocable on its own, without regenerating the project's JWT secret (which would also invalidate the `anon` key the frontend uses). See [Migrating to publishable and secret API keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) if your project only has legacy keys so far.
 6. Schedule `send-scheduled-reminders` to run daily — via Supabase's Dashboard (Edge Functions → Cron) or `pg_cron` calling it through `pg_net`. Whichever you use, its auth needs the same treatment as `send-email` above (a secret key + `--no-verify-jwt`) unless the scheduling mechanism you pick already authenticates its own calls.
+
+## App audit log
+
+The admin "App audit log" screen (`/adminHome/audit-log`) is a single, searchable history of what has happened in the app: who did it, what it affected, and which fields changed. It covers sign-ups, role changes and profile edits; hardware items, units and add-on links being created, edited or removed; checkout requests being submitted, approved, denied or deleted, and the items on them; and edits to the email templates (including a template being turned on or off). Rows are filterable by Members / Inventory / Loans / Emails and open to a detail view with the field-level before-and-after.
+
+Entries are written by Postgres triggers, not by the frontend — see [`supabase/migrations/20260921000000_audit_log.sql`](supabase/migrations/20260921000000_audit_log.sql). This app talks straight to PostgREST from the browser, so a log written by the client would only ever contain what the client remembered to report and would miss anything done from the SQL editor, an Edge Function, or a future second client. The acting user comes from `auth.uid()`, the same mechanism the email triggers rely on; an entry with no actor is genuinely not a signed-in user (a scheduled function, a service-role script, or a direct database change) and the screen shows it as **System**.
+
+A few deliberate limits:
+
+- **Personal details are not copied into the log.** A change to a member's phone number, student ID or address is recorded as having happened, without the old and new values — the audit table is append-only and kept forever, so storing them would create a second permanent copy of data a member can otherwise correct. Non-sensitive fields (role, item name, quantity, replacement value, a template's subject line) keep their full before/after.
+- **An email template's body** is recorded as edited rather than diffed; the template itself is the source of truth for how it reads now.
+- **`loan_request_availability` is not audited.** One checkout writes dozens of rows there (one per free hour in the 14-day grid) and the grid is already visible in full on the loan detail screen.
+- **Emails actually sent are not duplicated here** — they have their own richer surface in `email_log` and the "Sent email log" screen, which keeps the rendered body and the provider's error.
+- Logging is fire-and-forget, like `notify_email_event`: if a write to `audit_log` fails it raises a server warning and the original write still succeeds, rather than an admin being unable to add a hardware item because the audit table hiccuped.
+
+The table is admin-readable and has no insert, update or delete policy or grant at all, and the helper functions behind the triggers are revoked from `anon`/`authenticated`, so nothing holding a user's JWT can write, rewrite or erase an entry — not through the table and not through a `SECURITY DEFINER` function. It starts empty: history before the migration was applied was never captured and isn't invented.
+
+### Retention
+
+`audit_log` takes a row for every write the app makes, so it's pruned rather than kept forever: `prune_audit_log(months)` deletes entries older than the given number of months, and the migration schedules it weekly via `pg_cron` (Sundays 03:30 UTC) keeping **12 months**. The screen states the policy under the list, so if you change the interval, change `AUDIT_LOG_RETENTION_MONTHS` in [`src/lib/auditLog.ts`](src/lib/auditLog.ts) to match.
+
+`pg_cron` is available on Supabase but off by default, and the migration doesn't enable it — enabling an extension is a project-level decision, and failing the whole migration over an optional one would be worse. If it isn't on, everything else still applies, the migration prints a notice, and the log simply grows. Turn it on under **Database → Extensions** in the dashboard and re-run the migration to pick up the schedule. To check or change it afterwards:
+
+```sql
+select * from cron.job where jobname = 'prune-audit-log';
+select cron.schedule('prune-audit-log', '30 3 * * 0', 'select public.prune_audit_log(24)');  -- keep 24 months instead
+select public.prune_audit_log(12);  -- run it once, by hand
+```
+
+### Applying the migration
+
+Paste [`supabase/migrations/20260921000000_audit_log.sql`](supabase/migrations/20260921000000_audit_log.sql) into the Supabase SQL editor, the same way the other migrations in this repo have been applied. It needs no secrets or deployed functions, and it is safe to re-run.
+
+`supabase db push` is **not** interchangeable here: it applies every local migration the remote `supabase_migrations.schema_migrations` table has no record of, and since this project's migrations were run by hand in the SQL editor, that table doesn't know about them — so a push would attempt to replay all of them, not just this one. Check with `supabase migration list` (read-only) before pushing anything. To move to CLI-managed migrations, mark the already-applied ones with `supabase migration repair --status applied <version>` for each, then `supabase db push` handles this and future migrations normally.
 
 ## License
 

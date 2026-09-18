@@ -365,14 +365,44 @@ export async function createEquipmentAddons(
 // Replaces the full set of add-on links for an equipment item — used when
 // editing a product, where the form just tracks "what the add-ons should
 // be now" rather than a diff against what's already saved.
+//
+// The diff against what IS saved happens here instead, rather than the
+// simpler delete-everything-then-reinsert: links that didn't change are
+// left untouched. That's invisible in the UI, but `equipment_addons` is
+// audited per row (see 20260921000000_audit_log.sql), and wiping the table
+// on every save would fill the audit log with "X is no longer an add-on of
+// Y" / "X was linked to Y" pairs for add-ons nobody touched.
 export async function replaceEquipmentAddons(
   equipmentId: string,
   addons: CreateEquipmentAddonInput[],
 ): Promise<void> {
-  const { error: deleteError } = await supabase.from('equipment_addons').delete().eq('equipment_id', equipmentId)
-  if (deleteError) throw deleteError
+  const { data: existing, error: fetchError } = await supabase
+    .from('equipment_addons')
+    .select('id, addon_equipment_id, addon_type')
+    .eq('equipment_id', equipmentId)
 
-  if (addons.length > 0) {
-    await createEquipmentAddons(equipmentId, addons)
+  if (fetchError) throw fetchError
+
+  // Keyed on both columns, matching the table's unique constraint: the same
+  // product can legitimately be linked as optional AND required.
+  const linkKey = (addonEquipmentId: string, addonType: string) => `${addonEquipmentId}:${addonType}`
+  const desired = new Map(addons.map((addon) => [linkKey(addon.addonEquipmentId, addon.addonType), addon]))
+  const existingKeys = new Set((existing ?? []).map((link) => linkKey(link.addon_equipment_id, link.addon_type)))
+
+  const removedIds = (existing ?? [])
+    .filter((link) => !desired.has(linkKey(link.addon_equipment_id, link.addon_type)))
+    .map((link) => link.id)
+
+  if (removedIds.length > 0) {
+    const { error: deleteError } = await supabase.from('equipment_addons').delete().in('id', removedIds)
+    if (deleteError) throw deleteError
+  }
+
+  const added = [...desired.entries()]
+    .filter(([key]) => !existingKeys.has(key))
+    .map(([, addon]) => addon)
+
+  if (added.length > 0) {
+    await createEquipmentAddons(equipmentId, added)
   }
 }
