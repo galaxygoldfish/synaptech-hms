@@ -5,9 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AvailabilityModal } from './AvailabilityModal'
 import {
-  ArrowDownRightFilled,
   ArrowLeftIcon,
-  ArrowUpLeftFilled,
   CalendarIcon,
   ChevronRightIcon,
   DownloadIconFilled,
@@ -139,19 +137,6 @@ export default function LoanDetail() {
   // bucketForLoanItem returns null only for a denied request.
   const state: LoanState | null = detail ? (bucket ?? 'denied') : null
 
-  // Which way the hardware is about to move, if at all. A returned or denied
-  // loan is finished; an active or overdue one is waiting to come back even
-  // if the member hasn't formally asked to return it, since hand-backs get
-  // arranged over Discord as often as through the app.
-  //
-  // Both buttons are inert for now — they render, they don't act.
-  const pendingMove: 'hand-off' | 'return' | null =
-    state === 'requests'
-      ? 'hand-off'
-      : state === 'active' || state === 'overdue' || state === 'returns'
-        ? 'return'
-        : null
-
   function handleLogOut() {
     setProfileOpen(false)
     signOut()
@@ -235,30 +220,6 @@ export default function LoanDetail() {
             </div>
 
             <div className={styles.actionRow}>
-              {/* Same diagonals the dashboard uses for its own Check out /
-                  Return actions — up-and-out for hardware leaving, down-and-in
-                  for hardware coming back. */}
-              {pendingMove === 'hand-off' && (
-                <button
-                  type="button"
-                  className={styles.agreementButton}
-                  onClick={() => navigate(`/adminHome/loans/${detail.id}/hand-off`)}
-                >
-                  <span className={styles.buttonIcon}>
-                    <ArrowUpLeftFilled size={16} />
-                  </span>
-                  Mark as handed off
-                </button>
-              )}
-              {pendingMove === 'return' && (
-                <button type="button" className={styles.agreementButton}>
-                  <span className={styles.buttonIcon}>
-                    <ArrowDownRightFilled size={16} />
-                  </span>
-                  Mark as returned
-                </button>
-              )}
-
               {(state === 'requests' || state === 'returns') && (
                 <button type="button" className={styles.agreementButton} onClick={() => setAvailabilityOpen(true)}>
                   <span className={styles.buttonIcon}>

@@ -31,6 +31,8 @@ import AddInventoryItemPage from './pages/AddInventoryItemPage'
 import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
 import AddInventoryItemDonePage from './pages/AddInventoryItemDonePage'
 import GetReplacementLabelPage from './pages/GetReplacementLabelPage'
+import GetLabelsBrowsePage from './pages/GetLabelsBrowsePage'
+import GetLabelsProductPage from './pages/GetLabelsProductPage'
 import AdminManageUserEmailsPage from './pages/AdminManageUserEmailsPage'
 import AdminManageAdminEmailsPage from './pages/AdminManageAdminEmailsPage'
 import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
@@ -141,6 +143,8 @@ export function AppRouter() {
           <Route path="/adminHome/add-item/labels" element={<AdminRoute><AddInventoryItemLabelsPage /></AdminRoute>} />
           <Route path="/adminHome/add-item/done" element={<AdminRoute><AddInventoryItemDonePage /></AdminRoute>} />
           <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
+          <Route path="/adminHome/get-labels/browse" element={<AdminRoute><GetLabelsBrowsePage /></AdminRoute>} />
+          <Route path="/adminHome/get-labels/browse/:id" element={<AdminRoute><GetLabelsProductPage /></AdminRoute>} />
           <Route path="/adminHome/emails/user" element={<AdminRoute><AdminManageUserEmailsPage /></AdminRoute>} />
           <Route path="/adminHome/emails/admin" element={<AdminRoute><AdminManageAdminEmailsPage /></AdminRoute>} />
           <Route path="/adminHome/emails/log" element={<AdminRoute><AdminEmailLogPage /></AdminRoute>} />

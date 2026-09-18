@@ -117,16 +117,14 @@ function renderDetail() {
 }
 
 describe('LoanDetail — what each state offers', () => {
-  it('offers the hand-off and the checkout availability on a pending request', async () => {
+  it('offers the checkout availability on a pending request', async () => {
     vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
 
     renderDetail()
 
     expect(await screen.findByText('Checkout requested')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mark as handed off' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /view checkout availability/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /download hardware loan agreement/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mark as returned' })).not.toBeInTheDocument()
   })
 
   // Availability is captured for a meeting that hasn't happened yet, so it's
@@ -141,36 +139,17 @@ describe('LoanDetail — what each state offers', () => {
     expect(screen.getByRole('button', { name: /download hardware loan agreement/i })).toBeInTheDocument()
   })
 
-
-  it('opens the hand-off screen for this loan', async () => {
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
-
-    const router = createMemoryRouter(
-      [
-        { path: '/adminHome/loans/:id', element: <LoanDetail /> },
-        { path: '/adminHome/loans/:id/hand-off', element: <p>Hand off item-1</p> },
-      ],
-      { initialEntries: ['/adminHome/loans/item-1'] },
-    )
-    render(<RouterProvider router={router} />)
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Mark as handed off' }))
-
-    expect(await screen.findByText('Hand off item-1')).toBeInTheDocument()
-  })
-
-  // Which way the hardware is about to move decides the label: out on a
-  // request, back on anything already in someone's hands.
-  it('offers the return on an active loan, and on an overdue one', async () => {
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(activeLoan)
-    const { unmount } = renderDetail()
-    expect(await screen.findByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mark as handed off' })).not.toBeInTheDocument()
-    unmount()
-
-    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(overdueLoan)
-    renderDetail()
-    expect(await screen.findByRole('button', { name: 'Mark as returned' })).toBeInTheDocument()
+  // Hand-offs and returns are handled from the admin home flows, not here.
+  it('has no hand-off or return buttons in any state', async () => {
+    for (const loan of [detail(), activeLoan, overdueLoan]) {
+      vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(loan)
+      const { unmount } = renderDetail()
+      await screen.findByRole('heading', { name: 'Loan details' })
+      await screen.findByText(loan.itemName)
+      expect(screen.queryByRole('button', { name: 'Mark as handed off' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Mark as returned' })).not.toBeInTheDocument()
+      unmount()
+    }
   })
 
   it('marks an overdue loan as overdue', async () => {

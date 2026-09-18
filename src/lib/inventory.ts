@@ -276,6 +276,18 @@ export async function fetchEquipmentInventorySummary(): Promise<EquipmentInvento
   }))
 }
 
+// Every physical unit of a product, for reprinting labels one by one.
+export async function listEquipmentUnits(equipmentId: string): Promise<EquipmentUnit[]> {
+  const { data, error } = await supabase
+    .from('equipment_units')
+    .select()
+    .eq('equipment_id', equipmentId)
+    .order('serial_number')
+
+  if (error) throw error
+  return data as EquipmentUnit[]
+}
+
 export interface EquipmentUnitLookup {
   unit: EquipmentUnit
   equipment: Equipment

@@ -131,6 +131,73 @@
   margin: 0.75rem 0 0;
 }
 
+/* ── "Pick from database" alternative ─────────────────────── */
+
+.altButtonWrap {
+  width: min(28.5rem, 100%);
+  margin: 1.25rem auto 0;
+}
+
+/* Same look as the "Enter serial number" button on the return hardware page. */
+.altButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  background: var(--blue-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  color: var(--blue-fg);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.altButton:hover {
+  filter: brightness(0.97);
+}
+
+.altButtonLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Database browse lists ─────────────────────────────────── */
+
+.browseList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.browseRow {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  font: inherit;
+}
+
+.browseRow:hover {
+  background: #eaeaea;
+}
+
+.browseChevron {
+  color: #616161;
+  flex-shrink: 0;
+}
+
+.statusText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  color: rgba(0, 0, 0, 0.66);
+  text-align: center;
+  margin: 0;
+}
+
 /* ── Result card ───────────────────────────────────────────── */
 
 .card {
