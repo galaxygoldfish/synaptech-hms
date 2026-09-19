@@ -125,6 +125,16 @@
     font-size: 1.75rem;
   }
 
+  /* Narrower than the content column itself, rather than spanning it edge
+     to edge — these read as short confirmations, not a paragraph, and want
+     the margin on either side to match. */
+  .subtext,
+  .footnote {
+    max-width: 18rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .subtext {
     font-size: 0.9375rem;
   }

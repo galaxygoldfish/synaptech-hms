@@ -49,10 +49,18 @@ export default function CheckoutSelectHardware() {
             <span>Back</span>
           </button>
 
+          {/* Desktop only (see .heading's media query) — tablet and phone
+              drop it and put the back button inline with the search field
+              instead, in the space it leaves behind. */}
           <h1 className={styles.heading}>Select hardware to loan</h1>
-        </div>
 
-        <SearchField value={query} onChange={setQuery} placeholder="Search our hardware inventory" />
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search our hardware inventory"
+            className={styles.searchArea}
+          />
+        </div>
 
         <InventoryFilterChips selected={selectedFilters} onToggle={toggleFilter} />
 

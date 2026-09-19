@@ -38,10 +38,12 @@ export default function CheckoutSuccess() {
             <CheckmarkIcon size={36} className={styles.successIcon} />
           </div>
           <h1 className={styles.heading}>Success!</h1>
-          <p className={styles.subtext}>Your request to check out hardware was submitted successfully</p>
+          <p className={styles.subtext}>
+            One of our Hardware Managers will be reaching out to you soon to schedule a pickup
+          </p>
 
           <p className={styles.footnote}>
-            Once your request is approved, you will be notified by email at{' '}
+            You have been emailed confirmation of this request to{' '}
             <span className={styles.emailChip}>
               <MailIcon size={16} />
               {profile?.uw_email}

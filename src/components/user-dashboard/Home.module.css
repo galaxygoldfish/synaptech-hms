@@ -216,12 +216,16 @@
   gap: 0.25rem;
 }
 
+/* Fixed min-height rather than trusting padding + icon size to match across
+   rows — "View documentation" uses a smaller icon (PlusIconSmallFilled)
+   than the others, so its row was a few pixels shorter without this. */
 .actionRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
+  min-height: 3.25rem;
   flex: 1;
   background: #f4f4f4;
   border: none;

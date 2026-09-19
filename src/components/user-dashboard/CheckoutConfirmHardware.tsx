@@ -142,6 +142,18 @@ export default function CheckoutConfirmHardware() {
   )
   const hasAddons = optionalAddons.length > 0 || requiredAddons.length > 0
 
+  // This screen exists to pick required/optional add-ons before the return
+  // date — when an item has none, it's nothing but a second look at what
+  // BrowseInventoryItem already showed, so skip straight past it rather
+  // than making that the confirmation click's reward.
+  useEffect(() => {
+    if (isLoading || error || !equipment || hasAddons || isOutOfStock(equipment)) return
+    navigate('/home/checkout/return-date', {
+      replace: true,
+      state: { equipmentId: equipment.id, optionalAddonIds: [], requiredAddonId: null },
+    })
+  }, [isLoading, error, equipment, hasAddons, navigate])
+
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
     return {

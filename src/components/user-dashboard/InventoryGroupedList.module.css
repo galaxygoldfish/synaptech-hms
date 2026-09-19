@@ -100,6 +100,18 @@
 }
 
 @media (max-width: 640px) {
+  .groupLabel {
+    font-size: 1rem;
+  }
+
+  /* Insets every row (both the clickable <button> variant and the plain
+     <li> one) evenly, rather than a margin on .item itself — .itemButton
+     composes .item with its own width: 100%, which a margin there would
+     just push past the list's own edge. */
+  .itemList {
+    padding: 0 5px;
+  }
+
   .item {
     gap: 1rem;
     padding: 1.125rem 2.75rem 1.125rem 1.125rem;

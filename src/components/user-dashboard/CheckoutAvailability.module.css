@@ -98,12 +98,19 @@
 
   .heading {
     font-size: 1.5rem;
-    text-align: left;
+    text-align: center;
   }
 
   .subtext {
     font-size: 0.9375rem;
-    text-align: left;
+    text-align: center;
+  }
+
+  /* The hour-by-hour instructions are redundant once the grid itself makes
+     "tap the hours you're free" obvious — worth the room on wider screens,
+     one line too many on a phone-width card. */
+  .subtextHours {
+    display: none;
   }
 
   .card {

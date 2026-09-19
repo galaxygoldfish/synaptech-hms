@@ -110,25 +110,42 @@ export default function BrowseInventoryItem() {
             </div>
 
             <div className={styles.linkRows}>
+              {/* Checkout leads, and is the one row tinted as the primary
+                  action — this group is one CTA plus reference/fallback
+                  rows underneath it, not three equally-weighted options. */}
               <button
                 type="button"
-                className={`${styles.linkRow} ${styles.linkRowTop}`}
-                onClick={() =>
-                  equipment.documentation_url &&
-                  window.open(equipment.documentation_url, '_blank', 'noopener,noreferrer')
-                }
-                disabled={!equipment.documentation_url}
+                className={`${styles.linkRow} ${styles.linkRowTop} ${styles.linkRowPrimary}`}
+                onClick={() => navigate('/home/checkout/confirm', { state: { equipmentId: equipment.id } })}
               >
                 <span className={styles.linkRowLeft}>
                   <span className={styles.linkRowIcon}>
-                    <DocumentationIcon size={22} />
+                    <ArrowUpLeftFilled size={15} />
                   </span>
-                  View item-specific documentation
+                  Checkout this item
                 </span>
                 <ChevronRightFilled size={9} color="#474747" />
               </button>
+              {equipment.documentation_url && (
+                <button
+                  type="button"
+                  className={styles.linkRow}
+                  onClick={() =>
+                    window.open(equipment.documentation_url!, '_blank', 'noopener,noreferrer')
+                  }
+                >
+                  <span className={styles.linkRowLeft}>
+                    <span className={styles.linkRowIcon}>
+                      <DocumentationIcon size={22} />
+                    </span>
+                    <span className={styles.linkRowTextFull}>View item-specific documentation</span>
+                    <span className={styles.linkRowTextShort}>View documentation</span>
+                  </span>
+                  <ChevronRightFilled size={9} color="#474747" />
+                </button>
+              )}
               <a
-                className={styles.linkRow}
+                className={`${styles.linkRow} ${styles.linkRowBottom}`}
                 href={HELP_AND_SUPPORT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -141,19 +158,6 @@ export default function BrowseInventoryItem() {
                 </span>
                 <ChevronRightFilled size={9} color="#474747" />
               </a>
-              <button
-                type="button"
-                className={`${styles.linkRow} ${styles.linkRowBottom}`}
-                onClick={() => navigate('/home/checkout/confirm', { state: { equipmentId: equipment.id } })}
-              >
-                <span className={styles.linkRowLeft}>
-                  <span className={styles.linkRowIcon}>
-                    <ArrowUpLeftFilled size={15} />
-                  </span>
-                  Checkout this item
-                </span>
-                <ChevronRightFilled size={9} color="#474747" />
-              </button>
             </div>
           </div>
         )}

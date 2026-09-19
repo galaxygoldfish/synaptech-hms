@@ -7,6 +7,20 @@
   scrollbar-width: none;
 }
 
+@media (max-width: 900px) {
+  /* Tighter gap, matching the admin side's filter-chip rows (AuditLog,
+     EmailLog, HardwareLoans, InventoryAudit) at this width rather than the
+     wider desktop spacing here. */
+  .chipRow {
+    gap: 0.4375rem;
+    /* Pulls the row up out of the page's own row-to-row gap (.main in
+       BrowseInventory/CheckoutSelectHardware), which is otherwise the same
+       generous space used everywhere else in that column — tighter here
+       specifically, without touching the gap below the chips. */
+    margin-top: -0.875rem;
+  }
+}
+
 .chipRow::-webkit-scrollbar {
   display: none;
 }

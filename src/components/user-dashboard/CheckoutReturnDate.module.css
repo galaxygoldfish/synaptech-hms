@@ -110,13 +110,6 @@
   margin: 0;
 }
 
-.itemDescription {
-  font-family: 'Rubik', sans-serif;
-  font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.93);
-  margin: 0;
-}
-
 .returnNotRequired {
   flex-shrink: 0;
   font-family: 'Rubik', sans-serif;
@@ -252,27 +245,30 @@
 
   .heading {
     font-size: 1.5rem;
-    text-align: left;
+    text-align: center;
   }
 
   .subtext {
     font-size: 0.9375rem;
-    text-align: left;
+    text-align: center;
   }
 
   .card {
     padding: 1.125rem;
   }
 
-  .itemRow {
-    flex-direction: column;
+  .cardTitle {
     text-align: center;
-    gap: 0.75rem;
-    padding: 1.5rem 1rem;
   }
 
-  .itemInfo {
-    align-items: center;
+  /* Image and name stay side by side on their own line, the way desktop
+     already lays out .itemRow (it has no flex-direction override) — this
+     just gives the name more room by shrinking the thumbnail. The date
+     button wraps onto a second, full-width line below rather than
+     squeezing into the same row as the other two, which left it
+     overlapping the name on a phone-width card. */
+  .itemRow {
+    flex-wrap: wrap;
   }
 
   .itemThumb {
@@ -280,10 +276,33 @@
     height: 4.5rem;
   }
 
+  .itemName {
+    font-size: 1.3125rem;
+  }
+
+  .dateButton,
+  .returnNotRequired {
+    flex-basis: 100%;
+  }
+
   .dateButton {
     width: 100%;
     min-width: 0;
+    /* Wider than the desktop 0.75rem — the icon and "Select" sat closer
+       together than felt right once the button stretched full width. */
+    gap: 1.25rem;
     justify-content: center;
+  }
+
+  /* .dateButtonPlaceholder's absolute positioning (below) exists to hold
+     it at a fixed offset next to the icon on desktop's fixed-width button;
+     stretched to the full card width here, that fixed offset no longer
+     lines up with the icon once .dateButton centers it, so it's dropped in
+     favor of flowing normally alongside the icon like .dateButtonValue
+     already does. */
+  .dateButtonPlaceholder {
+    position: static;
+    transform: none;
   }
 
   .policyText {

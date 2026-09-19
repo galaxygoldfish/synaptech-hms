@@ -15,6 +15,21 @@
   padding: 0.5rem 0 2rem;
 }
 
+@media (min-width: 641px) and (max-width: 900px) {
+  /* .page's min-height is a floor, not a ceiling — if .main's children
+     ever add up to more than 100dvh, the page grows past it and the whole
+     page scrolls instead of just the agreement viewer inside it. Capping
+     .page at exactly the viewport height (and clipping it) is what makes
+     that impossible: .main's flex:1 then has a true, fixed budget to
+     divide between the fixed-size rows (heading, subtext, tabs, actions)
+     and AgreementPreview's flex:1 .preview, which is the one that's meant
+     to shrink or scroll internally, never the page around it. */
+  .page {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 .heading {
   font-family: 'Rubik', sans-serif;
   font-weight: 500;
@@ -193,12 +208,12 @@
 
   .heading {
     font-size: 1.5rem;
-    text-align: left;
+    text-align: center;
   }
 
   .subtext {
     font-size: 0.9375rem;
-    text-align: left;
+    text-align: center;
   }
 
   .card {

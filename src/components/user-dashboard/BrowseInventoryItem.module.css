@@ -121,12 +121,18 @@
   gap: 0.3125rem;
 }
 
+/* Fixed min-height rather than trusting padding + a line of text to match
+   across rows — one row's label can outgrow the others' (the "view
+   documentation" shortening on phone exists because this one used to wrap
+   when the others never do), and a group like this reads as one control
+   with several rows, not several differently-sized buttons. */
 .linkRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
+  min-height: 3.5rem;
   background: #f4f4f4;
   border: none;
   padding: 1rem 1.125rem;
@@ -137,17 +143,22 @@
   cursor: pointer;
 }
 
-.linkRow:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .linkRowTop {
   border-radius: 0.625rem 0.625rem 0.3125rem 0.3125rem;
 }
 
 .linkRowBottom {
   border-radius: 0.3125rem 0.3125rem 0.625rem 0.625rem;
+}
+
+/* Same tint "the action" gets on the loan detail screen's own row group —
+   one blue among an otherwise grey stack, not a fourth grey row. */
+.linkRowPrimary {
+  background: #e8eef6;
+}
+
+.linkRowPrimary:hover {
+  background: #dce5f1;
 }
 
 .linkRowLeft {
@@ -164,17 +175,46 @@
   justify-content: center;
 }
 
+/* Only the documentation row's label shortens — full wording everywhere
+   except phone, where the row otherwise wraps to two lines. */
+.linkRowTextShort {
+  display: none;
+}
+
 @media (max-width: 640px) {
+  .linkRowTextFull {
+    display: none;
+  }
+
+  .linkRowTextShort {
+    display: inline;
+  }
+
   .main {
     padding-bottom: 2rem;
   }
 
   .layoutCentered {
     margin-top: 1.5rem;
-    gap: 1.5rem;
+    /* .layoutCentered has exactly two children — itemInfo, then linkRows —
+       so this gap is entirely the space above the button group; wider here
+       than the compact 1.5rem the rest of the phone layout uses, since
+       "2 available" and the buttons read as two separate groups. */
+    gap: 2.75rem;
   }
 
   .itemName {
     font-size: 1.5rem;
+  }
+
+  .linkRow {
+    padding: 1rem 1.625rem;
+  }
+
+  /* Narrower than .main's own already-narrowed width, rather than running
+     the buttons edge to edge of it. */
+  .linkRows {
+    width: calc(100% - 2rem);
+    margin: 0 auto;
   }
 }

@@ -159,12 +159,17 @@
   gap: 0.3125rem;
 }
 
+/* Fixed min-height rather than trusting padding + a line of text to match
+   across rows — a group like this reads as one control with several rows,
+   not several differently-sized buttons, if one row's label ever wraps and
+   the others don't. */
 .linkRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
+  min-height: 3.5rem;
   background: #f4f4f4;
   border: none;
   border-radius: 0.3125rem;

@@ -259,3 +259,16 @@
     --doc-width: 38rem;
   }
 }
+
+@media (min-width: 40.0625rem) and (max-width: 56.25rem) {
+  /* iPad portrait only (11" and mini — the 640px/900px breakpoints used
+     elsewhere, in the same rem units this file's other queries use): the
+     viewer's fixed 32rem cap left a lot of unused page below it on a
+     screen this tall. Growing to fill .main's own remaining height (it's a
+     flex column) instead of a flat cap. */
+  .preview {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+}

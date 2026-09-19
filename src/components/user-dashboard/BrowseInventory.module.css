@@ -15,9 +15,14 @@
 
 /* ── Back + search row ────────────────────────────────────── */
 
+/* Stretch, not center: the back button and the search field have to be the
+   same height, and their natural heights differ by a couple of pixels
+   because one is sized by an icon and a label and the other by an icon and
+   an <input>. Letting the taller one set the height is exact and stays
+   exact through a font change. */
 .searchRow {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 1rem;
 }
 

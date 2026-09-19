@@ -200,9 +200,6 @@ export default function CheckoutReturnDate() {
       <main className={styles.main}>
         <h1 className={styles.heading}>Choose your return date</h1>
         <p className={styles.subtext}>You must select a return date for each hardware product that you check out</p>
-        <p className={styles.subtext}>
-          The maximum loan period is one quarter, which can be extended prior to the item return date as desired
-        </p>
 
         {!isSessionActive && (
           <p className={styles.sessionMessage}>
@@ -220,7 +217,6 @@ export default function CheckoutReturnDate() {
                     <Skeleton width="5.375rem" height="5.375rem" radius="0.625rem" />
                     <div className={styles.itemInfo}>
                       <Skeleton width="50%" height="1.375rem" shape="pill" />
-                      <Skeleton width="75%" height="1.0625rem" shape="pill" />
                     </div>
                     <Skeleton width="11rem" height="3rem" radius="0.9375rem" />
                   </li>
@@ -242,7 +238,6 @@ export default function CheckoutReturnDate() {
                     {item.image_url && <img src={item.image_url} alt="" className={styles.itemThumb} />}
                     <div className={styles.itemInfo}>
                       <p className={styles.itemName}>{item.name}</p>
-                      {item.description && <p className={styles.itemDescription}>{item.description}</p>}
                     </div>
                     {needsReturn ? (
                       <DateSelectButton
