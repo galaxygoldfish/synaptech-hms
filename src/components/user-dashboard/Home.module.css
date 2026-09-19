@@ -70,9 +70,12 @@
   border: 3px solid rgba(0, 0, 0, 0.12);
   border-radius: 1.25rem;
   padding: 1.5rem 1.75rem 2rem;
-  /* Fills spare room but never shrinks below its cards, so every loan is
-     visible without scrolling inside the section. */
-  flex: 1 0 auto;
+  /* flex-basis: 0, not auto — auto would size this from its own content
+     first (a pass where .loanGrid's container-query height isn't settled
+     yet) and only grow afterward, and that circularity is what left
+     .loanCard's `cqh` permanently stuck at 0 (see .loanGrid below). Basis 0
+     skips straight to filling the available space. */
+  flex: 1 0 0;
   min-height: 8rem;
   display: flex;
   flex-direction: column;
@@ -115,6 +118,10 @@
 .row {
   display: grid;
   grid-template-columns: minmax(18rem, 26rem) 1fr;
+  /* Same gap .main uses between its own sections (above and below this
+     row), so the CTA and the action list read as evenly spaced either way
+     the grid is stacked. */
+  gap: 1.5rem;
   align-items: stretch;
   flex-shrink: 0;
 }
@@ -122,12 +129,24 @@
 @media (max-width: 800px) {
   .row {
     grid-template-columns: 1fr;
-    /* Same gap the page uses between its other sections. */
-    row-gap: 1.5rem;
+  }
+}
+
+@media (min-width: 801px) and (max-width: 900px) {
+  /* iPad-11"-width only: the desktop column ratio above (minmax(18rem,
+     26rem) 1fr) reads as lopsided at this narrower width, the CTA
+     noticeably wider than the action list beside it — an even split
+     instead. */
+  .row {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
 .checkoutCta {
+  /* A button sizes to its content by default even with display: flex — without
+     this, the button sat narrower than .ctaWrap and left-aligned within it,
+     throwing off the overdue bubble below, which centers on .ctaWrap. */
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -142,6 +161,15 @@
 }
 
 .checkoutCta:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Blocked by an overdue loan: styled the same as :disabled, but the button
+   stays a real, clickable, hoverable control (see CheckoutCallToAction) —
+   native `disabled` would silence the click/hover that opens the warning
+   below. */
+.checkoutCtaBlocked {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -171,10 +199,8 @@
 }
 
 @media (max-width: 800px) {
-  /* One full-width bar: the plus and "GET HARDWARE" side by side, centred. A
-     button only takes its content's width unless told otherwise. */
+  /* One full-width bar: the plus and "GET HARDWARE" side by side, centred. */
   .checkoutCta {
-    width: 100%;
     flex-direction: row;
     min-height: unset;
     padding: 1.5rem;
@@ -198,6 +224,118 @@
   }
 
   .checkoutCtaSubtitle {
+    display: none;
+  }
+}
+
+/* ── Overdue checkout warning ─────────────────────────────── */
+
+.ctaWrap {
+  position: relative;
+}
+
+/* Tablet/desktop: a bubble sits directly over the button itself. Hovering
+   or clicking the blocked button reveals it; clicking the bubble itself
+   dismisses it. */
+.overdueBubble {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 13rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.625rem;
+  color: rgba(0, 0, 0, 0.8);
+  background: var(--white);
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.25rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+  cursor: pointer;
+}
+
+.overdueBubbleText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+@media (min-width: 801px) {
+  .ctaWrap:hover .overdueBubble,
+  .overdueBubbleOpen {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 800px) {
+  .overdueBubble {
+    display: none;
+  }
+}
+
+/* Phone/tablet: no room beside a full-width button for a bubble, so a
+   centered modal carries the same message instead. */
+.overdueModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.overdueModal {
+  width: 100%;
+  max-width: 20rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  color: rgba(0, 0, 0, 0.8);
+  background: var(--white);
+  border-radius: 1.25rem;
+  padding: 2rem 1.75rem 1.75rem;
+  box-shadow: 0 1.25rem 2.75rem rgba(0, 0, 0, 0.22);
+}
+
+.overdueModalText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.overdueModalOk {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.93);
+  color: var(--white);
+  border: none;
+  border-radius: 999px;
+  padding: 0.875rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.overdueModalOk:hover {
+  background: #000;
+}
+
+@media (min-width: 801px) {
+  .overdueModalOverlay {
     display: none;
   }
 }
@@ -296,13 +434,126 @@
   align-content: start;
 }
 
+/* The square box itself (tablet/desktop, below) — deliberately carries no
+   padding of its own. aspect-ratio measures the element it's set on, and a
+   card sized by width: min(100cqw, 100cqh) plus its own 1.5rem padding
+   rendered visibly larger than that computed size, throwing the square off
+   by exactly the padding. .loanCardInner (below) is what actually holds
+   the padding and the content's flex-column layout, filling this box
+   completely instead. */
 .loanCard {
+  display: block;
+  background: #f2f2f2;
+  border-radius: 1.25rem;
+}
+
+.loanCardInner {
+  /* A <button> now (the whole card opens the loan, not just the "More
+     details" text within it) — reset to look exactly like the plain div
+     this used to be. */
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  background: #f2f2f2;
-  border-radius: 1.25rem;
+  height: 100%;
+  box-sizing: border-box;
   padding: 1.5rem;
+}
+
+@media (min-width: 901px) {
+  /* Desktop: .hardwareCard (flex:1 0 0, above) already grows to fill
+     whatever room the page has below the section label, but the grid's own
+     fixed-height rows never used that space — a lone loan card just sat at
+     its own small content height, leaving the rest of a tall section blank.
+
+     container-type: size on .loanGrid turns its own resolved width and
+     height (definite, since .loanGrid itself is flex: 1 inside
+     .hardwareCard, an ordinary flex item resolved beforehand) into cqw/cqh
+     units .loanCard can read directly. width: min(100cqw, 100cqh) is then
+     exactly "as big as whichever of the section's width or height is
+     smaller" — aspect-ratio: 1 derives the matching height from that
+     width, so the result is always square and never overflows either
+     axis. flex-wrap lets more than one card share the width across a row
+     rather than each claiming the section's full width for itself. */
+  .loanGrid {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    flex: 1;
+    min-height: 0;
+    container-type: size;
+  }
+
+  .loanCard {
+    width: min(100cqw, 100cqh);
+    aspect-ratio: 1;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  /* Tablet: not enough width for the square grid above to read as anything
+     but a giant, mostly-empty tile, and not narrow enough to need the
+     centered phone stack below — a wide, content-height row instead, image
+     and details side by side, one per line. */
+  .loanGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .loanCard {
+    width: 100%;
+  }
+
+  .loanCardInner {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: repeat(3, auto);
+    align-items: center;
+    column-gap: 1.25rem;
+    row-gap: 0.25rem;
+    height: auto;
+  }
+
+  .loanThumb {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    margin-bottom: 0;
+  }
+
+  .loanName {
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: 0;
+  }
+
+  .loanDate {
+    grid-column: 2;
+    grid-row: 2;
+    margin-bottom: 0;
+  }
+
+  .loanLink {
+    grid-column: 2;
+    grid-row: 3;
+    /* A <button>'s own UA default is centered text — invisible everywhere
+       else the button only ever spans its own content width, but stretched
+       across this grid's full text column, that default read as a
+       rightward shift off the axis .loanName/.loanDate start on. */
+    justify-self: start;
+    text-align: left;
+    /* A button's own line-height pads well above its text — row-gap alone
+       (which sizes every row here uniformly) couldn't close this specific
+       gap without also tightening name-to-date, so this pulls just this
+       row up instead. */
+    margin-top: -0.875rem;
+  }
 }
 
 /* Due within a week. */
@@ -316,6 +567,7 @@
 }
 
 .loanThumb {
+  position: relative;
   width: 7.5rem;
   height: 5rem;
   display: flex;
@@ -326,9 +578,37 @@
 }
 
 .loanThumb img {
-  max-width: 100%;
-  max-height: 100%;
+  /* Absolutely positioned against .loanThumb's own resolved box rather than
+     sized with a percentage — percentage height needs a definite height on
+     the containing block to resolve, and .loanThumb's height (below, on
+     desktop) comes from flex: 1 two flex containers deep, which the
+     percentage here wasn't reliably picking up. inset: 0 always fills the
+     box it's actually laid out in, no percentage involved. */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+}
+
+@media (min-width: 901px) {
+  /* The square card (above) left a lot of empty air below a thumbnail sized
+     for the old, much smaller card — grow the thumbnail to fill whatever
+     .loanCardInner's column-flex doesn't need for the name/date/link below
+     it, so that text block sits flush on the card's bottom edge instead of
+     floating up near the image. Placed after the base .loanThumb rule
+     (above) deliberately — before it, the base rule's own width/height
+     came later in the cascade and silently overrode this one. */
+  .loanThumb {
+    flex: 1;
+    /* 70%, not 100% — .loanCardInner's align-items: flex-start (base rule)
+       then pins it to the card's left edge instead of stretching it. */
+    width: 70%;
+    height: auto;
+    min-height: 0;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
 }
 
 .loanName {
@@ -376,6 +656,11 @@
      photo at about half the card's width. */
   .hardwareCard {
     padding: 1.25rem;
+    /* Content-sized rather than filling the section (flex: 1 0 0, above) —
+       a phone has no room to spare beside the section for a taller loan
+       list to grow into, so the card should grow to fit every loan instead
+       of clipping/overlapping the row below it, and the page scrolls. */
+    flex: 0 0 auto;
   }
 
   /* The empty state's own floor, taller than .hardwareCard's 8rem — at this

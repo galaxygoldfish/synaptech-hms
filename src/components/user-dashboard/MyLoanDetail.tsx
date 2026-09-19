@@ -230,11 +230,15 @@ export default function MyLoanDetail() {
                 <div>
                   <LoanStatusBadge state={state} item={item} />
                 </div>
-                {dateLines.map((line) => (
-                  <p className={styles.itemDate} key={line}>
-                    {line}
-                  </p>
-                ))}
+                {dateLines.length > 0 && (
+                  <div className={styles.itemDates}>
+                    {dateLines.map((line) => (
+                      <p className={styles.itemDate} key={line}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -309,6 +313,7 @@ export default function MyLoanDetail() {
                       </span>
                       Cancel request
                     </span>
+                    <ChevronRightFilled size={9} color="#474747" />
                   </button>
                   <button
                     type="button"
@@ -323,6 +328,7 @@ export default function MyLoanDetail() {
                       </span>
                       Edit checkout availability
                     </span>
+                    <ChevronRightFilled size={9} color="#474747" />
                   </button>
                 </>
               )}
@@ -341,28 +347,40 @@ export default function MyLoanDetail() {
                     <span className={styles.linkRowIcon}>
                       <DownloadIcon size={20} />
                     </span>
-                    {isDownloading ? 'Opening…' : 'Download signed Hardware Loan Agreement'}
+                    {isDownloading ? (
+                      'Opening…'
+                    ) : (
+                      <>
+                        <span className={styles.linkRowTextFull}>Download signed Hardware Loan Agreement</span>
+                        <span className={styles.linkRowTextShort}>Download signed agreement</span>
+                      </>
+                    )}
                   </span>
+                  <ChevronRightFilled size={9} color="#474747" />
                 </button>
               )}
 
-              <button
-                type="button"
-                className={styles.linkRow}
-                onClick={() =>
-                  item.documentationUrl &&
-                  window.open(item.documentationUrl, '_blank', 'noopener,noreferrer')
-                }
-                disabled={!item.documentationUrl}
-              >
-                <span className={styles.linkRowLeft}>
-                  <span className={styles.linkRowIcon}>
-                    <DocumentationIcon size={22} />
+              {/* Hidden rather than disabled when there is no link, same as
+                  the signed agreement above — nothing to open, so nothing to
+                  raise the question. */}
+              {item.documentationUrl && (
+                <button
+                  type="button"
+                  className={styles.linkRow}
+                  onClick={() =>
+                    window.open(item.documentationUrl!, '_blank', 'noopener,noreferrer')
+                  }
+                >
+                  <span className={styles.linkRowLeft}>
+                    <span className={styles.linkRowIcon}>
+                      <DocumentationIcon size={22} />
+                    </span>
+                    <span className={styles.linkRowTextFull}>View item-specific documentation</span>
+                    <span className={styles.linkRowTextShort}>View documentation</span>
                   </span>
-                  View item-specific documentation
-                </span>
-                <ChevronRightFilled size={9} color="#474747" />
-              </button>
+                  <ChevronRightFilled size={9} color="#474747" />
+                </button>
+              )}
 
               <a
                 className={`${styles.linkRow} ${styles.linkRowBottom}`}
@@ -399,10 +417,7 @@ export default function MyLoanDetail() {
                 `${item?.itemName ?? 'This item'} stays out with you, and your return date does not change.`,
                 'You can ask to return it again at any time.',
               ]
-            : [
-                `This cancels your request for ${item?.itemName ?? 'this item'} and anything requested alongside it.`,
-                'You can submit a new request at any time.',
-              ]
+            : [`This cancels your request for ${item?.itemName ?? 'this item'}.`]
         }
         confirmLabel={
           isCancelling
@@ -411,6 +426,7 @@ export default function MyLoanDetail() {
               ? 'Withdraw request'
               : 'Cancel request'
         }
+        cancelLabel="Close"
         confirmDisabled={isCancelling}
         onConfirm={() => void handleCancel()}
         onCancel={() => setCancelOpen(false)}

@@ -48,8 +48,19 @@
   font-size: 0.9375rem;
   line-height: 1.5;
   color: rgba(0, 0, 0, 0.6);
-  max-width: 44rem;
   margin: 0;
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  /* iPad portrait only (11" and mini): forces the break at the sentence
+     boundary specifically, rather than leaving it to wrap wherever the
+     second sentence runs out of room — which it does, but not on a clean
+     line since this width fits neither the whole thing on one line
+     (desktop) nor wraps by width alone onto exactly two sentence-long
+     lines (phone). */
+  .subtextLine2 {
+    display: block;
+  }
 }
 
 .closeButton {
@@ -67,6 +78,43 @@
 
 .closeButton:hover {
   background: rgba(0, 0, 0, 0.12);
+}
+
+/* ── Legend ───────────────────────────────────────────────── */
+/* Same "Available" swatch as the admin's read-only AvailabilityModal, plus
+   an "Unavailable" one of its own — that grid is only ever showing what a
+   member already submitted, but this one is being actively painted, so the
+   blank/unmarked state needs its own key too. Colors match
+   AvailabilityGrid's .slot/.slotSelected exactly; they can't be shared as
+   classes across the two CSS modules, only kept in sync by eye. */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 0.25rem;
+}
+
+.legendSwatchAvailable {
+  background: #839cc5;
+}
+
+.legendSwatchUnavailable {
+  background: rgba(131, 156, 197, 0.17);
 }
 
 /* The grid scrolls inside the dialog rather than the dialog growing with it —
@@ -143,6 +191,21 @@
 
   .modal {
     padding: 1.25rem 1rem 1rem;
+  }
+
+  /* Extra room above and before the title/subtitle specifically, on top of
+     .modal's own padding — they read as flush against the dialog's corner
+     otherwise, tighter than the rest of the dialog's content below it. */
+  .headerText {
+    padding-top: 0.5rem;
+    padding-left: 0.375rem;
+  }
+
+  /* Same start inset as .headerText, above, so the key lines up on the
+     same axis as the title and subtitle rather than sitting back at
+     .modal's own padding. */
+  .legend {
+    padding-left: 0.375rem;
   }
 
   /* Stacked and full width rather than squeezed side by side — Cancel

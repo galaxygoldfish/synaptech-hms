@@ -116,17 +116,34 @@
   scrollbar-width: none;
 }
 
+@media (max-width: 900px) {
+  /* Tighter gap, matching every other filter-chip row's tablet/phone
+     spacing (AuditLog, EmailLog, HardwareLoans, InventoryAudit, and
+     "Browse our inventory"'s own InventoryFilterChips) rather than the
+     wider desktop gap here. */
+  .chipRow {
+    gap: 0.4375rem;
+  }
+}
+
 .chipRow::-webkit-scrollbar {
   display: none;
 }
 
+/* .cardHeader's stretch (above) is what actually sets this row's height
+   whenever the chips share a line with the search bar — this padding is
+   what gives them a real height the rest of the time, whenever the row
+   wraps onto its own line (which it does below the width where both fit,
+   which is most of tablet and all of phone). Horizontal-only padding here
+   left the chips as tall as a line of text and nothing more, the "narrow"
+   height that didn't match any other chip row in the app. */
 .chip {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   border: 3px solid rgba(0, 0, 0, 0.3);
   border-radius: 1.25rem;
-  padding: 0 1.5rem;
+  padding: 0.9375rem 1.5rem;
   background: none;
   font-family: 'Bungee', var(--display-font-fallback);
   font-size: 1.125rem;
@@ -148,7 +165,7 @@
 
 @media (max-width: 640px) {
   .chip {
-    padding: 0 1rem;
+    padding: 0.6875rem 1rem;
     font-size: 0.875rem;
     border-width: 2px;
   }
@@ -293,6 +310,12 @@
   gap: 0.375rem;
 }
 
+.loanDates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
 .loanName {
   font-family: 'Rubik', sans-serif;
   font-weight: 500;
@@ -338,6 +361,12 @@
   margin: 0;
 }
 
+/* Phone only (below) swaps to DD/MM/YYYY so each date stays one line — the
+   long form ("Checked out on September 19th, 2026") wraps at phone width. */
+.loanDateShort {
+  display: none;
+}
+
 /* ── Row actions ──────────────────────────────────────────── */
 
 .loanActions {
@@ -370,6 +399,70 @@
   }
 }
 
+@media (min-width: 40.0625rem) and (max-width: 64rem) {
+  /* iPad-width only (between the phone stack above, which drops below
+     40rem, and the single desktop row above 64rem): the status chip rides
+     on the name's row, pinned to the card's trailing edge next to the
+     chevron, rather than dropping to its own full-width line — the same
+     "chip inline with the title" treatment the member list and
+     inventory-audit history give their own trailing chip at this width.
+     Any date lines still get their own line, under the name. */
+  .loanItem {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    /* badge spans both rows, same as thumb — a chip confined to just the
+       name's row centered only against that one line, off-center from a
+       two-line dates block beneath it. Spanning the full row-set keeps it
+       centered against however many date lines a given loan has. */
+    grid-template-areas:
+      'thumb name badge action'
+      'thumb dates badge action';
+    align-items: center;
+    gap: 0.375rem 1.5rem;
+  }
+
+  .loanThumb,
+  .loanThumbEmpty {
+    grid-area: thumb;
+  }
+
+  /* Promotes .loanName/.loanDates to direct grid children of .loanItem so
+     each can take its own named area instead of moving as one block —
+     same trick InventoryAuditReport's summaryCell uses. */
+  .loanInfo {
+    display: contents;
+  }
+
+  .loanName {
+    grid-area: name;
+  }
+
+  .loanDates {
+    grid-area: dates;
+  }
+
+  .badgeRow {
+    grid-area: badge;
+    flex: none;
+    width: auto;
+  }
+
+  .loanActions {
+    grid-area: action;
+    flex: none;
+  }
+
+  /* No date lines (a pending request, say): the 'dates' row is empty, but
+     the grid still reserves its row-gap, which pushed name/badge/action
+     up off-center from the thumb spanning both rows. Collapsing to a
+     single row here — thumb, name, badge and action all in it — keeps
+     them all centered against each other instead of against a phantom
+     second row. */
+  .loanItem:not(:has(.loanDates)) {
+    grid-template-areas: 'thumb name badge action';
+  }
+}
+
 /* ── Narrow screens ───────────────────────────────────────── */
 /* The row turns into a stack: picture and name on one line, then the badges,
    dates and any button beneath. Keeping the button in the corner at this
@@ -380,38 +473,80 @@
     padding: 1rem 1rem 1.5rem;
   }
 
+  /* Grid rather than flex-wrap + order (which the max-width: 64rem block
+     above uses) — order only changes paint sequence, not which line an
+     item wraps onto, so pulling the chip toward the name with a negative
+     margin was actually pulling it toward whatever ended up next to it in
+     wrap order, not reliably the name's line. Named areas make the
+     adjacency explicit instead: image and name share the top line, the
+     chevron rides with them, and the chip sits directly under the name
+     with exactly the row-gap below, no more and no less. */
   .loanItem {
-    flex-wrap: wrap;
-    gap: 0.875rem;
-    padding: 1rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'thumb name action'
+      'thumb dates dates'
+      'thumb badge badge';
+    align-items: center;
+    row-gap: 0.25rem;
+    column-gap: 1rem;
+    padding: 1.25rem 1rem;
+  }
+
+  /* No date lines (a pending request, say): collapses the empty 'dates'
+     row out of the template entirely, rather than leaving its row-gap in
+     as a phantom gap between the name and the chip. */
+  .loanItem:not(:has(.loanDates)) {
+    grid-template-areas:
+      'thumb name action'
+      'thumb badge badge';
   }
 
   .loanName {
-    font-size: 1.25rem;
+    grid-area: name;
+    font-size: 1.375rem;
   }
 
   .loanThumb,
   .loanThumbEmpty {
+    grid-area: thumb;
     width: 4rem;
     height: 3rem;
   }
 
+  .loanInfo {
+    display: contents;
+  }
+
+  .loanDates {
+    grid-area: dates;
+  }
+
+  .loanDateFull {
+    display: none;
+  }
+
+  .loanDateShort {
+    display: inline;
+  }
+
   .badgeRow {
+    grid-area: badge;
     flex: 0 0 auto;
     width: 100%;
     justify-content: flex-start;
-  }
-
-  .loanInfo {
-    flex: 1 1 100%;
+    /* More clearance from the dates above it than the grid's own row-gap
+       gives every row here — the chip reads as a status on its own, not
+       one more line stacked tight under "Return by ...". */
+    margin-top: 0.375rem;
   }
 
   .loanActions {
+    grid-area: action;
     flex: 0 0 auto;
-    width: 100%;
-    justify-content: flex-end;
+    width: auto;
   }
-
 }
 
 /* ── Loading ──────────────────────────────────────────────── */

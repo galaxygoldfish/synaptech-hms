@@ -31,11 +31,19 @@ const HEADING: Record<AvailabilityTarget['kind'], string> = {
   return: 'Edit return availability',
 }
 
-const SUBTEXT: Record<AvailabilityTarget['kind'], string> = {
-  checkout:
-    'Click all hours you are free to collect your hardware. Our Hardware Managers use this to schedule a pickup with you.',
-  return:
-    'Click all hours you are free to hand your hardware back. Our Hardware Managers use this to schedule a pickup with you.',
+// Two sentences rather than one string — .subtextLine2 breaks onto its own
+// line on tablet only (see the module CSS), where the text fits neither on
+// one full-width line (desktop) nor wraps by width alone in a way that
+// happens to land on the sentence boundary (phone).
+const SUBTEXT: Record<AvailabilityTarget['kind'], [string, string]> = {
+  checkout: [
+    'Click all hours you are free to collect your hardware.',
+    'Our Hardware Managers use this to schedule a pickup with you.',
+  ],
+  return: [
+    'Click all hours you are free to hand your hardware back.',
+    'Our Hardware Managers use this to schedule a pickup with you.',
+  ],
 }
 
 export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabilityModalProps) {
@@ -100,14 +108,29 @@ export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabi
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.header}>
-          <div>
+          <div className={styles.headerText}>
             <h2 className={styles.heading}>{HEADING[target.kind]}</h2>
-            <p className={styles.subtext}>{SUBTEXT[target.kind]}</p>
+            <p className={styles.subtext}>
+              {SUBTEXT[target.kind][0]} <span className={styles.subtextLine2}>{SUBTEXT[target.kind][1]}</span>
+            </p>
           </div>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
             <CloseIcon size={18} />
           </button>
         </div>
+
+        {!isLoading && !error && (
+          <div className={styles.legend}>
+            <span className={styles.legendItem}>
+              <span className={`${styles.legendSwatch} ${styles.legendSwatchAvailable}`} />
+              Available
+            </span>
+            <span className={styles.legendItem}>
+              <span className={`${styles.legendSwatch} ${styles.legendSwatchUnavailable}`} />
+              Unavailable
+            </span>
+          </div>
+        )}
 
         <div className={styles.body}>
           {isLoading && <AvailabilityGridSkeleton days={4} slots={8} />}

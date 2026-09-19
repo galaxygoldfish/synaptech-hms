@@ -4,8 +4,8 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AvailabilityGrid, AvailabilityGridSkeleton, parseSlotKey } from './AvailabilityGrid'
-import { CheckmarkIcon } from './icons'
-import { requestReturn } from '../../lib/availability'
+import { ArrowLeftIcon, CheckmarkIcon } from './icons'
+import { requestReturn, type AvailabilitySlot } from '../../lib/availability'
 import { fetchMemberLoanItem, isOutWithMember, memberLoanState, type MemberLoanItem } from '../../lib/memberLoans'
 import type { UserProfile } from '../../types'
 import styles from './ReturnAvailability.module.css'
@@ -85,8 +85,8 @@ export default function ReturnAvailability() {
     signOut()
   }
 
-  async function handleSubmit() {
-    if (!item || !profile || selected.size === 0 || isSubmitting) return
+  async function submitReturn(slots: AvailabilitySlot[]) {
+    if (!item || !profile || isSubmitting) return
     setSubmitting(true)
     setSubmitError(null)
 
@@ -95,7 +95,7 @@ export default function ReturnAvailability() {
         loanRequestId: item.loanRequestId,
         loanRequestItemId: item.id,
         memberId: profile.id,
-        slots: [...selected].map(parseSlotKey),
+        slots,
       })
       setSubmitted(true)
     } catch (returnError) {
@@ -104,6 +104,18 @@ export default function ReturnAvailability() {
       setSubmitError('Could not submit your return request. Please try again.')
       setSubmitting(false)
     }
+  }
+
+  async function handleSubmit() {
+    if (selected.size === 0) return
+    await submitReturn([...selected].map(parseSlotKey))
+  }
+
+  // Availability speeds up scheduling but isn't required to ask for a
+  // return — a member who'd rather coordinate directly can skip straight to
+  // submitting, with nothing on their end held up waiting for it.
+  async function handleSkip() {
+    await submitReturn([])
   }
 
   if (isSubmitted) {
@@ -139,13 +151,39 @@ export default function ReturnAvailability() {
   }
 
   const canSubmit = selected.size > 0 && item !== null && !isSubmitting
+  const canSkip = item !== null && !isSubmitting
 
   return (
     <div className={styles.page}>
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <h1 className={styles.heading}>Initiate hardware return</h1>
+        <div className={styles.topRow}>
+          <button
+            type="button"
+            className={styles.topBackButton}
+            onClick={() => navigate(`/home/loans/${id}`)}
+            aria-label="Back"
+          >
+            <ArrowLeftIcon size={20} />
+            {/* Icon only on phone (see the module CSS) — same collapse the
+                other back buttons in the app use at this width. */}
+            <span>Back</span>
+          </button>
+          <h1 className={styles.heading}>
+            <span className={styles.headingDesktop}>Initiate hardware return</span>
+            <span className={styles.headingPhone}>Start return</span>
+          </h1>
+          <div />
+        </div>
+        {/* iPad mini and phone (see the module CSS) — the two sentences below
+            read as one thought split for no reason at these widths, so this
+            gets its own single, shorter sentence instead of just
+            re-wrapping them. */}
+        <p className={styles.subtextPhone}>
+          Please enter your availability for the next two weeks below so that our Hardware Managers
+          can schedule a return time with you
+        </p>
         <p className={styles.subtext}>
           Please enter your availability for the next two weeks in the table below.
         </p>
@@ -174,10 +212,11 @@ export default function ReturnAvailability() {
         <div className={styles.actions}>
           <button
             type="button"
-            className={styles.backButton}
-            onClick={() => navigate(`/home/loans/${id}`)}
+            className={styles.skipButton}
+            onClick={() => void handleSkip()}
+            disabled={!canSkip}
           >
-            back
+            skip
           </button>
           <button
             type="button"

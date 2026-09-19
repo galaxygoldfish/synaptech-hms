@@ -72,17 +72,6 @@ button {
 
 /* Profile modal */
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 36, 48, 0.35);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 168px;
-  z-index: 50;
-}
-
 .profile-modal {
   position: relative;
   width: 100%;
@@ -182,99 +171,8 @@ button {
   filter: brightness(0.97);
 }
 
-/* Checkout CTA + action list row */
-
-.checkout-cta-wrap {
-  position: relative;
-}
-
-/* Visual appearance for the checkout CTA button lives in Home.module.css —
-   the plain .checkout-cta class below is kept only as a stable hook for the
-   overdue-warning swap selectors further down this file. */
-
-/* Desktop-only inline warning that swaps in for the CTA card */
-
-.inline-warning {
-  display: none;
-}
-
-/* Overdue warning modal (mobile only - see media query below) */
-
-.warning-modal {
-  width: 100%;
-  max-width: 340px;
-  background: var(--panel);
-  border-radius: var(--radius-lg);
-  padding: 28px 24px 24px;
-  text-align: center;
-  box-shadow: 0 20px 45px rgba(20, 26, 36, 0.22);
-}
-
-.warning-modal__icon {
-  display: flex;
-  justify-content: center;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-}
-
-.warning-modal p {
-  margin: 0 0 20px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.warning-modal__ok {
-  width: 100%;
-  background: var(--text-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
 .profile-modal__badge--member {
   background: var(--blue-bg);
   color: var(--blue-fg);
-}
-
-/* Desktop only: clicking the disabled CTA swaps it for an inline warning
-   (no dismiss button in the wireframe - click it to dismiss). */
-@media (min-width: 641px) {
-  .checkout-cta-wrap--warning .checkout-cta {
-    display: none;
-  }
-
-  .checkout-cta-wrap--warning .inline-warning {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    height: 100%;
-    text-align: center;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 24px 20px;
-    cursor: pointer;
-  }
-
-  .inline-warning__icon {
-    color: var(--text-primary);
-  }
-
-  .inline-warning p {
-    margin: 0;
-    font-size: 13.5px;
-    color: var(--text-primary);
-  }
-
-  /* Mobile-only modal is hidden on desktop; the inline warning above is used instead */
-  .warning-overlay {
-    display: none;
-  }
 }
 

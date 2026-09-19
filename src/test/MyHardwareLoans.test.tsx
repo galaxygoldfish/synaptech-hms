@@ -181,8 +181,10 @@ describe('MyHardwareLoans', () => {
     expect(screen.getByText('TENS Electrodes 4-pack')).toBeInTheDocument()
     expect(screen.getByText('ADD-ON')).toBeInTheDocument()
     expect(screen.getByText('Consumable')).toBeInTheDocument()
-    // Kept, not borrowed — so there is nothing for it to be due.
-    expect(screen.getByText('Return not required')).toBeInTheDocument()
+    // Kept, not borrowed — so there is nothing for it to be due. Rendered
+    // twice (a full-date and a phone-only short-date span, see
+    // MyHardwareLoans.module.css), identical here since neither has a date.
+    expect(screen.getAllByText('Return not required')).toHaveLength(2)
   })
 
   // A consumable is kept rather than borrowed, so there is no loan to open.

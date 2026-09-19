@@ -107,12 +107,14 @@ export default function Home() {
         <MyHardwareCard loans={loans} isLoading={isLoading} onMoreDetails={handleMoreDetails} />
 
         <div className={styles.row}>
-          <div className={`checkout-cta-wrap${isWarningOpen ? " checkout-cta-wrap--warning" : ""}`}>
-            {/* Stays disabled until the loan resolves: `hasOverdueLoan` is
-                false while loading, and an overdue member must not be able
-                to slip into checkout in that window. */}
-            <CheckoutCallToAction disabled={hasOverdueLoan || isLoading} onClick={handleCheckoutClick} />
-            {hasOverdueLoan && <InlineOverdueWarning onDismiss={() => setWarningOpen(false)} />}
+          <div className={styles.ctaWrap}>
+            {/* `disabled` (truly inert) only while loading; once loans are
+                in, an overdue member sees `blocked` instead — the button
+                stays clickable/hoverable so it can open the warning below. */}
+            <CheckoutCallToAction disabled={isLoading} blocked={hasOverdueLoan} onClick={handleCheckoutClick} />
+            {hasOverdueLoan && (
+              <InlineOverdueWarning open={isWarningOpen} onDismiss={() => setWarningOpen(false)} />
+            )}
           </div>
           <div className={styles.actionListCard}>
             <ActionList items={memberActions} onSelect={handleAction} />

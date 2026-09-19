@@ -5,6 +5,9 @@ interface ConfirmActionModalProps {
   heading: string
   body: string[]
   confirmLabel: string
+  /** "Cancel" by default — set when the dismiss button isn't backing out of
+      an action so much as just closing an informational dialog (e.g. "Close"). */
+  cancelLabel?: string
   confirmDisabled?: boolean
   hideCancel?: boolean
   wide?: boolean
@@ -20,6 +23,7 @@ export default function ConfirmActionModal({
   heading,
   body,
   confirmLabel,
+  cancelLabel = 'Cancel',
   confirmDisabled,
   hideCancel,
   wide,
@@ -56,7 +60,7 @@ export default function ConfirmActionModal({
         <div className={styles.buttonRow}>
           {!hideCancel && (
             <button type="button" className={styles.buttonSecondary} onClick={onCancel} disabled={confirmDisabled}>
-              Cancel
+              {cancelLabel}
             </button>
           )}
           <button type="button" className={styles.button} onClick={onConfirm} disabled={confirmDisabled}>

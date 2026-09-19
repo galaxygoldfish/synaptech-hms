@@ -91,10 +91,13 @@ describe('ReturnAvailability', () => {
   it('asks for the next two weeks of availability', async () => {
     renderReturn()
 
-    expect(await screen.findByRole('heading', { name: 'Initiate hardware return' })).toBeInTheDocument()
-    expect(
-      screen.getByText(/enter your availability for the next two weeks/i),
-    ).toBeInTheDocument()
+    // Two copies in the heading too — the normal title and a phone-only,
+    // shorter one CSS swaps in by breakpoint (both render in jsdom, which
+    // has none), so its accessible name is their concatenation.
+    expect(await screen.findByRole('heading', { name: /Initiate hardware return/ })).toBeInTheDocument()
+    // Two copies in the DOM — the normal wording and a phone-only, shorter
+    // one CSS swaps in by breakpoint (both render in jsdom, which has none).
+    expect(screen.getAllByText(/enter your availability for the next two weeks/i)).toHaveLength(2)
     // Fourteen days of 8am–10pm.
     expect(screen.getAllByRole('button', { name: /at 8:00 AM$/i })).toHaveLength(14)
   })
@@ -173,8 +176,21 @@ describe('ReturnAvailability', () => {
   it('goes back to the loan', async () => {
     renderReturn()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'back' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Back' }))
 
     expect(await screen.findByText('Loan detail')).toBeInTheDocument()
+  })
+
+  // Filling out availability speeds up scheduling but was never required to
+  // ask for a return — skip submits with none attached.
+  it('lets a member skip straight to submitting, with no availability', async () => {
+    renderReturn()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'skip' }))
+
+    expect(await screen.findByRole('heading', { name: 'Success!' })).toBeInTheDocument()
+    expect(vi.mocked(requestReturn)).toHaveBeenCalledWith(
+      expect.objectContaining({ slots: [] }),
+    )
   })
 })

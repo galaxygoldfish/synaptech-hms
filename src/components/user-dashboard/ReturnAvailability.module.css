@@ -15,9 +15,21 @@
   min-height: 0;
   width: min(84rem, 94%);
   margin: 0 auto;
-  padding: 0.5rem 0 2rem;
+  padding: 0 0 2rem;
   display: flex;
   flex-direction: column;
+}
+
+/* ── Top row (back button + centred heading) ─────────────────── */
+/* The same three-column grid the rest of the app uses, so the heading sits
+   centred with Back pinned left however wide the page gets. */
+
+.topRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .heading {
@@ -26,7 +38,29 @@
   font-size: clamp(1.5rem, 3vw, 2rem);
   color: rgba(0, 0, 0, 0.93);
   text-align: center;
-  margin: 1.5rem 0 1rem;
+  margin: 0;
+}
+
+.headingPhone {
+  display: none;
+}
+
+.topBackButton {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.topBackButton:hover {
+  background: rgba(131, 156, 197, 0.6);
 }
 
 .subtext {
@@ -36,6 +70,12 @@
   color: rgba(0, 0, 0, 0.75);
   text-align: center;
   margin: 0;
+}
+
+/* The iPad-mini/phone single-sentence replacement (see the component) —
+   hidden on wider screens, in favor of .subtext's two sentences above. */
+.subtextPhone {
+  display: none;
 }
 
 .gridWrap {
@@ -51,8 +91,9 @@
 }
 
 /* ── Footer actions ───────────────────────────────────────── */
-/* The grey "back" / black "done" pair every step of the member's checkout
-   ends on. */
+/* The grey "skip" / black "done" pair. Skip submits the return request with
+   no availability attached — filling out the grid speeds up scheduling but
+   was never required to ask for a return in the first place. */
 
 .actions {
   display: flex;
@@ -62,7 +103,7 @@
   padding-top: 3rem;
 }
 
-.backButton {
+.skipButton {
   background: rgba(0, 0, 0, 0.12);
   color: rgba(55, 55, 55, 0.51);
   border: none;
@@ -72,8 +113,13 @@
   font-size: 1.0625rem;
 }
 
-.backButton:hover {
+.skipButton:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.18);
+}
+
+.skipButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .submitButton {
@@ -96,14 +142,118 @@
 }
 
 @media (max-width: 640px) {
-  .subtext {
-    font-size: 0.9375rem;
+  .headingDesktop {
+    display: none;
   }
 
-  .backButton,
+  .headingPhone {
+    display: inline;
+  }
+
+  /* Icon only, no label — same collapse every other back button in the app
+     uses at this width. */
+  .topBackButton span {
+    display: none;
+  }
+
+  .topBackButton {
+    padding: 0.8125rem;
+    margin-left: 0.5rem;
+  }
+
+  .skipButton,
   .submitButton {
     padding: 1rem 1.75rem;
     font-size: 0.9375rem;
+  }
+
+  /* .main's own width (94%) left barely any gutter at phone width — extra
+     margin here narrows just the grid card, not the page. */
+  .gridWrap {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
+
+  /* Narrower than .successMain's own padding gives it, so the two sentences
+     get real horizontal breathing room instead of nearly spanning the
+     screen. */
+  .successText {
+    max-width: 15rem;
+  }
+}
+
+/* iPad mini and phone — not the 11" iPad, which has room for the pair to sit
+   inline at the end of the page like desktop. Pinned to the viewport bottom
+   instead, the same treatment the checkout flow's own availability step
+   uses (CheckoutAvailability.module.css) at its (narrower) breakpoint. */
+@media (max-width: 800px) {
+  /* iPad mini and phone both get the shorter, single-sentence subtext — the
+     11" iPad and up keep the original two sentences. */
+  .subtext {
+    display: none;
+  }
+
+  .subtextPhone {
+    display: block;
+    font-family: 'Rubik', sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: rgba(0, 0, 0, 0.75);
+    text-align: center;
+    /* Narrower than .main's own width, so there's real horizontal padding
+       around the sentence instead of it running edge to edge. */
+    max-width: 20rem;
+    margin: 0 auto;
+  }
+
+  /* Room for the fixed bar below so the page's last content doesn't end up
+     hidden behind it. */
+  .main {
+    padding-bottom: 6rem;
+  }
+
+  .actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    gap: 0.75rem;
+    margin-top: 0;
+    padding: 1.25rem 1rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
+    background: var(--white);
+  }
+
+  .actions::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 2.5rem;
+    background: linear-gradient(to top, var(--white), rgba(255, 255, 255, 0));
+    pointer-events: none;
+  }
+
+  .skipButton,
+  .submitButton {
+    flex: 1;
+  }
+}
+
+/* iPad mini only, not phone — enough width for the back/done pair to sit
+   apart at their normal (desktop) size, one per edge, rather than stretched
+   to fill the bar and touching in the middle. */
+@media (min-width: 641px) and (max-width: 800px) {
+  /* Twice .subtextPhone's own phone-width max-width — iPad mini has the
+     room to let the sentence breathe rather than wrap as tight as a phone. */
+  .subtextPhone {
+    max-width: 40rem;
+  }
+
+  .skipButton,
+  .submitButton {
+    flex: none;
   }
 }
 

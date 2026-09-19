@@ -1,4 +1,5 @@
 import { WarningIcon } from "./icons";
+import styles from "./Home.module.css";
 
 interface OverdueWarningModalProps {
   onClose: () => void;
@@ -6,13 +7,13 @@ interface OverdueWarningModalProps {
 
 export function OverdueWarningModal({ onClose }: OverdueWarningModalProps) {
   return (
-    <div className="modal-overlay warning-overlay" onClick={onClose}>
-      <div className="warning-modal" onClick={(event) => event.stopPropagation()}>
-        <span className="warning-modal__icon">
-          <WarningIcon />
-        </span>
-        <p>You must return all overdue hardware before you can check out more.</p>
-        <button className="warning-modal__ok" onClick={onClose} type="button">
+    <div className={styles.overdueModalOverlay} onClick={onClose}>
+      <div className={styles.overdueModal} onClick={(event) => event.stopPropagation()}>
+        <WarningIcon size={36} />
+        <p className={styles.overdueModalText}>
+          You must return all overdue hardware before you can check out more
+        </p>
+        <button className={styles.overdueModalOk} onClick={onClose} type="button">
           OK
         </button>
       </div>

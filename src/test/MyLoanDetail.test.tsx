@@ -237,13 +237,14 @@ describe('MyLoanDetail', () => {
     )
   })
 
-  it('disables the documentation row for a product with none', async () => {
+  it('hides the documentation row for a product with none', async () => {
     vi.mocked(fetchMemberLoanItem).mockResolvedValue(item({ documentationUrl: null }))
     renderDetail()
 
+    await screen.findByText(item().itemName)
     expect(
-      await screen.findByRole('button', { name: /view item-specific documentation/i }),
-    ).toBeDisabled()
+      screen.queryByRole('button', { name: /view item-specific documentation/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('points help and support at the club Discord', async () => {
@@ -267,13 +268,13 @@ describe('MyLoanDetail', () => {
     expect(await screen.findByText('My hardware loans')).toBeInTheDocument()
   })
 
-  it('warns that add-ons go with it before cancelling', async () => {
+  it('confirms before cancelling rather than acting on the first click', async () => {
     vi.mocked(fetchMemberLoanItem).mockResolvedValue(item({ requestStatus: 'pending' }))
     renderDetail()
 
     await userEvent.click(await screen.findByRole('button', { name: /cancel request/i }))
 
-    expect(screen.getByText(/anything requested alongside it/i)).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /cancel this request/i })).toBeInTheDocument()
     expect(cancelLoanRequest).not.toHaveBeenCalled()
   })
 

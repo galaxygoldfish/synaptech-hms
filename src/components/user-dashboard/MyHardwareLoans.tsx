@@ -61,25 +61,54 @@ function formatLongDate(iso: string, isDateOnly = false): string {
   return `${date.toLocaleDateString(undefined, { month: 'long' })} ${day}${suffix}, ${date.getFullYear()}`
 }
 
+/** "09/19/2026" — the phone-only form, so the line fits on one row. */
+function formatShortDate(iso: string, isDateOnly = false): string {
+  const date = isDateOnly ? new Date(`${iso}T00:00:00`) : new Date(iso)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${month}/${day}/${date.getFullYear()}`
+}
+
+interface DateLine {
+  text: string
+  shortText: string
+}
+
 /**
  * The two lines under a row's badges: when the member got it, and what
  * happens next. A request that hasn't been handed over has neither — the
  * badge already carries the only date it has.
  */
-function dateLines(item: MemberLoanItem, state: MemberLoanState): string[] {
+function dateLines(item: MemberLoanItem, state: MemberLoanState): DateLine[] {
   if (state === 'checkout_requested' || state === 'cancelled' || state === 'denied') return []
 
   // reviewed_at is when an admin approved and handed it over. Older rows
   // approved before that was recorded fall back to the request date rather
   // than showing nothing.
-  const checkedOut = `Checked out on ${formatLongDate(item.reviewedAt ?? item.requestedAt)}`
+  const checkedOutIso = item.reviewedAt ?? item.requestedAt
+  const checkedOut = {
+    text: `Checked out on ${formatLongDate(checkedOutIso)}`,
+    shortText: `Checked out on ${formatShortDate(checkedOutIso)}`,
+  }
 
   if (state === 'returned' && item.returnedAt) {
-    return [checkedOut, `Returned on ${formatLongDate(item.returnedAt)}`]
+    return [
+      checkedOut,
+      {
+        text: `Returned on ${formatLongDate(item.returnedAt)}`,
+        shortText: `Returned on ${formatShortDate(item.returnedAt)}`,
+      },
+    ]
   }
   // Consumables are kept, so there is nothing to be due.
-  if (!item.returnDate) return [checkedOut, 'Return not required']
-  return [checkedOut, `Return by ${formatLongDate(item.returnDate, true)}`]
+  if (!item.returnDate) return [checkedOut, { text: 'Return not required', shortText: 'Return not required' }]
+  return [
+    checkedOut,
+    {
+      text: `Return by ${formatLongDate(item.returnDate, true)}`,
+      shortText: `Return by ${formatShortDate(item.returnDate, true)}`,
+    },
+  ]
 }
 
 export default function MyHardwareLoans() {
@@ -183,11 +212,16 @@ export default function MyHardwareLoans() {
 
         <div className={styles.loanInfo}>
           <p className={styles.loanName}>{item.itemName}</p>
-          {lines.map((line) => (
-            <p className={styles.loanDate} key={line}>
-              {line}
-            </p>
-          ))}
+          {lines.length > 0 && (
+            <div className={styles.loanDates}>
+              {lines.map((line) => (
+                <p className={styles.loanDate} key={line.text}>
+                  <span className={styles.loanDateFull}>{line.text}</span>
+                  <span className={styles.loanDateShort}>{line.shortText}</span>
+                </p>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className={styles.badgeRow}>
