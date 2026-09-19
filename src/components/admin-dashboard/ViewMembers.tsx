@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
-import { ArrowLeftIcon, HandleIcon, MailIcon } from './icons'
+import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon } from './icons'
 import { fetchAllProfiles } from '../../lib/members'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { Profile } from '../../types/index'
@@ -145,7 +145,13 @@ export default function ViewMembers() {
                       <span>{member.discord}</span>
                     </span>
 
-                    <span className={styles.memberJoined}>Joined {formatJoinedDate(member.created_at)}</span>
+                    <span className={styles.memberJoined}>
+                      {/* Shown on phone only (see .memberJoinedIcon) — at
+                          tablet and desktop it shares a row with an icon of
+                          its own already (email or handle). */}
+                      <ClockIcon size={18} className={styles.memberJoinedIcon} />
+                      Joined {formatJoinedDate(member.created_at)}
+                    </span>
                   </button>
                 </li>
               ))}

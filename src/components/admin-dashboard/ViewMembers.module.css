@@ -43,9 +43,28 @@
   min-width: 0;
 }
 
+@media (max-width: 900px) {
+  /* Same height as the search bar beside it, on tablet and phone alike —
+     stretch, not each sized by its own padding, the way the inventory-audit
+     toolbar matches its own search bar to its "New audit" button. */
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .searchWrap > * {
+    height: 100%;
+  }
+}
+
 @media (max-width: 640px) {
+  /* A square icon button rather than a short, wide one: the label is
+     already gone, and .toolbar's stretch (above) gives it more height than
+     its old fixed padding did — aspect-ratio keeps the width matching
+     rather than leaving it a stubby rectangle. */
   .backButton {
     padding: 0.8125rem;
+    aspect-ratio: 1;
+    justify-content: center;
   }
 
   .backButton span {
@@ -154,17 +173,84 @@
 }
 
 .memberJoined {
+  display: inline-flex;
+  align-items: center;
+  /* Same icon-to-text gap as .memberDetail, so all three lines' text starts
+     at the same x-position when the icon is showing (phone only). */
+  gap: 0.625rem;
   font-family: 'Rubik', sans-serif;
   font-size: 1.0625rem;
   color: rgba(0, 0, 0, 0.66);
   white-space: nowrap;
 }
 
+/* Hidden except on phone (below), where the joined date is its own
+   full-width line rather than sharing a row with email or handle — giving
+   it an icon there matches the icon-plus-text look of those other lines. */
+.memberJoinedIcon {
+  display: none;
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.4);
+}
+
 @media (max-width: 900px) {
+  /* The role chip rides on the same line as the name, pinned to the card's
+     trailing edge, rather than stacking above it — same treatment as the
+     inventory-audit history list's outcome chip at this width. Email,
+     handle and joined-date each keep their own full-width line below. */
   .memberItem {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.625rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name badge'
+      'email email'
+      'handle handle'
+      'joined joined';
+    row-gap: 0.375rem;
+    column-gap: 1rem;
+    align-items: start;
+  }
+
+  .memberName {
+    grid-area: name;
+  }
+
+  .roleBadge {
+    grid-area: badge;
+    justify-self: end;
+    align-self: start;
+  }
+
+  /* The two .memberDetail spans (email, then handle) are the 3rd and 4th
+     children of .memberItem, in that order — nth-child rather than a
+     dedicated class for each, since both already share one style. */
+  .memberItem > .memberDetail:nth-child(3) {
+    grid-area: email;
+  }
+
+  .memberItem > .memberDetail:nth-child(4) {
+    grid-area: handle;
+  }
+
+  .memberJoined {
+    grid-area: joined;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  /* Tablet only, not phone: there's enough width here for the joined date
+     to share the handle's row instead of taking a full line of its own,
+     end-aligned under the chip the same way the chip aligns above it. */
+  .memberItem {
+    grid-template-areas:
+      'name badge'
+      'email email'
+      'handle joined';
+  }
+
+  .memberJoined {
+    justify-self: end;
+    align-self: start;
   }
 }
 
@@ -175,6 +261,10 @@
 
   .memberItem {
     padding: 1rem;
+  }
+
+  .memberJoinedIcon {
+    display: inline-block;
   }
 }
 

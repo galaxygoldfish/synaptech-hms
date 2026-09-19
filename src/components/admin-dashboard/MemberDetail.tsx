@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import ConfirmActionModal from '../ConfirmActionModal'
-import { ArrowLeftIcon, PersonIcon, TrashIconFilled } from './icons'
+import { ArrowLeftIcon, CheckmarkIconFilled, CopyIcon, PersonIcon, TrashIconOutline } from './icons'
 import { fetchProfileById, updateMemberRole } from '../../lib/members'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
@@ -18,6 +18,8 @@ function formatRegistrationDate(iso: string): string {
 interface DetailRowProps {
   label: string
   value: string
+  /** Email, student ID, Discord — fields worth copying rather than retyping. */
+  copyable?: boolean
 }
 
 // Mirrors the rows rendered below once the member loads.
@@ -35,12 +37,50 @@ const DETAIL_LABELS = [
 // Varied widths so the placeholder reads as data rather than a bar chart.
 const SKELETON_VALUE_WIDTHS = ['9rem', '14rem', '7rem', '10rem', '8.5rem', '16rem', '11rem', '5rem']
 
-function DetailRow({ label, value }: DetailRowProps) {
+function DetailRow({ label, value, copyable }: DetailRowProps) {
   return (
     <div className={styles.row}>
       <span className={styles.rowLabel}>{label}</span>
-      <span className={styles.rowValue}>{value}</span>
+      {copyable ? <CopyableValue label={label} value={value} /> : <span className={styles.rowValue}>{value}</span>}
     </div>
+  )
+}
+
+/**
+ * A value plus a copy button, both wired to the same click — clicking the
+ * text is as good as clicking the icon, since a field worth copying is a
+ * field someone is about to paste somewhere else, not read on screen.
+ */
+function CopyableValue({ label, value }: { label: string; value: string }) {
+  const [justCopied, setJustCopied] = useState(false)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value)
+      setJustCopied(true)
+      window.setTimeout(() => setJustCopied(false), 1500)
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(`Failed to copy ${label.toLowerCase()} to clipboard:`, error)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.rowValueCopy}
+      onClick={() => void handleCopy()}
+      aria-label={`${justCopied ? 'Copied' : 'Copy'} ${label}: ${value}`}
+    >
+      <span className={styles.rowValue} aria-hidden="true">
+        {value}
+      </span>
+      {justCopied ? (
+        <CheckmarkIconFilled size={14} color="var(--green-fg)" className={styles.rowCopyIcon} />
+      ) : (
+        <CopyIcon size={16} className={styles.rowCopyIcon} />
+      )}
+    </button>
   )
 }
 
@@ -219,9 +259,9 @@ export default function MemberDetail() {
           <>
             <div className={styles.card}>
               <DetailRow label="Name" value={`${member.first_name} ${member.last_name}`} />
-              <DetailRow label="UW Email" value={member.uw_email} />
-              <DetailRow label="Student ID" value={member.student_id} />
-              <DetailRow label="Discord" value={member.discord} />
+              <DetailRow label="UW Email" value={member.uw_email} copyable />
+              <DetailRow label="Student ID" value={member.student_id} copyable />
+              <DetailRow label="Discord" value={member.discord} copyable />
               <DetailRow label="Phone #" value={member.phone} />
               <AddressRow address={member.address} />
               <DetailRow label="Registration date" value={formatRegistrationDate(member.created_at)} />
@@ -241,7 +281,7 @@ export default function MemberDetail() {
 
             <div className={styles.actionsRow}>
               <button type="button" className={styles.deleteButton} onClick={handleDelete}>
-                <TrashIconFilled size={18} color="rgba(0, 0, 0, 0.8)" />
+                <TrashIconOutline size={18} color="rgba(0, 0, 0, 0.8)" />
                 Delete account
               </button>
               {targetRole && (

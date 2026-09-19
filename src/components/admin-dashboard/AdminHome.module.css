@@ -73,6 +73,15 @@
   }
 }
 
+/* iPad mini portrait only (roughly 744px) — narrower than an 11" iPad
+   (roughly 834px, still comfortable at 80%) but wide enough that it isn't
+   phone-cramped either, so it gets its own, smaller cut of side margin. */
+@media (min-width: 641px) and (max-width: 800px) {
+  .main {
+    width: 92%;
+  }
+}
+
 /* ── Stat cards ───────────────────────────────────────────── */
 
 .statRow {

@@ -30,9 +30,9 @@ export function PersonIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function ClockIcon({ size = 16 }: IconProps) {
+export function ClockIcon({ size = 16, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <circle cx="12" cy="12" r="8.2" stroke={stroke} strokeWidth="1.6" />
       <path d="M12 8v4.3l3 2" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -407,6 +407,32 @@ export function TrashCanIconFilled({ size = 20, color = "#454545", className }: 
   );
 }
 
+// Outlined twin of TrashIconFilled, for a destructive action button that
+// wants a lighter mark than a solid glyph — e.g. "Delete account" on a
+// member's detail page, next to a filled PersonIcon for the other action.
+export function TrashIconOutline({ size = 20, color = "#474747", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M4.5 6.5h15" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M9 3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V5"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.66 6.5h12.68l-.82 12.94a2.25 2.25 0 0 1-2.25 2.06H8.73a2.25 2.25 0 0 1-2.25-2.06L5.66 6.5Z"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 10.25v6.5M14 10.25v6.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function TrashIconFilled({ size = 20, color = "#474747", className }: IconProps & { color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -434,6 +460,24 @@ export function AuditLogIconFilled({ size = 16, color = "#474747", className }: 
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <path fillRule="evenodd" clipRule="evenodd" d="M11 2.5H12.5C12.7652 2.5 13.0196 2.60536 13.2071 2.79289C13.3946 2.98043 13.5 3.23478 13.5 3.5V14C13.5 14.2652 13.3946 14.5196 13.2071 14.7071C13.0196 14.8946 12.7652 15 12.5 15H3.5C3.23478 15 2.98043 14.8946 2.79289 14.7071C2.60536 14.5196 2.5 14.2652 2.5 14V3.5C2.5 3.23478 2.60536 2.98043 2.79289 2.79289C2.98043 2.60536 3.23478 2.5 3.5 2.5H5V2C5 1.73478 5.10536 1.48043 5.29289 1.29289C5.48043 1.10536 5.73478 1 6 1H10C10.2652 1 10.5196 1.10536 10.7071 1.29289C10.8946 1.48043 11 1.73478 11 2V2.5ZM10 2H6V4H10V2ZM3.5 14H12.5V3.5H11V5H5V3.5H3.5V14ZM7 6.5H11V7.5H7V6.5ZM7 9H11V10H7V9ZM6 11.5H5V12.5H6V11.5ZM11 11.5H7V12.5H11V11.5ZM6 9H5V10H6V9ZM6 6.5H5V7.5H6V6.5Z" fill={color} />
+    </svg>
+  );
+}
+
+// The "copy this value" affordance next to a member's email, student ID and
+// Discord handle — two overlapping rounded rectangles, the standard copy
+// glyph, outlined rather than filled to sit quietly beside plain text.
+export function CopyIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="8.5" y="8.5" width="12" height="12" rx="2" stroke={stroke} strokeWidth="1.6" />
+      <path
+        d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 6v9A1.5 1.5 0 0 0 5 16.5h2.5"
+        stroke={stroke}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

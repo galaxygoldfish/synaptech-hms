@@ -49,7 +49,8 @@
 }
 
 .heading {
-  font-family: 'Bungee', var(--display-font-fallback);
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
   font-size: 1.375rem;
   line-height: 1.1;
   color: var(--black);
@@ -140,4 +141,13 @@
 
 .buttonSecondary:hover {
   background: rgba(0, 0, 0, 0.14);
+}
+
+@media (max-width: 640px) {
+  /* Stacked and full width rather than squeezed side by side — Cancel
+     stays first (on top), the same order the row already had left to
+     right, so it's still the button closest to where a thumb rests. */
+  .buttonRow {
+    flex-direction: column;
+  }
 }
