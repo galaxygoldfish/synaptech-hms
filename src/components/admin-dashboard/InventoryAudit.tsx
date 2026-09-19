@@ -178,8 +178,8 @@ export default function InventoryAudit() {
                     <div className={styles.auditSkeletonRow}>
                       <Skeleton width="9rem" height="1.75rem" shape="pill" style={{ gridArea: 'outcome' }} />
                       <div className={styles.summaryCell}>
-                        <Skeleton width="65%" height="1.0625rem" shape="pill" />
-                        <Skeleton width="45%" height="0.875rem" shape="pill" />
+                        <Skeleton width="65%" height="1.0625rem" shape="pill" style={{ gridArea: 'headline' }} />
+                        <Skeleton width="45%" height="0.875rem" shape="pill" style={{ gridArea: 'sub' }} />
                       </div>
                       <Skeleton width="11rem" height="0.9375rem" shape="pill" style={{ gridArea: 'time' }} />
                     </div>

@@ -199,13 +199,11 @@ describe('InventoryAuditScan', () => {
     detectBarcode?.('SYN-AAA111AAA')
     await screen.findByText('1 of 2 confirmed in stock')
 
-    await userEvent.type(screen.getByLabelText(/Note for the report/), 'north shelf only')
     await userEvent.click(screen.getByRole('button', { name: /finish audit/i }))
     await userEvent.click(screen.getByRole('button', { name: /^Record audit$/ }))
 
     await waitFor(() => expect(recordInventoryAudit).toHaveBeenCalled())
-    const [entries, note] = vi.mocked(recordInventoryAudit).mock.calls[0]
-    expect(note).toBe('north shelf only')
+    const [entries] = vi.mocked(recordInventoryAudit).mock.calls[0]
     // A report that only listed what turned up couldn't be read back as
     // "these two were missing" — the absences are the finding.
     expect(entries).toEqual(

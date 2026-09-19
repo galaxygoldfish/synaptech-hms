@@ -10,9 +10,10 @@ import {
   type InventoryAuditEntry,
   type InventoryAuditStatus,
 } from '../../lib/inventoryAudit'
-import { formatAuditTimestamp, STATUS_EXPLANATION, STATUS_LABEL, UnitRow } from './InventoryAuditParts'
+import { formatAuditTimestamp, UnitRow } from './InventoryAuditParts'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
+import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './InventoryAudit.module.css'
 
 /**
@@ -67,6 +68,7 @@ export default function InventoryAuditReport() {
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<EntryFilter>('all')
+  const { ref: filterRowRef, maskImage: filterRowMask } = useEdgeFade<HTMLDivElement>()
 
   useEffect(() => {
     if (!id) return
@@ -223,7 +225,11 @@ export default function InventoryAuditReport() {
             </div>
 
             <div className={styles.card}>
-              <div className={styles.filterRow}>
+              <div
+                ref={filterRowRef}
+                className={styles.filterRow}
+                style={{ WebkitMaskImage: filterRowMask, maskImage: filterRowMask }}
+              >
                 {FILTERS.map((option) => (
                   <button
                     key={option.value}
@@ -241,18 +247,6 @@ export default function InventoryAuditReport() {
                   </button>
                 ))}
               </div>
-
-              {/* What the badges below actually mean, once, rather than a
-                  legend the reader has to infer from five colours. */}
-              {filter !== 'all' && filter !== 'flagged' && (
-                <p className={styles.sectionLabel}>{STATUS_EXPLANATION[filter]}</p>
-              )}
-              {filter === 'flagged' && (
-                <p className={styles.sectionLabel}>
-                  {STATUS_LABEL.found_checked_out}: {STATUS_EXPLANATION.found_checked_out}.{' '}
-                  {STATUS_LABEL.unrecognized}: {STATUS_EXPLANATION.unrecognized}.
-                </p>
-              )}
 
               {visibleEntries.length === 0 ? (
                 <p className={styles.status}>

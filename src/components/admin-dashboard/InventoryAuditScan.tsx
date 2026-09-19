@@ -17,6 +17,7 @@ import {
 import { STATUS_LABEL, UnitRow } from './InventoryAuditParts'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
+import { useEdgeFade, useVerticalEdgeFade } from '../../lib/useEdgeFade'
 import styles from './InventoryAudit.module.css'
 
 /**
@@ -124,6 +125,17 @@ interface ClassifiedUnit {
   scannedAt: string | null
 }
 
+/**
+ * Groups a filtered list by hardware type — every Oculus together, then
+ * every Muse — rather than the scan/serial order it arrived in. The sort is
+ * stable, so it only reorders across types; whatever order a list already
+ * carried within one type (e.g. confirmed's most-recently-scanned-first)
+ * survives untouched.
+ */
+function groupByEquipment<T extends { unit: AuditableUnit }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => a.unit.equipmentName.localeCompare(b.unit.equipmentName))
+}
+
 export default function InventoryAuditScan() {
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
@@ -141,8 +153,9 @@ export default function InventoryAuditScan() {
   // first barcode it sees.
   const [scanAttempt, setScanAttempt] = useState(0)
   const [filter, setFilter] = useState<ScanFilter>('missing')
+  const { ref: filterRowRef, maskImage: filterRowMask } = useEdgeFade<HTMLDivElement>()
+  const { ref: unitListRef, maskImage: unitListMask } = useVerticalEdgeFade<HTMLUListElement>()
   const [manualSerial, setManualSerial] = useState('')
-  const [note, setNote] = useState('')
 
   const [isFinishOpen, setFinishOpen] = useState(false)
   const [isSaving, setSaving] = useState(false)
@@ -243,16 +256,21 @@ export default function InventoryAuditScan() {
   }
 
   const visibleUnits = useMemo(() => {
-    if (filter === 'discrepancies') return classified.filter((row) => row.status === 'found_checked_out')
-    if (filter === 'missing') return classified.filter((row) => row.status === 'missing')
+    if (filter === 'discrepancies') {
+      return groupByEquipment(classified.filter((row) => row.status === 'found_checked_out'))
+    }
+    if (filter === 'missing') return groupByEquipment(classified.filter((row) => row.status === 'missing'))
     if (filter === 'confirmed') {
       // Most recently scanned first: while scanning, the interesting end of
-      // the confirmed list is the last thing you put down.
-      return classified
-        .filter((row) => row.status === 'confirmed')
-        .sort((a, b) => (b.scannedAt ?? '').localeCompare(a.scannedAt ?? ''))
+      // the confirmed list is the last thing you put down. groupByEquipment
+      // sorts stably, so this recency order survives within each type.
+      return groupByEquipment(
+        classified
+          .filter((row) => row.status === 'confirmed')
+          .sort((a, b) => (b.scannedAt ?? '').localeCompare(a.scannedAt ?? '')),
+      )
     }
-    return classified.filter((row) => row.status === 'checked_out')
+    return groupByEquipment(classified.filter((row) => row.status === 'checked_out'))
   }, [classified, filter])
 
   /**
@@ -350,7 +368,7 @@ export default function InventoryAuditScan() {
     ]
 
     try {
-      const auditId = await recordInventoryAudit(entries, note.trim() || null)
+      const auditId = await recordInventoryAudit(entries)
       setFinishOpen(false)
       navigate(`/adminHome/inventory/audit/${auditId}`, { replace: true })
     } catch (recordError) {
@@ -375,7 +393,7 @@ export default function InventoryAuditScan() {
       <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        <div className={styles.topRow}>
+        <div className={`${styles.topRow} ${styles.topRowActions}`}>
           <button
             type="button"
             className={styles.backButton}
@@ -385,7 +403,10 @@ export default function InventoryAuditScan() {
             <ArrowLeftIcon size={20} />
             <span>Back</span>
           </button>
-          <h1 className={styles.heading}>Perform inventory audit</h1>
+          <h1 className={styles.heading}>
+            <span className={styles.headingFull}>Perform inventory audit</span>
+            <span className={styles.headingShort}>Perform audit</span>
+          </h1>
           {/* Sits in the top row rather than below the lists: on a full shelf
               those lists scroll for pages, and the one control that ends the
               audit shouldn't be somewhere you have to scroll to find. */}
@@ -465,9 +486,6 @@ export default function InventoryAuditScan() {
                 <p className={styles.scanCaption}>Scan all in-stock hardware item barcodes</p>
 
                 <div className={styles.manualEntry}>
-                  <label className={styles.manualLabel} htmlFor="audit-manual-serial">
-                    Or enter a serial number by hand
-                  </label>
                   <div className={styles.manualRow}>
                     <div className={styles.serialField}>
                       <span className={styles.serialPrefix} aria-hidden="true">
@@ -493,18 +511,6 @@ export default function InventoryAuditScan() {
                   </div>
                 </div>
 
-                <div className={styles.noteField}>
-                  <label className={styles.manualLabel} htmlFor="audit-note">
-                    Note for the report (optional)
-                  </label>
-                  <textarea
-                    id="audit-note"
-                    className={styles.noteInput}
-                    value={note}
-                    onChange={(event) => setNote(event.target.value)}
-                    placeholder="Note any damage or special observations here"
-                  />
-                </div>
               </div>
 
               <div className={styles.card}>
@@ -534,7 +540,11 @@ export default function InventoryAuditScan() {
                   </span>
                 </div>
 
-                <div className={styles.filterRow}>
+                <div
+                  ref={filterRowRef}
+                  className={styles.filterRow}
+                  style={{ WebkitMaskImage: filterRowMask, maskImage: filterRowMask }}
+                >
                   {FILTERS.map((option) => (
                     <button
                       key={option.value}
@@ -559,7 +569,11 @@ export default function InventoryAuditScan() {
                   visibleUnits.length === 0 && unrecognized.length === 0 ? (
                     <p className={styles.status}>Nothing has been flagged. Every barcode so far was expected.</p>
                   ) : (
-                    <ul className={`${styles.unitList} ${styles.unitListScroll}`}>
+                    <ul
+                      ref={unitListRef}
+                      className={`${styles.unitList} ${styles.unitListScroll}`}
+                      style={{ WebkitMaskImage: unitListMask, maskImage: unitListMask }}
+                    >
                       {visibleUnits.map(({ unit, status, scannedAt }) => (
                         <UnitRow
                           key={unit.unitId}
@@ -592,7 +606,11 @@ export default function InventoryAuditScan() {
                         : 'No hardware is currently out on loan.'}
                   </p>
                 ) : (
-                  <ul className={`${styles.unitList} ${styles.unitListScroll}`}>
+                  <ul
+                    ref={unitListRef}
+                    className={`${styles.unitList} ${styles.unitListScroll}`}
+                    style={{ WebkitMaskImage: unitListMask, maskImage: unitListMask }}
+                  >
                     {visibleUnits.map(({ unit, status, scannedAt }) => (
                       <UnitRow
                         key={unit.unitId}
