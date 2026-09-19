@@ -12,8 +12,10 @@ import {
  * Picking the loan by hand instead of by barcode, for hardware coming back
  * with a label that has come off or was never assigned a serial.
  *
- * Lists what is currently out — due and overdue alike, because both are
- * hardware someone can walk up and hand back.
+ * Lists what is currently out — due, overdue, and already asked back alike,
+ * because all three are hardware someone can walk up and hand over; a
+ * pending return request doesn't put the item back until this flow records
+ * it.
  */
 
 function formatCalendarDate(iso: string): string {
@@ -56,7 +58,7 @@ export default function ReturnPickLoan() {
     () =>
       loans.filter((loan) => {
         const bucket = bucketForLoanItem(loan)
-        return bucket === 'active' || bucket === 'overdue'
+        return bucket === 'active' || bucket === 'overdue' || bucket === 'returns'
       }),
     [loans],
   )

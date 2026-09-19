@@ -104,6 +104,16 @@ describe('matchCheckoutSerial', () => {
     const unassigned = item({ id: 'none', status: 'pending', serialNumber: null })
     expect(matchCheckoutSerial([elsewhere, unassigned], 'SYN-HJXPP41T5').outcome).toBe('no_match')
   })
+
+  // A member asking for it back doesn't put it in anyone else's hands to
+  // check out — only this flow actually recording the return does.
+  it('refuses a unit with a pending return request the same as any other open loan', () => {
+    const requested = item({
+      returnDate: '2099-01-01',
+      returnRequestedAt: '2026-09-19T16:00:00Z',
+    })
+    expect(matchCheckoutSerial([requested], 'SYN-HJXPP41T5').outcome).toBe('already_out')
+  })
 })
 
 describe('matchReturnSerial', () => {
@@ -156,5 +166,16 @@ describe('matchReturnSerial', () => {
     const elsewhere = item({ id: 'other', serialNumber: 'SYN-QQ92KD10T', returnDate: '2099-01-01' })
     const unassigned = item({ id: 'none', serialNumber: null, returnDate: '2099-01-01' })
     expect(matchReturnSerial([elsewhere, unassigned], 'SYN-HJXPP41T5').outcome).toBe('no_match')
+  })
+
+  // A member already having asked for it back is exactly what this scan is
+  // for — it's still in their hands until this records it, same as any
+  // other open loan.
+  it('takes back a unit with a pending return request the same as any other open loan', () => {
+    const requested = item({
+      returnDate: '2099-01-01',
+      returnRequestedAt: '2026-09-19T16:00:00Z',
+    })
+    expect(matchReturnSerial([requested], 'SYN-HJXPP41T5').outcome).toBe('ready')
   })
 })

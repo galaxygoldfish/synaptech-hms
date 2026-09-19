@@ -73,10 +73,21 @@ const backAlready = loan({
   memberName: 'Eli Moore',
 })
 
+/** Still in the member's hands — they've asked for it back, nobody's
+    recorded it back yet, so there's still hardware to hand over. */
+const pendingReturn = loan({
+  id: 'item-5',
+  itemName: 'OpenBCI Ganglion',
+  serialNumber: 'SYN-77AA88BB99',
+  returnDate: '2099-11-20',
+  returnRequestedAt: '2026-09-19T16:00:00Z',
+  memberName: 'Farah Khan',
+})
+
 beforeEach(() => {
   vi.mocked(fetchAllLoanRequestItems)
     .mockReset()
-    .mockResolvedValue([active, overdue, neverCollected, backAlready])
+    .mockResolvedValue([active, overdue, neverCollected, backAlready, pendingReturn])
   vi.mocked(useAuth).mockReturnValue({
     session: mockSession,
     profile: adminProfile,
@@ -109,11 +120,14 @@ function renderPicker() {
 
 describe('ReturnPickLoan', () => {
   // Only hardware that is actually in somebody's hands can be handed back.
-  it('lists everything currently out, due and overdue alike', async () => {
+  it('lists everything currently out, due, overdue, and already-requested alike', async () => {
     renderPicker()
 
     expect(await screen.findByText('Muse 2')).toBeInTheDocument()
     expect(screen.getByText('Jetson Nano')).toBeInTheDocument()
+    // A pending return request doesn't put it back on the shelf — it's still
+    // hardware someone can walk up and hand over, so it belongs in this list.
+    expect(screen.getByText('OpenBCI Ganglion')).toBeInTheDocument()
     expect(screen.queryByText('Oculus Quest 2')).not.toBeInTheDocument()
     expect(screen.queryByText('OpenBCI Mark IV')).not.toBeInTheDocument()
   })

@@ -521,11 +521,9 @@ export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns' | 'return
 // returned, not overdue, and nothing about it is outstanding any more.
 //
 // 'returns' (a member has asked to give something back but hasn't yet) is
-// answered by return_requested_at, added in the 20260925000000 migration.
-// Nothing sets it until the member-facing return flow is built, so the
-// bucket stays empty in practice — but the rule is here rather than waiting
-// on that work, so the list, the counts and the member's badge agree the day
-// it lands.
+// answered by return_requested_at, added in the 20260925000000 migration and
+// set by the member-facing return flow (ReturnAvailability.tsx) — so the
+// list, the counts and the member's badge all agree once a request comes in.
 export function bucketForLoanItem(
   loan: Pick<
     AdminLoanRequestItemSummary,
@@ -688,9 +686,11 @@ export function matchCheckoutSerial(
   const requested = forUnit.find((loan) => bucketForLoanItem(loan) === 'requests')
   if (requested) return { outcome: 'ready', serial, loan: requested }
 
+  // 'returns' counts as out too — a member asking for it back doesn't put it
+  // in anyone else's hands to check out until it's actually handed in.
   const out = forUnit.find((loan) => {
     const bucket = bucketForLoanItem(loan)
-    return bucket === 'active' || bucket === 'overdue'
+    return bucket === 'active' || bucket === 'overdue' || bucket === 'returns'
   })
   if (out) return { outcome: 'already_out', serial, loan: out }
 
@@ -742,9 +742,11 @@ export function matchReturnSerial(
 
   // fetchAllLoanRequestItems returns newest request first, and filter keeps
   // that order, so the first match of a kind is the most recent one.
+  // 'returns' counts as out too — a member asking for it back doesn't change
+  // whose hands it's actually in until this scan records it.
   const out = forUnit.find((loan) => {
     const bucket = bucketForLoanItem(loan)
-    return bucket === 'active' || bucket === 'overdue'
+    return bucket === 'active' || bucket === 'overdue' || bucket === 'returns'
   })
   if (out) return { outcome: 'ready', serial, loan: out }
 
