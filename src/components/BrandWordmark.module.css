@@ -43,8 +43,26 @@
   margin-left: 0.625rem;
 }
 
+/* The muted half of the wordmark is the first thing to go when the header
+   runs out of room, and the width where that happens depends on how long it
+   is — hence one rule per `mutedFrom`. */
 @media (max-width: 640px) {
-  .logoTextMutedHideMobile {
+  .logoTextMutedTabletUp {
     display: none;
+  }
+}
+
+@media (max-width: 1199px) {
+  /* "Hardware Management" needs a desktop: on an iPad it either wraps onto a
+     second line or squeezes the profile pill into wrapping instead. */
+  .logoTextMutedDesktopUp {
+    display: none;
+  }
+
+  /* Below that, the compact wordmark is "Synaptech" alone, so it can be set
+     at the size a title wants rather than one that leaves room for the muted
+     half beside it. */
+  .logoTextCompact {
+    font-size: clamp(1.875rem, 4.5vw, 2.25rem);
   }
 }

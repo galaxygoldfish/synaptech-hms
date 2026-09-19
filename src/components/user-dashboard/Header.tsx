@@ -13,7 +13,7 @@ export function Header({ userName, onProfileClick }: HeaderProps) {
 
   return (
     <header className={styles.header}>
-      <BrandWordmark hideHardwareOnMobile onClick={() => navigate("/home")} />
+      <BrandWordmark mutedFrom="tablet" onClick={() => navigate("/home")} />
       <button className={styles.profilePill} onClick={onProfileClick} type="button">
         <UserIconFilled size={15} className={styles.profilePillIcon} />
         <span className={styles.profilePillName}>{userName}</span>

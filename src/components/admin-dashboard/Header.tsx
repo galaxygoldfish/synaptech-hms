@@ -15,7 +15,7 @@ export function Header({ userName, onProfileClick }: HeaderProps) {
     <header className={styles.header}>
       <BrandWordmark
         mutedText="Hardware Management"
-        hideHardwareOnMobile
+        mutedFrom="desktop"
         compact
         onClick={() => navigate("/adminHome")}
       />

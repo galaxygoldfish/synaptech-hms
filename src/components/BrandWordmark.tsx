@@ -1,14 +1,25 @@
 import brainLogo from '../assets/synaptech-brain.png'
 import styles from './BrandWordmark.module.css'
 
+const MUTED_FROM_CLASS = {
+  tablet: styles.logoTextMutedTabletUp,
+  desktop: styles.logoTextMutedDesktopUp,
+} as const
+
 interface BrandWordmarkProps {
-  hideHardwareOnMobile?: boolean
+  /**
+   * Width from which the muted half of the wordmark is shown; below it, the
+   * wordmark is "Synaptech" alone. Which width a header can afford depends on
+   * how long its muted text is — "Hardware Management" needs a desktop, while
+   * "Hardware" fits from a tablet up. Omit to always show it.
+   */
+  mutedFrom?: keyof typeof MUTED_FROM_CLASS
   mutedText?: string
   compact?: boolean
   onClick?: () => void
 }
 
-export function BrandWordmark({ hideHardwareOnMobile, mutedText = 'Hardware', compact, onClick }: BrandWordmarkProps) {
+export function BrandWordmark({ mutedFrom, mutedText = 'Hardware', compact, onClick }: BrandWordmarkProps) {
   const content = (
     <>
       <img
@@ -20,9 +31,7 @@ export function BrandWordmark({ hideHardwareOnMobile, mutedText = 'Hardware', co
         <span className={styles.logoTextBrand}>Synaptech</span>
         <span
           className={
-            hideHardwareOnMobile
-              ? `${styles.logoTextMuted} ${styles.logoTextMutedHideMobile}`
-              : styles.logoTextMuted
+            mutedFrom ? `${styles.logoTextMuted} ${MUTED_FROM_CLASS[mutedFrom]}` : styles.logoTextMuted
           }
         >
           {mutedText}
