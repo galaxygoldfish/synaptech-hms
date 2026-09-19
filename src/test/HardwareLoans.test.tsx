@@ -115,7 +115,10 @@ describe('HardwareLoans filters', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Requests' }))
 
     expect(screen.getByText('Muse 2')).toBeInTheDocument()
-    expect(screen.getByText('Checkout requested')).toBeInTheDocument()
+    // The row carries its badge twice — once for the desktop column, once
+    // inline beside the name below 1200px — and CSS shows exactly one.
+    // jsdom applies no CSS, so both are in the tree here.
+    expect(screen.getAllByText('Checkout requested')).not.toHaveLength(0)
     expect(screen.queryByText('Jetson Nano')).not.toBeInTheDocument()
     expect(screen.queryByText('OpenBCI Mark IV')).not.toBeInTheDocument()
   })
@@ -127,7 +130,7 @@ describe('HardwareLoans filters', () => {
     await screen.findByText('Muse 2')
 
     await userEvent.click(screen.getByRole('button', { name: 'Requests' }))
-    expect(screen.getByText('Checkout requested')).toBeInTheDocument()
+    expect(screen.getAllByText('Checkout requested')).not.toHaveLength(0)
   })
 
   it('still filters the other chips to their own bucket', async () => {

@@ -201,12 +201,27 @@
   gap: 0.25rem;
 }
 
+/* Groups the name with its inline badge (shown below 1200px — see
+   .statusBadgeInline). Deliberately nowrap: the badge keeps its size and the
+   name ellipsises instead, because a badge that drops to its own line splits
+   the name from the serial underneath it. */
+.loanNameRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  /* So it can shrink inside .loanInfo and let the name ellipsise, rather
+     than the badge pushing the row wider than its grid cell. */
+  min-width: 0;
+}
+
 .loanName {
   font-family: 'Rubik', sans-serif;
   font-weight: 500;
   font-size: 1.5625rem;
   color: rgba(0, 0, 0, 0.93);
   margin: 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -236,6 +251,15 @@
   white-space: nowrap;
 }
 
+/* The same badge, positioned next to the name instead of in its own column
+   — used below 1200px, where a dedicated column either sits empty most of
+   the time or strands the badge far from the item it describes. Hidden here
+   so desktop (which uses .loanBadgeWrap above) isn't showing it twice. */
+.statusBadgeInline {
+  display: none;
+  flex-shrink: 0;
+}
+
 .badgeActive {
   background: rgba(161, 208, 167, 0.44);
 }
@@ -257,6 +281,14 @@
 .badgeReturned {
   background: rgba(0, 0, 0, 0.07);
   color: rgba(0, 0, 0, 0.5);
+}
+
+/* Desktop wants member and date as two independent grid columns, which is
+   what they were before this wrapper existed — `contents` keeps them exactly
+   that, letting their own grid-area rules below apply unchanged. Below
+   1200px it becomes a real box and pairs them up. */
+.loanMeta {
+  display: contents;
 }
 
 .loanMember {
@@ -308,18 +340,45 @@
 }
 
 @media (max-width: 1200px) {
+  /* Thumbnail beside the name/serial, with member and date on one line
+     beneath, indented to start under the name rather than under the image. */
   .loanItem,
   .skeletonRow {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      'thumb info badge'
-      'member member member'
-      'date date date';
+      'thumb info'
+      '.     meta';
+  }
+
+  /* A flex pair with a fixed gap, not two grid columns: as columns they were
+     each left-aligned in their own half of the row, which pushed the member
+     and the date to opposite ends of the card with a void between them. */
+  .loanMeta {
+    grid-area: meta;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: 1.75rem;
+    row-gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .loanBadgeWrap {
+    display: none;
+  }
+
+  /* Same line as the name, but pushed to the end of the card rather than
+     hugging the name — the badge is the row's status, not part of its title,
+     and a consistent right edge lets a column of rows be scanned down. */
+  .statusBadgeInline {
+    display: inline-block;
+    margin-left: auto;
   }
 
   .loanMember,
   .loanDateWrap {
     width: auto;
+    max-width: 100%;
   }
 
   .loanChevron {
@@ -339,30 +398,47 @@
     min-width: 0;
   }
 
-  /* Image and name/serial share the top line; the status badge drops to its
-     own line beneath them so the serial never has to compete for width. */
+  /* No thumbnail at this width — it costs more room than it earns, and the
+     name and serial already say which unit the row is. That leaves a single
+     column, so every line shares one left edge. */
   .loanItem,
   .skeletonRow {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'thumb info'
-      'badge badge'
-      'member member'
-      'date date';
-  }
-
-  .loanItem {
-    gap: 0.5rem 1.25rem;
-    padding: 1rem;
-  }
-
-  .loanBadgeWrap {
-    width: auto;
+      'info'
+      'meta';
   }
 
   .loanThumb {
-    width: 4rem;
-    height: 3rem;
+    display: none;
+  }
+
+  .loanMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    row-gap: 0.375rem;
+  }
+
+  /* `contents` drops the name and the badge into .loanInfo's own column, so
+     the badge can be ordered below the serial. Beside the name there is only
+     room for a word or two of it before the ellipsis takes over. */
+  .loanNameRow {
+    display: contents;
+  }
+
+  .statusBadgeInline {
+    order: 1;
+    align-self: flex-start;
+    margin-left: 0;
+    margin-top: 0.125rem;
+    /* Sets the badge off from the member/date block under it, which is
+       otherwise only the grid's row-gap away. */
+    margin-bottom: 0.625rem;
+  }
+
+  .loanItem {
+    gap: 0.5rem;
+    padding: 1rem 1.25rem 1.25rem 1.5rem;
   }
 
   .loanName {
@@ -400,21 +476,18 @@
    collapse the real rows get above. */
 @media (max-width: 1200px) {
   .skeletonRow {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      'thumb info badge'
-      'member member member'
-      'date date date';
+      'thumb info'
+      '.     meta';
   }
 }
 
 @media (max-width: 640px) {
   .skeletonRow {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      'thumb info'
-      'badge badge'
-      'member member'
-      'date date';
+      'info thumb'
+      'meta meta';
   }
 }

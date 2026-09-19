@@ -256,7 +256,9 @@ describe('HardwareLoans — opening a loan', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Returned' }))
 
     const row = screen.getByRole('button', { name: /view loan details for Muse 2/i })
-    expect(within(row).getByText('Returned')).toBeInTheDocument()
+    // Two copies of the badge: the desktop column and the inline one beside
+    // the name, with CSS showing whichever the viewport calls for.
+    expect(within(row).getAllByText('Returned')).not.toHaveLength(0)
     expect(within(row).getByText(/Returned on/)).toBeInTheDocument()
   })
 

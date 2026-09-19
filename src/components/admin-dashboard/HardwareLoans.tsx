@@ -211,14 +211,35 @@ export default function HardwareLoans() {
                 {Array.from({ length: 5 }, (_, index) => (
                   <li key={index}>
                     <div className={styles.skeletonRow}>
-                      <Skeleton width="5rem" height="3.5rem" radius="0.5rem" style={{ gridArea: 'thumb' }} />
+                      {/* .loanThumb so it drops out on phone with the real
+                          thumbnail — the 'thumb' area doesn't exist there. */}
+                      <Skeleton
+                        width="5rem"
+                        height="3.5rem"
+                        radius="0.5rem"
+                        style={{ gridArea: 'thumb' }}
+                        className={styles.loanThumb}
+                      />
                       <div style={{ gridArea: 'info', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <Skeleton width="70%" height="1.5625rem" shape="pill" />
+                        <div className={styles.loanNameRow}>
+                          <Skeleton width="9rem" height="1.5625rem" shape="pill" />
+                          {/* Mirrors the inline badge the real row shows below
+                              1200px, so loading doesn't reflow once it lands. */}
+                          <Skeleton width="6rem" height="1.5rem" shape="pill" className={styles.statusBadgeInline} />
+                        </div>
                         <Skeleton width="45%" height="1.25rem" shape="pill" />
                       </div>
-                      <Skeleton width="7.5rem" height="2rem" shape="pill" style={{ gridArea: 'badge' }} />
-                      <Skeleton width="10rem" height="1.25rem" shape="pill" style={{ gridArea: 'member' }} />
-                      <Skeleton width="13rem" height="1.25rem" shape="pill" style={{ gridArea: 'date' }} />
+                      <Skeleton
+                        width="7.5rem"
+                        height="2rem"
+                        shape="pill"
+                        style={{ gridArea: 'badge' }}
+                        className={styles.loanBadgeWrap}
+                      />
+                      <div className={styles.loanMeta}>
+                        <Skeleton width="10rem" height="1.25rem" shape="pill" style={{ gridArea: 'member' }} />
+                        <Skeleton width="13rem" height="1.25rem" shape="pill" style={{ gridArea: 'date' }} />
+                      </div>
                       <Skeleton width="1.25rem" height="1.25rem" shape="pill" style={{ gridArea: 'chevron' }} />
                     </div>
                   </li>
@@ -245,7 +266,17 @@ export default function HardwareLoans() {
                     {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}
 
                     <div className={styles.loanInfo}>
-                      <p className={styles.loanName}>{loan.itemName}</p>
+                      <div className={styles.loanNameRow}>
+                        <p className={styles.loanName}>{loan.itemName}</p>
+                        {/* Below 1200px the badge moves into this row, next to the
+                            name it describes, instead of the desktop column below —
+                            see .loanBadgeWrap's display:none at that breakpoint. */}
+                        <span
+                          className={`${styles.statusBadge} ${styles.statusBadgeInline} ${BADGE_CLASS[bucket]}`}
+                        >
+                          {BADGE_LABEL[bucket]}
+                        </span>
+                      </div>
                       {loan.serialNumber && <p className={styles.loanSerial}>{loan.serialNumber}</p>}
                     </div>
 
@@ -253,14 +284,18 @@ export default function HardwareLoans() {
                       <span className={`${styles.statusBadge} ${BADGE_CLASS[bucket]}`}>{BADGE_LABEL[bucket]}</span>
                     </div>
 
-                    <div className={styles.loanMember}>
-                      <PersonIcon size={20} className={styles.loanMemberIcon} />
-                      <span>{loan.memberName}</span>
-                    </div>
+                    {/* `display: contents` on desktop, so these two stay their
+                        own grid columns there; a real flex pair below 1200px. */}
+                    <div className={styles.loanMeta}>
+                      <div className={styles.loanMember}>
+                        <PersonIcon size={20} className={styles.loanMemberIcon} />
+                        <span>{loan.memberName}</span>
+                      </div>
 
-                    <div className={styles.loanDateWrap}>
-                      <CalendarIcon size={20} className={styles.loanDateIcon} />
-                      <span>{dateText(loan, bucket)}</span>
+                      <div className={styles.loanDateWrap}>
+                        <CalendarIcon size={20} className={styles.loanDateIcon} />
+                        <span>{dateText(loan, bucket)}</span>
+                      </div>
                     </div>
 
                     <ChevronRightIcon size={20} className={styles.loanChevron} />
