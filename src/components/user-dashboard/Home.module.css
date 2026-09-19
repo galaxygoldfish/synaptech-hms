@@ -374,6 +374,14 @@
     padding: 1.25rem;
   }
 
+  /* The empty state's own floor, taller than .hardwareCard's 8rem — at this
+     width there's no loan grid pushing the card open, so the icon and
+     message were sitting in a noticeably shorter box than a populated one
+     ever is. */
+  .hardwareEmpty {
+    min-height: 14rem;
+  }
+
   .loanCard {
     align-items: center;
     text-align: center;
