@@ -119,16 +119,12 @@ export default function GetLabelsProductPage() {
         <div />
       </div>
 
-      <main className={styles.main}>
+      <main className={`${styles.main} ${styles.browseMain}`}>
         {isLoading && <p className={styles.statusText}>Loading hardware…</p>}
         {!isLoading && error && <p className={styles.statusText}>{error}</p>}
 
         {!isLoading && !error && equipment && (
           <>
-            <p className={styles.subtext}>
-              Download, print and attach the replacement labels for your product below
-            </p>
-
             {units.length === 0 ? (
               <p className={styles.statusText}>There are no units of {equipment.name} in inventory.</p>
             ) : (

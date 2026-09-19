@@ -135,41 +135,42 @@ export default function GetReplacementLabelPage() {
           <ArrowLeftIcon size={20} />
           <span>Back</span>
         </button>
-        <h1 className={styles.heading}>Get a replacement label</h1>
+        <h1 className={styles.heading}>Retrieve label</h1>
         <div />
       </div>
 
       <main className={styles.main}>
         {step === 'search' && (
-          <>
-            <p className={styles.subtext}>
-              Please enter the serial number of the item you need a new label for
-            </p>
-
-            <div className={styles.searchBox}>
-              <div className={notFound ? `${styles.serialField} ${styles.serialFieldError}` : styles.serialField}>
-                <span className={styles.serialPrefix}>SYN -</span>
-                <input
-                  className={styles.serialInput}
-                  value={serialSuffix}
-                  onChange={handleSuffixChange}
-                  onKeyDown={handleSuffixKeyDown}
-                  aria-label="Serial number"
-                  autoFocus
-                />
+          <div className={styles.searchStep}>
+            <div className={styles.searchStepTop}>
+              <div className={styles.searchBox}>
+                <div className={notFound ? `${styles.serialField} ${styles.serialFieldError}` : styles.serialField}>
+                  <span className={styles.serialPrefix}>SYN -</span>
+                  <input
+                    className={styles.serialInput}
+                    value={serialSuffix}
+                    onChange={handleSuffixChange}
+                    onKeyDown={handleSuffixKeyDown}
+                    aria-label="Serial number"
+                    autoFocus
+                  />
+                </div>
+                <p className={styles.subtext}>
+                  Please enter the serial number of the item you need a new label for
+                </p>
+                {notFound && <p className={styles.errorText}>Item not found in inventory!</p>}
               </div>
-              {notFound && <p className={styles.errorText}>Item not found in inventory!</p>}
-            </div>
 
-            <div className={styles.footerActions}>
-              <button
-                type="button"
-                className={styles.nextButton}
-                onClick={() => void handleNext()}
-                disabled={!serialSuffix.trim() || isSearching}
-              >
-                {isSearching ? 'searching…' : 'next'}
-              </button>
+              <div className={styles.footerActions}>
+                <button
+                  type="button"
+                  className={styles.nextButton}
+                  onClick={() => void handleNext()}
+                  disabled={!serialSuffix.trim() || isSearching}
+                >
+                  {isSearching ? 'searching…' : 'next'}
+                </button>
+              </div>
             </div>
 
             <div className={styles.altButtonWrap}>
@@ -185,7 +186,7 @@ export default function GetReplacementLabelPage() {
                 <ChevronRightIcon size={20} />
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {step === 'result' && result && (

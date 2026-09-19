@@ -66,20 +66,45 @@
   padding: 0 clamp(1.25rem, 4vw, 2.4375rem);
 }
 
-.subtext {
-  font-family: 'Rubik', sans-serif;
-  font-size: 1.25rem;
-  color: rgba(0, 0, 0, 0.93);
-  text-align: center;
-  margin: 0 auto 2.5rem;
-  max-width: 42rem;
+/* Extra breathing room above the "pick from database" list — that page has
+   no subtext line above the card, so .main's default top spacing alone was
+   too tight. */
+.browseMain {
+  padding-top: 2rem;
 }
 
 @media (max-width: 640px) {
-  .subtext {
-    font-size: 1rem;
-    margin-bottom: 1.75rem;
+  .browseMain {
+    padding-top: 1.25rem;
   }
+}
+
+/* ── Search step layout ───────────────────────────────────── */
+
+.searchStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.searchStepTop {
+  padding-top: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .searchStepTop {
+    padding-top: 0.75rem;
+  }
+}
+
+/* Same caption style as the line under the scan viewfinder on the checkout
+   and return flows, so the two "what do I do here" hints read the same. */
+.subtext {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+  margin: 1.25rem auto 0;
+  max-width: 42rem;
 }
 
 /* ── Serial number input ──────────────────────────────────── */
@@ -135,7 +160,13 @@
 
 .altButtonWrap {
   width: min(28.5rem, 100%);
-  margin: 1.25rem auto 0;
+  margin: 3.5rem auto 0;
+}
+
+@media (max-width: 640px) {
+  .altButtonWrap {
+    margin-top: 2.25rem;
+  }
 }
 
 /* Same look as the alternative-action buttons on the return hardware page. */
@@ -281,7 +312,10 @@
   }
 
   .itemSerial {
-    font-size: 0.9375rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .itemActions {

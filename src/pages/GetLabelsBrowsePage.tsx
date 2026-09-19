@@ -71,9 +71,7 @@ export default function GetLabelsBrowsePage() {
         <div />
       </div>
 
-      <main className={styles.main}>
-        <p className={styles.subtext}>Select the type of hardware you need labels for</p>
-
+      <main className={`${styles.main} ${styles.browseMain}`}>
         {isLoading && <p className={styles.statusText}>Loading inventory…</p>}
         {!isLoading && error && <p className={styles.statusText}>{error}</p>}
         {!isLoading && !error && equipment.length === 0 && (
