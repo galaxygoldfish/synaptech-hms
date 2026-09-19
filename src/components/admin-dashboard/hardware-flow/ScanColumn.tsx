@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { ChevronRightIcon, ScanIconFilled, ServerIconFilled } from '../icons'
+import { CameraIconFilled, ChevronRightIcon, ScanIconFilled, ServerIconFilled } from '../icons'
 import styles from './HardwareFlow.module.css'
 
 /**
@@ -75,8 +75,13 @@ export function ScanColumn({
 }: ScanColumnProps) {
   return (
     <div className={styles.scanColumn}>
-      <div className={styles.scanFrame}>
-        {isSupported ? (
+      <div className={permissionError ? `${styles.scanFrame} ${styles.scanFrameError}` : styles.scanFrame}>
+        {permissionError ? (
+          <div className={styles.scanError}>
+            <CameraIconFilled size={32} />
+            <p className={styles.inlineError}>{permissionError}</p>
+          </div>
+        ) : isSupported ? (
           <video
             ref={videoRef}
             className={feedback ? `${styles.scanVideo} ${styles.scanVideoBlurred}` : styles.scanVideo}
@@ -100,8 +105,6 @@ export function ScanColumn({
           </div>
         )}
       </div>
-
-      {permissionError && <p className={styles.inlineError}>{permissionError}</p>}
 
       <p className={styles.scanCaption}>{caption}</p>
 

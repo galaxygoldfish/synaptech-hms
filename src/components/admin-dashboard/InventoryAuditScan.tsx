@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import ConfirmActionModal from '../ConfirmActionModal'
-import { ArrowLeftIcon, CheckmarkIconFilled } from './icons'
+import { ArrowLeftIcon, CameraIconFilled, CheckmarkIconFilled } from './icons'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../lib/serialNumber'
 import {
@@ -454,8 +454,15 @@ export default function InventoryAuditScan() {
           <>
             <div className={styles.scanLayout}>
               <div className={styles.scanColumn}>
-                <div className={styles.scanFrame}>
-                  {isSupported ? (
+                <div
+                  className={permissionError ? `${styles.scanFrame} ${styles.scanFrameError}` : styles.scanFrame}
+                >
+                  {permissionError ? (
+                    <div className={styles.scanError}>
+                      <CameraIconFilled size={32} />
+                      <p className={styles.inlineError}>{permissionError}</p>
+                    </div>
+                  ) : isSupported ? (
                     <video
                       ref={videoRef}
                       className={
@@ -480,8 +487,6 @@ export default function InventoryAuditScan() {
                     </div>
                   )}
                 </div>
-
-                {permissionError && <p className={styles.inlineError}>{permissionError}</p>}
 
                 <p className={styles.scanCaption}>Scan all in-stock hardware item barcodes</p>
 

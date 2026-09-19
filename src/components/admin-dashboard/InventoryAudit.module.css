@@ -310,6 +310,21 @@
   margin: 0;
 }
 
+/* The camera-permission failure, inside the viewfinder rather than as a
+   line below it — the frame is empty either way, so the icon and message
+   explaining why belong where the picture would have been. Centers its own
+   .inlineError text here without changing that shared rule, which the
+   finish-audit save error also uses left-aligned in its own context. */
+.scanError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0 2rem;
+  text-align: center;
+  color: #b9433c;
+}
+
 /* ── Outcome badges ───────────────────────────────────────── */
 /* The same rectangle-and-Rubik badge as the loan-status badges on "View
    hardware loans" and the category badges on the app audit log, reusing
@@ -524,6 +539,15 @@
   justify-content: center;
   overflow: hidden;
   background: #f4f5f7;
+}
+
+/* Same red as .scanError's icon and text, at the app's tint formula for a
+   status carried by a whole card (0.44 fill / 0.86 border of the same hue —
+   see the outcome badge palette above) — the frame itself reads as "wrong"
+   before you even reach the message inside it. */
+.scanFrameError {
+  border-color: rgba(185, 67, 60, 0.86);
+  background: rgba(185, 67, 60, 0.12);
 }
 
 .scanVideo {

@@ -4,7 +4,13 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import ConfirmActionModal from '../ConfirmActionModal'
-import { ArrowLeftIcon, ChevronRightIcon, ImagePlaceholderIconFilled, ScanIconFilled } from './icons'
+import {
+  ArrowLeftIcon,
+  CameraIconFilled,
+  ChevronRightIcon,
+  ImagePlaceholderIconFilled,
+  ScanIconFilled,
+} from './icons'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import { fetchEquipmentUnitBySerial } from '../../lib/inventory'
 import { fetchLoanRequestItemDetail, type AdminLoanRequestDetail } from '../../lib/loanRequests'
@@ -213,8 +219,13 @@ export default function HandOffScan() {
             </div>
 
             <div className={styles.scanColumn}>
-              <div className={styles.scanFrame}>
-                {isSupported ? (
+              <div className={permissionError ? `${styles.scanFrame} ${styles.scanFrameError}` : styles.scanFrame}>
+                {permissionError ? (
+                  <div className={styles.scanError}>
+                    <CameraIconFilled size={32} />
+                    <p className={styles.inlineError}>{permissionError}</p>
+                  </div>
+                ) : isSupported ? (
                   <video
                     ref={videoRef}
                     className={
@@ -233,8 +244,6 @@ export default function HandOffScan() {
                 )}
                 {feedback && <ScanMarker feedback={feedback} />}
               </div>
-
-              {permissionError && <p className={styles.inlineError}>{permissionError}</p>}
 
               <p className={styles.scanCaption}>
                 Please scan the barcode of the item being handed off to verify serial number
