@@ -368,13 +368,13 @@ export default function ManageInventoryItemPage() {
       <div className={formStyles.page}>
         <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
-        <div className={formStyles.topRow}>
+        <div className={`${formStyles.topRow} ${styles.topRowBetween}`}>
           <button type="button" className={formStyles.topBackButton} onClick={handleBackClick} aria-label="Back">
             <ArrowLeftIcon size={20} />
             <span>Back</span>
           </button>
-          <h1 className={formStyles.heading}>Manage product details</h1>
-          <div />
+          <h1 className={formStyles.heading}>Edit product</h1>
+          <div className={styles.headerActionsPlaceholder} />
         </div>
 
         <main className={formStyles.main}>
@@ -414,7 +414,7 @@ export default function ManageInventoryItemPage() {
     <div className={formStyles.page}>
       <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
-      <div className={formStyles.topRow}>
+      <div className={`${formStyles.topRow} ${styles.topRowBetween}`}>
         <button
           type="button"
           className={formStyles.topBackButton}
@@ -424,7 +424,7 @@ export default function ManageInventoryItemPage() {
           <ArrowLeftIcon size={20} />
           <span>Back</span>
         </button>
-        <h1 className={formStyles.heading}>Manage product details</h1>
+        <h1 className={formStyles.heading}>Edit product</h1>
         <div className={styles.headerActions}>
           <button type="button" className={styles.saveButton} onClick={() => void handleSave()} disabled={!canSave || isSaving}>
             <SaveIconFilled size={18} />

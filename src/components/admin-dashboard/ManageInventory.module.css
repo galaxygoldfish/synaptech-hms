@@ -238,22 +238,16 @@
   opacity: 0.5;
 }
 
+/* Tablet: still the one-line desktop row — photo, then the name beside it,
+   then the three counts — but without the chevron. The whole row is the
+   target anyway, and dropping its track is what lets the counts finish flush
+   with the card's end edge instead of a gap short of it. */
 @media (max-width: 900px) {
-  /* Photo and name keep the top line; the three counts drop to their own row
-     beneath, still in step with each other. The chevron goes — the whole row
-     is the target, and at this width it only costs the name space. */
   .itemRow,
   .skeletonRow {
-    /* Three equal columns so the counts come out the same width as each
-       other. The photo sits in the first of them rather than a track of its
-       own — it has a fixed width and left-aligns, so a wider cell costs
-       nothing, and a fourth track would leave one count wider than the
-       other two. */
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas:
-      'thumb info info'
-      'total out in';
-    gap: 0.75rem 0.625rem;
+    grid-template-columns: 4.5rem minmax(0, 1fr) 6rem 6rem 6rem;
+    grid-template-areas: 'thumb info total out in';
+    gap: 1rem;
   }
 
   .chevron {
@@ -270,5 +264,23 @@
 
   .countValue {
     font-size: 1.125rem;
+  }
+}
+
+/* Phone: photo and name keep the top line; the three counts drop to their own
+   row beneath, still in step with each other. */
+@media (max-width: 640px) {
+  .itemRow,
+  .skeletonRow {
+    /* Three equal columns so the counts come out the same width as each
+       other. The photo sits in the first of them rather than a track of its
+       own — it has a fixed width and left-aligns, so a wider cell costs
+       nothing, and a fourth track would leave one count wider than the
+       other two. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      'thumb info info'
+      'total out in';
+    gap: 0.75rem 0.625rem;
   }
 }

@@ -5,6 +5,34 @@
   gap: 0.75rem;
 }
 
+/* The shared .topRow centres the heading in the row with `1fr auto 1fr`,
+   which reads as off-centre here: the back button and the save/delete pair
+   are different widths, so the heading ends up nearly touching Save with a
+   wide gap after Back. Centring it in the space *between* them means the
+   middle track has to be the flexible one.
+
+   `div.` only to outrank the shared .topRow rule whichever order the bundler
+   emits the two stylesheets in — both are otherwise one class deep. */
+div.topRowBetween {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* Stands in for the save/delete pair while the product loads, so the heading
+   is centred against the same gap in both states instead of sliding over
+   once the buttons arrive. Approximate — it mirrors their padding and labels
+   rather than measuring them. */
+.headerActionsPlaceholder {
+  width: 15rem;
+}
+
+@media (max-width: 640px) {
+  /* The buttons drop their labels at this width (see below), so the space
+     they need drops with them. */
+  .headerActionsPlaceholder {
+    width: 6rem;
+  }
+}
+
 .saveButton,
 .deleteButton {
   display: flex;
