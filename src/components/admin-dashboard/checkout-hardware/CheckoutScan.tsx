@@ -213,26 +213,21 @@ export default function CheckoutScan() {
       {!isLoading && error && <p className={styles.status}>{error}</p>}
 
       {!isLoading && !error && confirmed === null && (
-        <>
-          <p className={styles.subtext}>
-            Scan the barcode on the item you are handing over. If it has been requested, the loan it
-            belongs to is found for you.
-          </p>
-
+        <div className={styles.checkoutScanTopPad}>
           <ScanColumn
             videoRef={videoRef}
             isSupported={isSupported}
             permissionError={permissionError}
             feedback={feedback}
             caption="Please scan the hardware item barcode that you are checking out"
-            pickLabel="Pick the loan from the database"
+            pickLabel="Pick loan from database"
             onEnterSerial={() => {
               setManualError(null)
               setSerialModalOpen(true)
             }}
             onPickFromDatabase={() => navigate('/adminHome/checkout/pick')}
           />
-        </>
+        </div>
       )}
 
       {!isLoading && !error && confirmed && (

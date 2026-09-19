@@ -122,7 +122,7 @@ function renderCheckout() {
 /** Opens the typed-serial dialog, which is behind a button on the scan step. */
 async function openSerialDialog() {
   await userEvent.click(
-    await screen.findByRole('button', { name: /enter the serial number manually/i }),
+    await screen.findByRole('button', { name: /enter serial number/i }),
   )
   return screen.getByRole('dialog', { name: /enter a serial number/i })
 }
@@ -135,9 +135,9 @@ describe('CheckoutScan', () => {
       await screen.findByText(/please scan the hardware item barcode that you are checking out/i),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /enter the serial number manually/i }),
+      screen.getByRole('button', { name: /enter serial number/i }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /pick the loan from the database/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /pick loan from database/i })).toBeInTheDocument()
     // The field is behind the button, not sitting on the screen beside it.
     expect(screen.queryByLabelText('Serial number')).not.toBeInTheDocument()
   })
@@ -311,7 +311,7 @@ describe('CheckoutScan', () => {
     renderCheckout()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /pick the loan from the database/i }),
+      await screen.findByRole('button', { name: /pick loan from database/i }),
     )
 
     expect(await screen.findByText('Pick a loan request')).toBeInTheDocument()
@@ -328,7 +328,7 @@ describe('CheckoutScan', () => {
 
     expect(await screen.findByText(/enter the serial number by hand below/i)).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /enter the serial number manually/i }),
+      screen.getByRole('button', { name: /enter serial number/i }),
     ).toBeInTheDocument()
   })
 })

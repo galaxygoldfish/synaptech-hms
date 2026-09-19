@@ -113,7 +113,7 @@ export function ScanColumn({
         <button type="button" className={styles.altButton} onClick={onEnterSerial}>
           <span className={styles.altButtonLabel}>
             <ScanIconFilled size={20} />
-            Enter the serial number manually
+            Enter serial number
           </span>
           <ChevronRightIcon size={20} />
         </button>

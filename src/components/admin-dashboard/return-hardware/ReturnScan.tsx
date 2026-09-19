@@ -200,7 +200,7 @@ export default function ReturnScan() {
             permissionError={permissionError}
             feedback={feedback}
             caption="Please scan the hardware item barcode that is being returned"
-            pickLabel="Pick the loan from the database"
+            pickLabel="Pick loan from database"
             onEnterSerial={() => {
               setManualError(null)
               setSerialModalOpen(true)

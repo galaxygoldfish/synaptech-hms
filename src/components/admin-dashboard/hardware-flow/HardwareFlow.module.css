@@ -755,3 +755,20 @@
 .successDoneButton:hover {
   background: #1f2937;
 }
+
+/* Extra breathing room above the viewfinder on the "Check out hardware" scan
+   step. It used to come from the intro paragraph above the ScanColumn; now
+   that step has none, so this stands in for it, on its own rather than as
+   part of .scanColumn so the return/hand-off scan steps aren't affected. */
+.checkoutScanTopPad {
+  padding-top: 3rem;
+}
+
+/* On phone the header and back button already push the frame well down the
+   screen, so the same gap that reads as intentional on an iPad just shoves
+   the viewfinder toward the fold. */
+@media (max-width: 640px) {
+  .checkoutScanTopPad {
+    padding-top: 0.75rem;
+  }
+}

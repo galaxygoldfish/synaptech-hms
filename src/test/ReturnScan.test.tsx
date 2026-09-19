@@ -122,7 +122,7 @@ function renderReturn() {
 /** Opens the typed-serial dialog, which is behind a button on the scan step. */
 async function openSerialDialog() {
   await userEvent.click(
-    await screen.findByRole('button', { name: /enter the serial number manually/i }),
+    await screen.findByRole('button', { name: /enter serial number/i }),
   )
   return screen.getByRole('dialog', { name: /enter a serial number/i })
 }
@@ -135,9 +135,9 @@ describe('ReturnScan', () => {
       await screen.findByText(/please scan the hardware item barcode that is being returned/i),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /enter the serial number manually/i }),
+      screen.getByRole('button', { name: /enter serial number/i }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /pick the loan from the database/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /pick loan from database/i })).toBeInTheDocument()
   })
 
   it('finds the open loan a scanned serial belongs to and goes on to confirm it', async () => {
@@ -233,7 +233,7 @@ describe('ReturnScan', () => {
     renderReturn()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /pick the loan from the database/i }),
+      await screen.findByRole('button', { name: /pick loan from database/i }),
     )
 
     expect(await screen.findByText('Pick a loan to return')).toBeInTheDocument()
