@@ -58,7 +58,18 @@ export function ActionList({ groups, showCategoryLabels = true, onSelect }: Acti
               >
                 <span className={styles.actionRowLeft}>
                   <span className={styles.actionRowIconBox}>{actionIcons[item.icon]}</span>
-                  <span className={styles.actionRowLabel}>{item.label}</span>
+                  {item.shortLabel ? (
+                    <>
+                      <span className={`${styles.actionRowLabel} ${styles.actionRowLabelFullOnly}`}>
+                        {item.label}
+                      </span>
+                      <span className={`${styles.actionRowLabel} ${styles.actionRowLabelShortOnly}`}>
+                        {item.shortLabel}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={styles.actionRowLabel}>{item.label}</span>
+                  )}
                 </span>
                 <ChevronRightFilled size={9} className={styles.actionRowChevron} />
               </button>

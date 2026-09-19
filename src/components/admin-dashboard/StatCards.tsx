@@ -12,13 +12,17 @@ interface StatCardsProps {
 const cardConfig: {
   key: keyof DashboardStats;
   label: string;
+  /** Shown in place of `label` on phone, where the card is just the number
+   *  in a 2x2 grid and the full label no longer fits under it. Tablet keeps
+   *  the full label — see the 480px vs. 900px breakpoints below. */
+  shortLabel: string;
   tone: "blue" | "red" | "olive" | "green";
   filter: "active" | "overdue" | "requests" | "returns";
 }[] = [
-  { key: "activeLoans", label: "Active hardware loans", tone: "blue", filter: "active" },
-  { key: "overdueLoans", label: "Overdue loans", tone: "red", filter: "overdue" },
-  { key: "pendingRequests", label: "Pending requests", tone: "olive", filter: "requests" },
-  { key: "pendingReturns", label: "Pending returns", tone: "green", filter: "returns" },
+  { key: "activeLoans", label: "Active hardware loans", shortLabel: "Active", tone: "blue", filter: "active" },
+  { key: "overdueLoans", label: "Overdue loans", shortLabel: "Overdue", tone: "red", filter: "overdue" },
+  { key: "pendingRequests", label: "Pending requests", shortLabel: "Requests", tone: "olive", filter: "requests" },
+  { key: "pendingReturns", label: "Pending returns", shortLabel: "Returns", tone: "green", filter: "returns" },
 ];
 
 const toneClass = {
@@ -55,6 +59,7 @@ export function StatCards({ stats }: StatCardsProps) {
             )}
           </div>
           <div className={styles.statCardLabel}>{card.label}</div>
+          <div className={styles.statCardLabelShort} aria-hidden="true">{card.shortLabel}</div>
         </button>
       ))}
     </div>

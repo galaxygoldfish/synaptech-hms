@@ -63,6 +63,16 @@
   padding: 0.5rem 0 0;
 }
 
+/* Phone: 80% gives up 10% of the screen on each side just to margin, which
+   is generous on a wide desktop and cramped on a 375px screen. Halving it to
+   5% gives the stat grid and action list roughly a third more width to work
+   with. */
+@media (max-width: 640px) {
+  .main {
+    width: 90%;
+  }
+}
+
 /* ── Stat cards ───────────────────────────────────────────── */
 
 .statRow {
@@ -112,10 +122,22 @@
   opacity: 0.7;
 }
 
-/* Phone: just the number in each box, in a 2x2 grid. The label is hidden
-   visually but stays in the DOM, since it is what names each card button for
-   screen readers; the colour of the card carries the meaning on screen. */
+/* The phone alternative to .statCardLabel — "Active" rather than "Active
+   hardware loans" — hidden everywhere but the 480px block below, which
+   swaps the two. */
+.statCardLabelShort {
+  display: none;
+}
+
+/* Phone: just the number and a one-word label in each box, in a 2x2 grid.
+   The full label is hidden visually but stays in the DOM, since it is what
+   names each card button for screen readers; on screen, the short label and
+   the card's colour carry the meaning instead. */
 @media (max-width: 480px) {
+  .statCard {
+    padding: 1rem 1rem 1.125rem;
+  }
+
   .statCardValue {
     margin-bottom: 0;
     font-size: 3rem;
@@ -130,6 +152,14 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  .statCardLabelShort {
+    display: block;
+    font-family: 'Rubik', sans-serif;
+    font-size: 0.9375rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
   }
 }
 
@@ -201,6 +231,12 @@
   padding: 1.75rem;
 }
 
+@media (max-width: 640px) {
+  .actionsCard {
+    padding: 1.25rem;
+  }
+}
+
 .actionGroup + .actionGroup {
   margin-top: 2rem;
 }
@@ -263,6 +299,23 @@
   font-family: 'Rubik', sans-serif;
   font-size: 1.0625rem;
   color: #474747;
+}
+
+/* Some rows carry a shorter mobile alternative (see ActionList) because the
+   full label wraps to two lines at the phone width the halved .main padding
+   above leaves it. Only one of the pair is ever in layout. */
+.actionRowLabelShortOnly {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .actionRowLabelFullOnly {
+    display: none;
+  }
+
+  .actionRowLabelShortOnly {
+    display: inline;
+  }
 }
 
 .actionRowChevron {

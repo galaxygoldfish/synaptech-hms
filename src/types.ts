@@ -30,6 +30,9 @@ export type IconKey =
 export interface ActionItem {
   id: string;
   label: string;
+  /** Shown in place of `label` below the mobile breakpoint, when the full
+   *  label is too long to sit on one line beside the icon and chevron. */
+  shortLabel?: string;
   icon: IconKey;
   category: string;
 }

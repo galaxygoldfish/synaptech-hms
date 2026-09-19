@@ -12,7 +12,7 @@ export const actionGroups: ActionGroup[] = [
   {
     category: 'Inventory',
     items: [
-      { id: 'manage-inventory', label: 'Manage hardware inventory', icon: 'inventory', category: 'Inventory' },
+      { id: 'manage-inventory', label: 'Manage hardware inventory', shortLabel: 'Manage inventory', icon: 'inventory', category: 'Inventory' },
       { id: 'add-item',         label: 'Add a new item',             icon: 'add',       category: 'Inventory' },
       { id: 'get-labels',       label: 'Get hardware labels',        icon: 'label',     category: 'Inventory' },
       { id: 'inventory-audit',  label: 'Inventory audit',            icon: 'audit',     category: 'Inventory' },
@@ -21,7 +21,7 @@ export const actionGroups: ActionGroup[] = [
   {
     category: 'Administration',
     items: [
-      { id: 'view-members',   label: 'Manage registered users', icon: 'members', category: 'Administration' },
+      { id: 'view-members',   label: 'Manage registered users', shortLabel: 'Manage users', icon: 'members', category: 'Administration' },
       { id: 'app-audit-log',  label: 'App audit log',         icon: 'audit-log', category: 'Administration' },
     ],
   },
