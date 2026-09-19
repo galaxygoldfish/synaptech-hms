@@ -34,33 +34,41 @@ export default function WelcomePage() {
       <div className={styles.page}>
         <img src={starGlow} alt="" aria-hidden="true" className={styles.starGlow} />
 
+        {/* The copy is split in two so the carousel can sit between its
+            halves on mobile and beside both of them on desktop — see the
+            900px grid in WelcomePage.module.css. Neither wrapper carries any
+            box of its own, so the copy reads as one block in either layout. */}
         <div className={styles.content}>
-          <div className={styles.logoBlock}>
-            <img src={brainLogo} alt="" className={styles.brainLogo} />
-            <p className={styles.orgName}>Synaptech @ UW</p>
+          <div className={styles.copyTop}>
+            <div className={styles.logoBlock}>
+              <img src={brainLogo} alt="" className={styles.brainLogo} />
+              <p className={styles.orgName}>Synaptech @ UW</p>
+            </div>
+
+            <h1 className={styles.portalName}>Hardware portal</h1>
+
+            <p className={styles.description}>
+              Synaptech is UW&rsquo;s neurotechnology student organization, providing members with
+              free access to a wide variety of hardware for use in independent research and neural
+              engineering projects.
+            </p>
           </div>
 
-          <h1 className={styles.portalName}>Hardware portal</h1>
+          <HardwareCarousel className={styles.carousel} />
 
-          <p className={styles.description}>
-            Synaptech is UW&rsquo;s neurotechnology student organization, providing members with
-            free access to a wide variety of hardware for use in independent research and neural
-            engineering projects.
-          </p>
+          <div className={styles.copyBottom}>
+            <p className={styles.subDescription}>
+              Use this portal to browse our available inventory, request to checkout hardware and
+              get technical support.
+            </p>
 
-          <p className={styles.subDescription}>
-            Use this portal to browse our available inventory, request to checkout hardware and
-            get technical support.
-          </p>
-
-          <button className={styles.signInButton} onClick={handleSignInClick}>
-            Sign in with
-            <img src={googleIcon} alt="" aria-hidden="true" className={styles.googleIcon} />
-            Google
-          </button>
+            <button className={styles.signInButton} onClick={handleSignInClick}>
+              Sign in with
+              <img src={googleIcon} alt="" aria-hidden="true" className={styles.googleIcon} />
+              Google
+            </button>
+          </div>
         </div>
-
-        <HardwareCarousel />
       </div>
 
       <ConfirmationModal

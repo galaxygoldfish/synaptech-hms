@@ -35,8 +35,33 @@
 }
 
 @media (min-width: 900px) {
+  /* The copy and the carousel are two columns here, but they can't be flex
+     siblings: on mobile the carousel sits *between* the two halves of the
+     copy, so it has to be a child of .content in the DOM. Grid puts it back
+     beside them. .copyTop/.copyBottom carry no margin, padding or border of
+     their own, so the copy's block flow — and the margin collapsing that
+     spaces it — is identical with or without this grid. */
   .content {
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+  }
+
+  .copyTop {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .copyBottom {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .carousel {
+    grid-row: 1 / 3;
+    grid-column: 2;
   }
 }
 
@@ -116,4 +141,44 @@
   height: clamp(1.125rem, 2vw, 1.5rem);
   width: clamp(1.125rem, 2vw, 1.5rem);
   flex-shrink: 0;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+
+/* 639px, not the usual 640px: the desktop layout starts at
+   `min-width: 640px` above, so overlapping the two would left-align the
+   content and centre its text at exactly that width. */
+@media (max-width: 639px) {
+  .content {
+    text-align: center;
+  }
+
+  /* The logo is a block with an auto width, so centring the text doesn't
+     move it. */
+  .brainLogo {
+    margin-inline: auto;
+  }
+
+  /* Bigger than the fluid size would give at this width — on a phone this is
+     the page's headline rather than a line under the wordmark. */
+  .portalName {
+    font-size: 1.625rem;
+    /* Keyed to the viewport HEIGHT, not its width: this gap is the page's
+       slack, and on a short phone spending all of it here is what pushes the
+       sign-in button under the fold. */
+    margin-bottom: clamp(2.5rem, 8vh, 4rem);
+  }
+
+  /* The "who we are" paragraph is cut here: what a phone gets is the
+     wordmark, the hardware, and the way in. The italic line below still says
+     what the portal is for. */
+  .description {
+    display: none;
+  }
+
+  .signInButton {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+  }
 }

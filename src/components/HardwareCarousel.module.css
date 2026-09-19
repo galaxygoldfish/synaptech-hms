@@ -1,13 +1,16 @@
+/* Hidden between the two layouts below: from 640px the copy is left-aligned
+   in a 560px column with nothing beside it yet, and a carousel dropped into
+   the middle of it would just push the sign-in button off the fold. */
 .carousel {
   display: none;
 }
 
+/* Desktop: the right-hand column of the page's grid (see WelcomePage). */
 @media (min-width: 900px) {
   .carousel {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1;
     min-width: 0;
     height: 100%;
   }
@@ -77,5 +80,42 @@
 @media (prefers-reduced-motion: reduce) {
   .slide {
     animation: none;
+  }
+}
+
+/* Mobile: in the copy column, between the description and the italic line. */
+@media (max-width: 639px) {
+  .carousel {
+    display: flex;
+    justify-content: center;
+    /* Height-keyed like the gap above it (see .portalName in
+       WelcomePage.module.css), so a short phone gives the space back to the
+       sign-in button instead of scrolling it away. */
+    margin: 0.75rem 0 clamp(1.75rem, 6vh, 3rem);
+  }
+
+  .slide {
+    width: 100%;
+  }
+
+  .image {
+    width: 100%;
+    height: 9.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .dots {
+    margin-bottom: 0.875rem;
+  }
+
+  /* The item name alone. Its one-line description is detail for the desktop
+     layout, where the carousel has a column to itself rather than a slot
+     between two paragraphs of the page's own copy. */
+  .name {
+    margin-bottom: 0;
+  }
+
+  .description {
+    display: none;
   }
 }

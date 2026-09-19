@@ -34,7 +34,10 @@ const ITEMS = [
   },
 ]
 
-export default function HardwareCarousel() {
+// `className` is how the page that renders this places it: the carousel is a
+// grid item beside the copy on desktop and an in-flow block between two
+// paragraphs on mobile, and only the page knows which.
+export default function HardwareCarousel({ className }: { className?: string }) {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -47,7 +50,7 @@ export default function HardwareCarousel() {
   const item = ITEMS[index]
 
   return (
-    <div className={styles.carousel} aria-hidden="true">
+    <div className={className ? `${styles.carousel} ${className}` : styles.carousel} aria-hidden="true">
       <div className={styles.slide} key={item.id}>
         <img src={item.image} alt="" className={styles.image} />
 
