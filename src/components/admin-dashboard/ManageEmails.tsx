@@ -16,11 +16,14 @@ import styles from './ManageEmails.module.css'
 
 interface ManageEmailsProps {
   heading: string
+  /** Shown instead of `heading` on phone, where the full wording wraps to
+      two lines and crowds the back button. */
+  shortHeading: string
   listPath: string
   category: EmailTemplateCategory
 }
 
-export function ManageEmails({ heading, listPath, category }: ManageEmailsProps) {
+export function ManageEmails({ heading, shortHeading, listPath, category }: ManageEmailsProps) {
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
@@ -107,7 +110,10 @@ export function ManageEmails({ heading, listPath, category }: ManageEmailsProps)
             <ArrowLeftIcon size={20} />
             <span>Back</span>
           </button>
-          <h1 className={styles.heading}>{heading}</h1>
+          <h1 className={styles.heading}>
+            <span className={styles.headingFull}>{heading}</span>
+            <span className={styles.headingShort}>{shortHeading}</span>
+          </h1>
           <div />
         </div>
 

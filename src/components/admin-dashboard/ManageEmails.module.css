@@ -48,6 +48,13 @@
   margin: 0;
 }
 
+/* Full wording by default; only phone (below) swaps to the shorter form —
+   "Manage user-facing emails" otherwise wraps to two lines and crowds the
+   back button. */
+.headingShort {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .backButton {
     padding: 0.8125rem;
@@ -55,6 +62,14 @@
 
   .backButton span {
     display: none;
+  }
+
+  .headingFull {
+    display: none;
+  }
+
+  .headingShort {
+    display: inline;
   }
 
   .heading {
@@ -163,18 +178,25 @@
     padding: 0.75rem;
   }
 
+  /* The label leads, full width, the way a card names itself before
+     offering controls for it; Edit and the toggle share the row below,
+     Edit leading and the toggle trailing — same relative order as the
+     desktop row, just wrapped onto its own line instead of squeezed in
+     beside a label with no room left to breathe. Edit takes whatever width
+     the toggle doesn't need, rather than shrinking to its own label. */
   .templateRow {
     flex-wrap: wrap;
-    padding: 0.75rem 1rem;
+    align-items: center;
+    padding: 0.875rem 1rem;
   }
 
   .templateLabel {
-    order: 1;
+    order: -1;
     flex-basis: 100%;
     white-space: normal;
   }
 
-  .toggle {
-    margin-left: auto;
+  .editButton {
+    flex: 1;
   }
 }

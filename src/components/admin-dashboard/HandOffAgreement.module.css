@@ -54,7 +54,7 @@
 }
 
 .subtext {
-  width: min(52rem, 100%);
+  width: min(38rem, 100%);
   margin: 0 auto;
   font-family: 'Rubik', sans-serif;
   font-size: 1.0625rem;
@@ -77,8 +77,9 @@
   }
 
   .subtext {
+    width: min(18rem, 100%);
     font-size: 0.9375rem;
-    text-align: left;
+    text-align: center;
   }
 }
 

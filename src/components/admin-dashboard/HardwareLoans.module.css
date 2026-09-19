@@ -73,9 +73,15 @@
   padding: 1.5rem 1.75rem 2rem;
 }
 
+/* Stretch, not center: the search bar and the filter chips have to be the
+   same height, and their natural heights differ by a couple of pixels
+   because one is sized by an icon and an <input> and the other by a line
+   of uppercase Bungee. Letting the taller one set the height is exact and
+   stays exact through a font change, the way the toolbar on "Perform
+   inventory audit" and "App audit log" already work. */
 .cardHeader {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
@@ -89,6 +95,12 @@
 .searchWrap {
   flex: 1;
   min-width: 20rem;
+}
+
+/* The wrapper stretches; this passes that height down to the search bar
+   itself, which is the element that actually draws the border. */
+.searchWrap > * {
+  height: 100%;
 }
 
 /* ── Filter chips ─────────────────────────────────────────── */
@@ -105,13 +117,16 @@
   display: none;
 }
 
+/* No explicit height — the header's stretch (above) is what actually sets
+   it, matching the search bar exactly. Vertical padding stands in for that
+   height wherever the chip isn't stretched (a bare .chipRow on its own, or
+   the row wrapping onto a line by itself on a narrow screen). */
 .chip {
   flex-shrink: 0;
-  height: 3.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 1.5625rem;
+  padding: 0.9375rem 1.5625rem;
   border: 3px solid rgba(0, 0, 0, 0.3);
   border-radius: 1.25rem;
   background: none;
@@ -135,8 +150,7 @@
 
 @media (max-width: 640px) {
   .chip {
-    height: 2.75rem;
-    padding: 0 1rem;
+    padding: 0.6875rem 1rem;
     font-size: 0.9375rem;
     border-width: 2px;
   }

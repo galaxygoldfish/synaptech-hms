@@ -289,12 +289,12 @@ export default function EmailLog() {
                     <div className={styles.skeletonRow}>
                       <Skeleton width="5rem" height="1.75rem" shape="pill" style={{ gridArea: 'status' }} />
                       <div className={styles.templateCell}>
-                        <Skeleton width="70%" height="1.0625rem" shape="pill" />
-                        <Skeleton width="50%" height="0.875rem" shape="pill" />
+                        <Skeleton width="70%" height="1.0625rem" shape="pill" style={{ gridArea: 'subject' }} />
+                        <Skeleton width="50%" height="0.875rem" shape="pill" style={{ gridArea: 'type' }} />
                       </div>
                       <div className={styles.recipientCell}>
-                        <Skeleton width="80%" height="1rem" shape="pill" />
-                        <Skeleton width="55%" height="0.8125rem" shape="pill" />
+                        <Skeleton width="80%" height="1rem" shape="pill" style={{ gridArea: 'recipient' }} />
+                        <Skeleton width="55%" height="0.8125rem" shape="pill" style={{ gridArea: 'cc' }} />
                       </div>
                       <Skeleton width="9rem" height="0.9375rem" shape="pill" style={{ gridArea: 'sent' }} />
                     </div>
