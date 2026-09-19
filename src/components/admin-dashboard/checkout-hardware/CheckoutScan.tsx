@@ -213,7 +213,7 @@ export default function CheckoutScan() {
       {!isLoading && error && <p className={styles.status}>{error}</p>}
 
       {!isLoading && !error && confirmed === null && (
-        <div className={styles.checkoutScanTopPad}>
+        <div className={styles.scanTopPad}>
           <ScanColumn
             videoRef={videoRef}
             isSupported={isSupported}

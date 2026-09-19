@@ -188,12 +188,7 @@ export default function ReturnScan() {
       {!isLoading && error && <p className={styles.status}>{error}</p>}
 
       {!isLoading && !error && (
-        <>
-          <p className={styles.subtext}>
-            Scan the barcode on the item being handed back. If it is out on loan, the loan it
-            belongs to is found for you.
-          </p>
-
+        <div className={styles.scanTopPad}>
           <ScanColumn
             videoRef={videoRef}
             isSupported={isSupported}
@@ -207,7 +202,7 @@ export default function ReturnScan() {
             }}
             onPickFromDatabase={() => navigate('/adminHome/return/pick')}
           />
-        </>
+        </div>
       )}
 
       <SerialEntryModal

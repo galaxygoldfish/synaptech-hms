@@ -756,11 +756,12 @@
   background: #1f2937;
 }
 
-/* Extra breathing room above the viewfinder on the "Check out hardware" scan
-   step. It used to come from the intro paragraph above the ScanColumn; now
-   that step has none, so this stands in for it, on its own rather than as
-   part of .scanColumn so the return/hand-off scan steps aren't affected. */
-.checkoutScanTopPad {
+/* Extra breathing room above the viewfinder on the checkout and return scan
+   steps. It used to come from the intro paragraph above the ScanColumn; now
+   that neither step has one, this stands in for it — on its own rather than
+   part of .scanColumn so the hand-off scan step (which doesn't use this
+   wrapper) isn't affected. */
+.scanTopPad {
   padding-top: 3rem;
 }
 
@@ -768,7 +769,7 @@
    screen, so the same gap that reads as intentional on an iPad just shoves
    the viewfinder toward the fold. */
 @media (max-width: 640px) {
-  .checkoutScanTopPad {
+  .scanTopPad {
     padding-top: 0.75rem;
   }
 }
