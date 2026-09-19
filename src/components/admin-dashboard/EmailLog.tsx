@@ -8,6 +8,7 @@ import { ArrowLeftIcon, CloseIcon } from './icons'
 import { fetchEmailLog, type EmailLogEntry, type EmailLogStatus } from '../../lib/emailLog'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
+import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './EmailLog.module.css'
 
 type StatusFilter = 'all' | EmailLogStatus
@@ -181,6 +182,7 @@ export default function EmailLog() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const { ref: filterRowRef, maskImage: filterRowMask } = useEdgeFade<HTMLDivElement>()
   const [selected, setSelected] = useState<EmailLogEntry | null>(null)
 
   useEffect(() => {
@@ -255,7 +257,11 @@ export default function EmailLog() {
             <div className={styles.searchWrap}>
               <SearchBar value={query} onChange={setQuery} placeholder="Search by recipient, subject or content" />
             </div>
-            <div className={styles.filterRow}>
+            <div
+              ref={filterRowRef}
+              className={styles.filterRow}
+              style={{ WebkitMaskImage: filterRowMask, maskImage: filterRowMask }}
+            >
               {FILTERS.map((filter) => (
                 <button
                   key={filter.value}

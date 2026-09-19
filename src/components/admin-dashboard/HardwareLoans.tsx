@@ -13,6 +13,7 @@ import {
 } from '../../lib/loanRequests'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
+import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './HardwareLoans.module.css'
 
 type LoanFilter = 'all' | 'active' | 'overdue' | 'requests' | 'returned'
@@ -109,6 +110,7 @@ export default function HardwareLoans() {
   const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<LoanFilter>(() => parseFilter(searchParams.get('filter')))
+  const { ref: chipRowRef, maskImage: chipRowMask } = useEdgeFade<HTMLDivElement>()
   const [query, setQuery] = useState('')
 
   useEffect(() => {
@@ -187,7 +189,11 @@ export default function HardwareLoans() {
             <div className={styles.searchWrap}>
               <SearchBar value={query} onChange={setQuery} placeholder="Search by item, serial or member" />
             </div>
-            <div className={styles.chipRow}>
+            <div
+              ref={chipRowRef}
+              className={styles.chipRow}
+              style={{ WebkitMaskImage: chipRowMask, maskImage: chipRowMask }}
+            >
               {FILTERS.map((option) => {
                 const isActive = filter === option.value
                 return (

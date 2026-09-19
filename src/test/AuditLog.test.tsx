@@ -133,7 +133,7 @@ describe('AuditLog', () => {
     renderAuditLog()
 
     expect(await screen.findByText('System')).toBeInTheDocument()
-    expect(screen.getByText('Automated or direct database change')).toBeInTheDocument()
+    expect(screen.getByText('Database change')).toBeInTheDocument()
   })
 
   it('narrows to one category when its filter chip is pressed', async () => {

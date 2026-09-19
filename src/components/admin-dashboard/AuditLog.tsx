@@ -5,6 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, CloseIcon } from './icons'
+import { useEdgeFade } from '../../lib/useEdgeFade'
 import {
   AUDIT_LOG_LIMIT,
   AUDIT_LOG_RETENTION_MONTHS,
@@ -41,10 +42,15 @@ const CATEGORY_CLASS: Record<AuditCategory, string> = {
   emails: styles.categoryEmails,
 }
 
-// Every action the triggers in 20260921000000_audit_log.sql can write.
-// Anything missing falls back to the raw dotted key rather than rendering
-// blank, so adding a trigger without touching this file degrades to
-// "member.suspended" instead of an empty badge.
+// Every action any `audit_write(...)` call can write — not just
+// 20260921000000_audit_log.sql, which defined the helper, but every later
+// migration that calls it too (20260922000000's and 20260925000000's return
+// and cancellation triggers among them). A key missing here isn't blank or
+// raw — actionLabel() below humanizes anything unmapped — but it does lose
+// the nicer phrasing a hand-written label gets, which is how
+// 'loan_request.cancelled', 'loan_item.returned' and
+// 'loan_item.return_requested' turned up as their raw dotted keys here
+// before this map caught up with the triggers that write them.
 const ACTION_LABEL: Record<string, string> = {
   'member.signed_up': 'Account created',
   'member.role_changed': 'Role changed',
@@ -61,10 +67,13 @@ const ACTION_LABEL: Record<string, string> = {
   'loan_request.submitted': 'Checkout requested',
   'loan_request.approved': 'Checkout approved',
   'loan_request.denied': 'Checkout denied',
+  'loan_request.cancelled': 'Checkout cancelled',
   'loan_request.status_changed': 'Status changed',
   'loan_request.deleted': 'Request deleted',
   'loan_item.requested': 'Item requested',
   'loan_item.updated': 'Item updated',
+  'loan_item.returned': 'Item returned',
+  'loan_item.return_requested': 'Item return requested',
   'loan_item.removed': 'Item removed',
   'email_template.updated': 'Template edited',
   'email_template.enabled': 'Email turned on',
@@ -102,6 +111,7 @@ const FIELD_LABEL: Record<string, string> = {
   review_note: 'Review note',
   equipment_unit_id: 'Assigned unit',
   return_date: 'Return date',
+  returned_at: 'Returned at',
   signed_agreement_path: 'Signed agreement',
   item_role: 'Item role',
   subject: 'Subject line',
@@ -120,7 +130,13 @@ const HIDDEN_NOTE: Record<string, string> = {
 }
 
 function actionLabel(action: string): string {
-  return ACTION_LABEL[action] ?? action
+  const known = ACTION_LABEL[action]
+  if (known) return known
+  // Falls back the same way entityLabel/fieldLabel do, rather than the raw
+  // dotted key — the gap this closes for 'loan_request.cancelled' and
+  // friends above, and the same safety net for whatever's added next.
+  const spaced = action.replace(/[._]/g, ' ')
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
 function entityLabel(entityType: string): string {
@@ -170,7 +186,7 @@ function actorName(entry: AuditLogEntry): string {
 }
 
 function actorDetail(entry: AuditLogEntry): string {
-  return entry.actorEmail ?? 'Automated or direct database change'
+  return entry.actorEmail ?? 'Database change'
 }
 
 function matchesQuery(entry: AuditLogEntry, query: string): boolean {
@@ -276,7 +292,6 @@ function DetailModal({ entry, onClose }: { entry: AuditLogEntry; onClose: () => 
         </div>
 
         <div>
-          <p className={styles.changesLabel}>What changed</p>
           {entry.changes.length > 0 ? (
             <ul className={styles.changeList}>
               {entry.changes.map((change) => (
@@ -308,6 +323,7 @@ export default function AuditLog() {
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [selected, setSelected] = useState<AuditLogEntry | null>(null)
+  const { ref: filterRowRef, maskImage: filterRowMask } = useEdgeFade<HTMLDivElement>()
 
   useEffect(() => {
     let cancelled = false
@@ -385,7 +401,11 @@ export default function AuditLog() {
                 placeholder="Search by person, item or what changed"
               />
             </div>
-            <div className={styles.filterRow}>
+            <div
+              ref={filterRowRef}
+              className={styles.filterRow}
+              style={{ WebkitMaskImage: filterRowMask, maskImage: filterRowMask }}
+            >
               {FILTERS.map((filter) => (
                 <button
                   key={filter.value}
@@ -413,7 +433,7 @@ export default function AuditLog() {
                       <Skeleton width="6rem" height="1.75rem" shape="pill" style={{ gridArea: 'category' }} />
                       <div className={styles.summaryCell}>
                         <Skeleton width="75%" height="1.0625rem" shape="pill" />
-                        <Skeleton width="40%" height="0.875rem" shape="pill" />
+                        <Skeleton width="40%" height="0.875rem" shape="pill" className={styles.actionType} />
                       </div>
                       <div className={styles.actorCell}>
                         <Skeleton width="70%" height="1rem" shape="pill" />
