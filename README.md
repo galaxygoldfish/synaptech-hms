@@ -3,8 +3,6 @@
 # Hardware Management System (HMS)
 One of Synaptech's missions at UW is to increase access to neurotechnology education through workshops, labs, and hackathons, and by letting students borrow research-grade equipment for their own projects, from EEG and VR to microcontrollers and everything in between. Synaptech HMS is the system that manages that equipment. Members browse available hardware, request a loan, and sign a loan agreement; admins review and approve the request; and everything from pickup to return is tracked with barcode scanning, automated emails, and a full audit trail.
 
-Live at https://hardware.synaptechuw.org
-
 <img width="100%" src="public/admin-user-dashboard-preview.png"></img>
 
 ## Tools & Technologies
@@ -16,10 +14,7 @@ Live at https://hardware.synaptechuw.org
 - **Testing & linting**: Vitest, React Testing Library, Oxlint
 - **Deployment & CI**: Cloudflare, GitHub Actions
 
-## The hardware flow
-
-
-## User documentation
+## Usage documentation
 
 ### Member functionality
 - Authentication
@@ -48,7 +43,7 @@ Live at https://hardware.synaptechuw.org
   - [Manage user roles](documentation/admin-facing/manage-user-roles.md)
   - [Access app audit log](documentation/admin-facing/access-app-audit-log.md)
 
-## Developer environment setup
+## Development environment setup
 
 #### Prerequisites
 - Node.js installed
