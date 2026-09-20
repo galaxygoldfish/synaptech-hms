@@ -14,13 +14,33 @@ export function createAdminClient() {
   return createClient(url, serviceRoleKey, { auth: { persistSession: false } });
 }
 
-// Every profile with the admin role, for the admin-facing templates that
-// notify "the hardware managers" as a group rather than one specific
-// person.
-export async function fetchAdminEmails(admin: ReturnType<typeof createAdminClient>): Promise<string[]> {
-  const { data, error } = await admin.from("profiles").select("uw_email").eq("role", "admin");
-  if (error) throw error;
-  return (data ?? []).map((row) => row.uw_email as string).filter(Boolean);
+// Admins opted into a CC copy of one specific template via the "CC"
+// subsection of the admin editor's Recipients section
+// (email_template_recipient_overrides table) — off by default, so most
+// templates resolve to no one. Always starts from the live set of
+// role='admin' profiles rather than anything cached, so a newly promoted
+// admin shows up (CC off) and a demoted one drops out immediately — no
+// cleanup of the overrides table needed for either case.
+export async function fetchAdminCcOverrides(
+  admin: ReturnType<typeof createAdminClient>,
+  templateKey: string,
+): Promise<string[]> {
+  const [{ data: admins, error: adminsError }, { data: overrides, error: overridesError }] = await Promise.all([
+    admin.from("profiles").select("id, uw_email").eq("role", "admin"),
+    admin
+      .from("email_template_recipient_overrides")
+      .select("admin_id")
+      .eq("template_key", templateKey)
+      .eq("cc_enabled", true),
+  ]);
+  if (adminsError) throw adminsError;
+  if (overridesError) throw overridesError;
+
+  const ccAdminIds = new Set((overrides ?? []).map((row) => row.admin_id as string));
+  return (admins ?? [])
+    .filter((profile) => ccAdminIds.has(profile.id as string))
+    .map((profile) => profile.uw_email as string)
+    .filter(Boolean);
 }
 
 export function formatDate(iso: string): string {

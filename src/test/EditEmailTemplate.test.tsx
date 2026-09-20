@@ -4,7 +4,13 @@ import { act } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
-import { fetchEmailTemplate, updateEmailTemplateContent } from '../lib/emailTemplates'
+import {
+  fetchEmailTemplate,
+  fetchTemplateRecipients,
+  setEmailTemplateArchiveCc,
+  setTemplateRecipientCc,
+  updateEmailTemplateContent,
+} from '../lib/emailTemplates'
 import EditEmailTemplate from '../components/admin-dashboard/EditEmailTemplate'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
@@ -15,6 +21,9 @@ vi.mock('../lib/emailTemplates', async () => {
     ...actual,
     fetchEmailTemplate: vi.fn(),
     updateEmailTemplateContent: vi.fn(),
+    fetchTemplateRecipients: vi.fn(),
+    setTemplateRecipientCc: vi.fn(),
+    setEmailTemplateArchiveCc: vi.fn(),
   }
 })
 
@@ -43,7 +52,16 @@ beforeEach(() => {
     subject: '',
     body: [],
     enabled: true,
+    archiveCcEnabled: true,
   })
+  // Empty by default so tests that don't care about the Recipients section
+  // don't need to stub it — and, since it's a real network call otherwise,
+  // so they never hit the live Supabase project either.
+  vi.mocked(fetchTemplateRecipients).mockReset()
+  vi.mocked(fetchTemplateRecipients).mockResolvedValue([])
+  vi.mocked(setTemplateRecipientCc).mockReset()
+  vi.mocked(setTemplateRecipientCc).mockResolvedValue(undefined)
+  vi.mocked(setEmailTemplateArchiveCc).mockReset()
   vi.mocked(useAuth).mockReturnValue({
     session: mockSession,
     profile: mockProfile,
@@ -80,6 +98,7 @@ describe('EditEmailTemplate — loading an existing body', () => {
         subject: 'First subject',
         body: [{ type: 'text', value: 'First body text.' }],
         enabled: true,
+        archiveCcEnabled: true,
       })
       .mockResolvedValueOnce({
         key: 'return-reminder-due-date',
@@ -89,6 +108,7 @@ describe('EditEmailTemplate — loading an existing body', () => {
         subject: 'Second subject',
         body: [{ type: 'text', value: 'Second body text.' }],
         enabled: true,
+        archiveCcEnabled: true,
       })
 
     const router = createMemoryRouter(
@@ -126,6 +146,7 @@ describe('EditEmailTemplate — loading an existing body', () => {
         { type: 'text', value: ', please return your item soon.' },
       ],
       enabled: true,
+      archiveCcEnabled: true,
     })
 
     renderEditor()
@@ -165,6 +186,7 @@ describe('EditEmailTemplate — saving a multi-line body', () => {
       subject: 'Subject',
       body: [{ type: 'text', value: 'placeholder' }],
       enabled: true,
+      archiveCcEnabled: true,
     })
 
     renderEditor()
@@ -200,5 +222,135 @@ describe('EditEmailTemplate — saving a multi-line body', () => {
   it('preserves a Shift+Enter soft break (a bare <br>, no wrapping element)', async () => {
     const body = await loadEditorAndSave('Line A<br>Line B')
     expect(body).toEqual([{ type: 'text', value: 'Line A\nLine B' }])
+  })
+})
+
+describe('EditEmailTemplate — Recipients section', () => {
+  function mockTemplate(key: string, archiveCcEnabled = true) {
+    vi.mocked(fetchEmailTemplate).mockResolvedValue({
+      key,
+      category: 'admin',
+      label: 'Hardware item added to inventory',
+      dynamicFields: [],
+      subject: '',
+      body: [],
+      enabled: true,
+      archiveCcEnabled,
+    })
+  }
+
+  it('shows the fixed, non-toggleable Recipient description for a member-facing template', async () => {
+    mockTemplate('checkout-request-confirmation')
+    vi.mocked(fetchTemplateRecipients).mockResolvedValue([])
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(screen.getByText('The member who made the request.')).toBeInTheDocument()
+    })
+    // Fixed text, not a control — this used to be a toggleable "To" switch.
+    expect(screen.queryByRole('switch', { name: /direct recipient/i })).not.toBeInTheDocument()
+  })
+
+  it('shows Synaptech’s name and address as the fixed Recipient for a broadcast admin template, and hides it from the CC list below', async () => {
+    mockTemplate('hardware-item-added')
+    vi.mocked(fetchTemplateRecipients).mockResolvedValue([
+      { id: 'admin-1', name: 'Ada Admin', email: 'admin@uw.edu', ccEnabled: false },
+    ])
+
+    renderEditor()
+
+    // Waiting on the CC list (loaded separately, see fetchTemplateRecipients)
+    // rather than the Recipient row above it, which renders as soon as the
+    // template itself loads and so would resolve before the CC section
+    // finishes its own, independent loading state.
+    await waitFor(() => {
+      expect(screen.getByText('Ada Admin')).toBeInTheDocument()
+    })
+    // The header also says "Synaptech" (the app's own branding), so this
+    // pins down the specific name+email pair in the Recipient row rather
+    // than counting every "Synaptech" text node on the page.
+    const recipientEmail = screen.getByText('synaptechuw@gmail.com')
+    expect(recipientEmail.previousElementSibling).toHaveTextContent('Synaptech')
+    // The CC list still shows real admins — only the redundant Synaptech
+    // row (it's already the fixed recipient above) is suppressed.
+    expect(screen.queryByRole('switch', { name: /synaptech/i })).not.toBeInTheDocument()
+  })
+
+  it('lists every current admin with a toggleable CC switch, off by default', async () => {
+    mockTemplate('hardware-item-added')
+    vi.mocked(fetchTemplateRecipients).mockResolvedValue([
+      { id: 'admin-1', name: 'Ada Admin', email: 'admin@uw.edu', ccEnabled: false },
+      { id: 'admin-2', name: 'Bo Boss', email: 'bo@uw.edu', ccEnabled: true },
+    ])
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(screen.getByText('Ada Admin')).toBeInTheDocument()
+    })
+    expect(screen.getByText('bo@uw.edu')).toBeInTheDocument()
+
+    expect(screen.getByRole('switch', { name: /add ada admin as a cc/i })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: /remove bo boss as a cc/i })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('toggling an admin CC switch saves the change and flips it optimistically', async () => {
+    mockTemplate('hardware-item-added')
+    vi.mocked(fetchTemplateRecipients).mockResolvedValue([
+      { id: 'admin-1', name: 'Ada Admin', email: 'admin@uw.edu', ccEnabled: false },
+    ])
+
+    renderEditor()
+
+    const ccSwitch = await screen.findByRole('switch', { name: /add ada admin as a cc/i })
+
+    const user = userEvent.setup()
+    await user.click(ccSwitch)
+
+    await waitFor(() => {
+      expect(setTemplateRecipientCc).toHaveBeenCalledWith('hardware-item-added', 'admin-1', true, 'admin-1')
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('switch', { name: /remove ada admin as a cc/i })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+    })
+  })
+
+  it('shows a Synaptech CC row for a template whose recipient is a member, and lets it be toggled', async () => {
+    mockTemplate('checkout-request-confirmation', true)
+    vi.mocked(fetchTemplateRecipients).mockResolvedValue([])
+    vi.mocked(setEmailTemplateArchiveCc).mockResolvedValue({
+      key: 'checkout-request-confirmation',
+      category: 'user',
+      label: 'Checkout request confirmation',
+      dynamicFields: [],
+      subject: '',
+      body: [],
+      enabled: true,
+      archiveCcEnabled: false,
+    })
+
+    renderEditor()
+
+    const synaptechSwitch = await screen.findByRole('switch', {
+      name: /remove synaptech.?s archive address as a cc/i,
+    })
+    expect(screen.getByText('synaptechuw@gmail.com')).toBeInTheDocument()
+    expect(synaptechSwitch).toHaveAttribute('aria-checked', 'true')
+
+    const user = userEvent.setup()
+    await user.click(synaptechSwitch)
+
+    await waitFor(() => {
+      expect(setEmailTemplateArchiveCc).toHaveBeenCalledWith('checkout-request-confirmation', false, 'admin-1')
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('switch', { name: /add synaptech.?s archive address as a cc/i }),
+      ).toHaveAttribute('aria-checked', 'false')
+    })
   })
 })

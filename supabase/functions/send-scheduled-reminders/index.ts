@@ -11,8 +11,8 @@
 // a reminder is only sent once no matter how many days in a row this runs
 // and finds the same overdue item.
 
-import { createAdminClient, fetchAdminEmails, formatDate } from "../_shared/db.ts";
-import { sendTemplatedEmail } from "../_shared/sendTemplatedEmail.ts";
+import { createAdminClient, fetchAdminCcOverrides, formatDate } from "../_shared/db.ts";
+import { resolveArchiveAddress, sendTemplatedEmail } from "../_shared/sendTemplatedEmail.ts";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -118,13 +118,21 @@ async function sendReminderBatch(
   trackingColumn: "reminder_one_week_sent_at" | "reminder_due_date_sent_at" | "reminder_past_due_sent_at",
 ): Promise<number> {
   const contextByItem = await loadItemContexts(admin, items);
+  // Same for every item in this batch — they all use the same template —
+  // so it's resolved once up front rather than per item.
+  const extraCc = await fetchAdminCcOverrides(admin, templateKey);
   let sent = 0;
 
   for (const item of items) {
     const context = contextByItem.get(item.id);
     if (!context) continue;
 
-    await sendTemplatedEmail(admin, { templateKey, to: context.to, fields: context.fields });
+    await sendTemplatedEmail(admin, {
+      templateKey,
+      to: context.to,
+      fields: context.fields,
+      extraCc: extraCc.length > 0 ? extraCc : undefined,
+    });
     await admin
       .from("loan_request_items")
       .update({ [trackingColumn]: new Date().toISOString() })
@@ -137,17 +145,30 @@ async function sendReminderBatch(
 
 async function sendOverdueAdminAlerts(admin: Admin, items: LoanItemRow[]): Promise<number> {
   const contextByItem = await loadItemContexts(admin, items);
-  const adminEmails = await fetchAdminEmails(admin);
+  // One email per item, to Synaptech's own address — same as every other
+  // admin-facing template (see dispatchToAdmins in send-email/index.ts) —
+  // with individually opted-in admins CC'd on top, rather than every admin
+  // getting their own personal copy.
+  const to = resolveArchiveAddress();
+  const extraCc = await fetchAdminCcOverrides(admin, "hardware-item-overdue");
   let sent = 0;
 
   for (const item of items) {
     const context = contextByItem.get(item.id);
     if (!context) continue;
 
-    for (const to of adminEmails) {
-      await sendTemplatedEmail(admin, { templateKey: "hardware-item-overdue", to, fields: context.fields });
+    if (to) {
+      await sendTemplatedEmail(admin, {
+        templateKey: "hardware-item-overdue",
+        to,
+        fields: context.fields,
+        extraCc: extraCc.length > 0 ? extraCc : undefined,
+      });
       sent += 1;
     }
+    // Marked as notified either way — an empty archive address (someone
+    // set EMAIL_ARCHIVE_CC to "" to disable it) shouldn't make this retry
+    // the same overdue item every day forever.
     await admin
       .from("loan_request_items")
       .update({ overdue_admin_notified_at: new Date().toISOString() })

@@ -5,14 +5,15 @@ import { sendViaResend } from "./resend.ts";
 
 export interface SendTemplatedEmailInput {
   templateKey: string;
-  /** One address, or several to send a single combined email to all of
-      them — see SendEmailInput in resend.ts. Used for "notify every admin"
-      dispatches, so 3 admins get one email each with one archive CC, not
-      3 separate emails each carrying their own duplicate CC. */
-  to: string | string[];
+  to: string;
   fields: Record<string, string>;
   /** Files to attach, base64-encoded — see SendEmailInput in resend.ts. */
   attachments?: { filename: string; content: string }[];
+  /** Admins opted into a copy of this specific template via the admin
+      editor's Recipients section (see fetchAdminCcOverrides in db.ts) —
+      distinct from the fixed archive CC below, which every send gets
+      regardless of per-template settings. */
+  extraCc?: string[];
 }
 
 // Every automated email is copied to this address so the club keeps its own
@@ -48,17 +49,55 @@ export function sentDateTimeFields(now: Date = new Date()): { sent_date: string;
   };
 }
 
-// Exported for the unit test alongside this file.
-export function archiveCcFor(recipients: string | string[]): string | undefined {
+// The literal address, honoring the same EMAIL_ARCHIVE_CC override every
+// other use of "the archive address" respects. This is also the "to" that
+// an admin-broadcast template's dispatch resolves to now that it's
+// "Synaptech", not each admin's own inbox — see dispatchToAdmins in
+// send-email/index.ts and sendOverdueAdminAlerts in send-scheduled-
+// reminders/index.ts. Exported for the unit test alongside this file.
+export function resolveArchiveAddress(): string {
   const configured = Deno.env.get("EMAIL_ARCHIVE_CC");
-  const cc = (configured ?? DEFAULT_ARCHIVE_CC).trim();
+  return (configured ?? DEFAULT_ARCHIVE_CC).trim();
+}
+
+// Exported for the unit test alongside this file.
+export function archiveCcFor(recipient: string): string | undefined {
+  const cc = resolveArchiveAddress();
   if (!cc) return undefined;
-  const list = Array.isArray(recipients) ? recipients : [recipients];
-  // No point copying an address that's already one of the recipients — it
-  // would just deliver the same message to the same inbox twice.
-  const alreadyIncluded = list.some((r) => r.trim().toLowerCase() === cc.toLowerCase());
-  if (alreadyIncluded) return undefined;
+  // No point copying an address that's already the recipient — it would
+  // just deliver the same message to the same inbox twice.
+  if (recipient.trim().toLowerCase() === cc.toLowerCase()) return undefined;
   return cc;
+}
+
+// Case-insensitive de-dupe that keeps the first occurrence's casing —
+// used to combine the archive CC with per-template admin CCs, which can
+// otherwise legitimately collide (an admin's own address, or the same
+// admin appearing via two different code paths).
+function dedupeCaseInsensitive(addresses: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const address of addresses) {
+    const key = address.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(address);
+  }
+  return result;
+}
+
+// Combines the fixed archive CC (unless turned off for this template via
+// the "Synaptech" row in the admin editor's Recipients section) with the
+// per-template admin CCs from extraCc, dropping the recipient itself (the
+// To line) and any duplicates between the two sources.
+function ccFor(recipient: string, extraCc: string[] | undefined, archiveCcEnabled: boolean): string[] | undefined {
+  const archiveCc = archiveCcEnabled ? archiveCcFor(recipient) : undefined;
+  const adminCc = (extraCc ?? [])
+    .map((address) => address.trim())
+    .filter(Boolean)
+    .filter((address) => address.toLowerCase() !== recipient.toLowerCase());
+  const cc = dedupeCaseInsensitive([...(archiveCc ? [archiveCc] : []), ...adminCc]);
+  return cc.length > 0 ? cc : undefined;
 }
 
 // Loads the template row (respecting the enabled toggle from the admin
@@ -67,17 +106,14 @@ export function archiveCcFor(recipients: string | string[]): string | undefined 
 // break the caller's batch of other sends.
 export async function sendTemplatedEmail(
   admin: ReturnType<typeof createAdminClient>,
-  { templateKey, to, fields, attachments }: SendTemplatedEmailInput,
+  { templateKey, to, fields, attachments, extraCc }: SendTemplatedEmailInput,
 ): Promise<void> {
-  // Normalized once, up front, so everything below — Resend's payload, the
-  // CC check, and the log row — works off the same clean list regardless
-  // of whether the caller passed one address or several.
-  const recipients = (Array.isArray(to) ? to : [to]).map((r) => r.trim()).filter(Boolean);
-  if (recipients.length === 0) return;
+  const recipient = to.trim();
+  if (!recipient) return;
 
   const { data: template, error } = await admin
     .from("email_templates")
-    .select("subject, body, label, enabled")
+    .select("subject, body, label, enabled, archive_cc_enabled")
     .eq("key", templateKey)
     .maybeSingle();
 
@@ -108,29 +144,28 @@ export async function sendTemplatedEmail(
     `</div>` +
     buildSignatureHtml();
 
-  const cc = archiveCcFor(recipients);
+  const cc = ccFor(recipient, extraCc, template.archive_cc_enabled);
 
   // Logged on both paths so the admin "Automated email log" screen shows
   // the message exactly as sent, including for failures — which is
   // usually the thing you need in order to debug one. body_html is what
   // the log renders; body_text is kept as the plain-text fallback record.
-  // recipient_email is a single text column — a combined send's addresses
-  // are joined for display, same as they appear together in the one email
-  // Resend actually sent.
+  // cc_email joins multiple addresses for display, same as they appear
+  // together in the one email Resend actually sent.
   const logRow = {
     template_key: templateKey,
-    recipient_email: recipients.join(", "),
-    cc_email: cc ?? null,
+    recipient_email: recipient,
+    cc_email: cc ? cc.join(", ") : null,
     subject,
     body_text: text,
     body_html: html,
   };
 
   try {
-    await sendViaResend({ to: recipients, subject, text, html, cc, attachments });
+    await sendViaResend({ to: recipient, subject, text, html, cc, attachments });
     await admin.from("email_log").insert({ ...logRow, status: "sent" });
   } catch (sendError) {
-    console.error(`Failed to send "${templateKey}" to ${recipients.join(", ")}:`, sendError);
+    console.error(`Failed to send "${templateKey}" to ${recipient}:`, sendError);
     await admin.from("email_log").insert({
       ...logRow,
       status: "failed",

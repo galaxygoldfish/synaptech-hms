@@ -19,8 +19,8 @@
 import { Buffer } from "node:buffer";
 import { withSupabase } from "npm:@supabase/server";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { fetchAdminEmails, formatDate } from "../_shared/db.ts";
-import { sendTemplatedEmail, type SendTemplatedEmailInput } from "../_shared/sendTemplatedEmail.ts";
+import { fetchAdminCcOverrides, formatDate } from "../_shared/db.ts";
+import { resolveArchiveAddress, sendTemplatedEmail, type SendTemplatedEmailInput } from "../_shared/sendTemplatedEmail.ts";
 
 type Dispatch = SendTemplatedEmailInput[];
 
@@ -82,6 +82,32 @@ async function fetchActorName(admin: SupabaseClient, actorId: string | null | un
   return actor ? `${actor.first_name} ${actor.last_name}` : "";
 }
 
+// Builds the dispatch entry for an admin-facing template. Broadcasting to
+// every admin's own inbox isn't admin-configurable, so instead of that
+// there's just one fixed "to": Synaptech's own address (see the
+// `recipient` copy on EmailTemplateDescription in
+// src/lib/emailTemplates.ts) — individual admins only get a copy if
+// they're specifically opted in as a CC from the Recipients section.
+// Returns null in the (very unlikely) case the archive address is empty,
+// e.g. EMAIL_ARCHIVE_CC set to "" to disable it entirely.
+async function dispatchToAdmins(
+  admin: SupabaseClient,
+  templateKey: string,
+  fields: Record<string, string>,
+): Promise<SendTemplatedEmailInput | null> {
+  const to = resolveArchiveAddress();
+  if (!to) return null;
+  const cc = await fetchAdminCcOverrides(admin, templateKey);
+  return { templateKey, to, extraCc: cc.length > 0 ? cc : undefined, fields };
+}
+
+// Extra admins CC'd on a member-facing template via the Recipients
+// section — opt-in only, so most templates resolve to no one.
+async function resolveExtraCc(admin: SupabaseClient, templateKey: string): Promise<string[] | undefined> {
+  const cc = await fetchAdminCcOverrides(admin, templateKey);
+  return cc.length > 0 ? cc : undefined;
+}
+
 async function resolveEvent(
   admin: SupabaseClient,
   event: string,
@@ -100,6 +126,7 @@ async function resolveEvent(
           templateKey: "account-creation-confirmation",
           to: profile.uw_email,
           fields: { user_name: `${profile.first_name} ${profile.last_name}` },
+          extraCc: await resolveExtraCc(admin, "account-creation-confirmation"),
         },
       ];
     }
@@ -116,6 +143,7 @@ async function resolveEvent(
           templateKey: "account-permission-elevation",
           to: profile.uw_email,
           fields: { user_name: `${profile.first_name} ${profile.last_name}`, new_role: profile.role },
+          extraCc: await resolveExtraCc(admin, "account-permission-elevation"),
         },
       ];
     }
@@ -171,14 +199,16 @@ async function resolveEvent(
       const attachments = await fetchSignedAgreementAttachment(admin, item.signed_agreement_path, equipment.name);
 
       const dispatch: Dispatch = [
-        { templateKey: "checkout-request-confirmation", to: profile.uw_email, fields, attachments },
+        {
+          templateKey: "checkout-request-confirmation",
+          to: profile.uw_email,
+          fields,
+          attachments,
+          extraCc: await resolveExtraCc(admin, "checkout-request-confirmation"),
+        },
       ];
-      const adminEmails = await fetchAdminEmails(admin);
-      // One email to every admin together, not one separately-CC'd email
-      // per admin — see sendTemplatedEmail's `to: string | string[]`.
-      if (adminEmails.length > 0) {
-        dispatch.push({ templateKey: "hardware-checkout-requested", to: adminEmails, fields });
-      }
+      const adminDispatch = await dispatchToAdmins(admin, "hardware-checkout-requested", fields);
+      if (adminDispatch) dispatch.push(adminDispatch);
       return dispatch;
     }
 
@@ -234,12 +264,15 @@ async function resolveEvent(
       };
 
       const dispatch: Dispatch = [
-        { templateKey: "successful-handoff-confirmation", to: profile.uw_email, fields },
+        {
+          templateKey: "successful-handoff-confirmation",
+          to: profile.uw_email,
+          fields,
+          extraCc: await resolveExtraCc(admin, "successful-handoff-confirmation"),
+        },
       ];
-      const adminEmails = await fetchAdminEmails(admin);
-      if (adminEmails.length > 0) {
-        dispatch.push({ templateKey: "hardware-handed-off", to: adminEmails, fields });
-      }
+      const adminDispatch = await dispatchToAdmins(admin, "hardware-handed-off", fields);
+      if (adminDispatch) dispatch.push(adminDispatch);
       return dispatch;
     }
 
@@ -295,12 +328,15 @@ async function resolveEvent(
       };
 
       const dispatch: Dispatch = [
-        { templateKey: "successful-return-confirmation", to: profile.uw_email, fields },
+        {
+          templateKey: "successful-return-confirmation",
+          to: profile.uw_email,
+          fields,
+          extraCc: await resolveExtraCc(admin, "successful-return-confirmation"),
+        },
       ];
-      const adminEmails = await fetchAdminEmails(admin);
-      if (adminEmails.length > 0) {
-        dispatch.push({ templateKey: "hardware-returned", to: adminEmails, fields });
-      }
+      const adminDispatch = await dispatchToAdmins(admin, "hardware-returned", fields);
+      if (adminDispatch) dispatch.push(adminDispatch);
       return dispatch;
     }
 
@@ -314,9 +350,8 @@ async function resolveEvent(
 
       const templateKey = event === "equipment.created" ? "hardware-item-added" : "hardware-item-modified";
       const fields = { hardware_name: equipment.name, admin_name: await fetchActorName(admin, actorId) };
-      const adminEmails = await fetchAdminEmails(admin);
-      if (adminEmails.length === 0) return [];
-      return [{ templateKey, to: adminEmails, fields }];
+      const adminDispatch = await dispatchToAdmins(admin, templateKey, fields);
+      return adminDispatch ? [adminDispatch] : [];
     }
 
     default:

@@ -271,14 +271,6 @@
   margin: 0;
 }
 
-/* "Goes to" and "CC" sit side by side rather than stacked. */
-.aboutFactRow {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 2rem;
-  row-gap: 0.25rem;
-}
-
 .aboutFact {
   display: flex;
   gap: 0.5rem;
@@ -303,5 +295,165 @@
   .aboutFact {
     flex-direction: column;
     gap: 0.0625rem;
+  }
+}
+
+/* ── Recipients section ───────────────────────────────────────── */
+
+.recipientsCard {
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.25rem;
+  padding: 1rem;
+}
+
+.recipientSubsection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* A light rule between "Recipient" and "CC" — the two subsections share one
+   card, so this is what separates them instead of a second bordered box. */
+.recipientSubsection + .recipientSubsection {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.recipientSubsectionLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* Same look as .recipientName below — this is the one-row "card" for the
+   fixed recipient, so its text reads at the same weight, just wrapping
+   instead of truncating since a sentence runs longer than a name. */
+.recipientStaticText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.88);
+  margin: 0;
+}
+
+.recipientList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.recipientRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  /* Matches a two-line name+email CC row's rendered height (measured at
+     61px/3.8125rem) so the single-line Recipient row isn't visibly
+     shorter than the rows below it. */
+  min-height: 3.8125rem;
+  background: rgba(207, 207, 207, 0.26);
+  border-radius: 0.8125rem;
+  padding: 0.75rem 1.25rem;
+}
+
+.recipientIdentity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.recipientName {
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.0625rem;
+  color: rgba(0, 0, 0, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipientEmail {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipientToggleGroup {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recipientToggleLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* Smaller than ManageEmails' .toggle — two of these share a row here. */
+.recipientToggle {
+  flex-shrink: 0;
+  position: relative;
+  width: 3.25rem;
+  height: 1.875rem;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: 999px;
+  padding: 0.1875rem;
+  cursor: pointer;
+}
+
+.recipientToggleOn {
+  background: #839cc5;
+}
+
+.recipientToggleKnob {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--white);
+  border-radius: 999px;
+  transition: transform 0.15s ease;
+}
+
+.recipientToggleOn .recipientToggleKnob {
+  transform: translateX(1.375rem);
+}
+
+@media (max-width: 640px) {
+  .recipientsCard {
+    padding: 0.75rem;
+  }
+
+  /* Same wrap pattern as ManageEmails' .templateRow: identity leads, full
+     width, with the toggles sharing the row below rather than squeezing in
+     beside a name with no room left to breathe. */
+  .recipientRow {
+    flex-wrap: wrap;
+    padding: 0.875rem 1rem;
+  }
+
+  .recipientIdentity {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  .recipientToggleGroup {
+    flex: 1;
+    justify-content: flex-end;
   }
 }

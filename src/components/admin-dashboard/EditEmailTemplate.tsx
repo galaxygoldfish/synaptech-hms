@@ -9,9 +9,13 @@ import {
   EMAIL_FIELD_LABELS,
   EMAIL_TEMPLATE_DESCRIPTIONS,
   fetchEmailTemplate,
+  fetchTemplateRecipients,
+  setEmailTemplateArchiveCc,
+  setTemplateRecipientCc,
   updateEmailTemplateContent,
   type EmailBodySegment,
   type EmailTemplate,
+  type TemplateRecipient,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -25,9 +29,12 @@ function fieldLabel(field: string): string {
   return EMAIL_FIELD_LABELS[field] ?? field.toUpperCase()
 }
 
-// Mirrors the recipient logic in supabase/functions/send-email — user
-// templates always go to the one member tied to the triggering row, admin
-// templates go to every admin (see resolveEvent/fetchAdminEmails there).
+// Shares pendingRecipientKey/recipientsError with the per-admin recipient
+// toggles under one sentinel key rather than its own separate pending
+// state — it's the same Recipients section and the same "one toggle at a
+// time" rule, just for a row that isn't a profile.
+const ARCHIVE_CC_KEY = 'archive-cc'
+
 function removeChipNode(node: HTMLElement) {
   node.remove()
 }
@@ -171,19 +178,166 @@ function AboutThisEmail({ templateKey }: { templateKey: string }) {
             </span>
             <span>{description.timing}</span>
           </span>
-          <div className={styles.aboutFactRow}>
-            <span className={styles.aboutFact}>
-              <span className={styles.aboutFactLabel}>Goes to</span>
-              <span>{description.recipient}</span>
-            </span>
-            <span className={styles.aboutFact}>
-              <span className={styles.aboutFactLabel}>CC</span>
-              <span>{EMAIL_ARCHIVE_CC_ADDRESS}</span>
-            </span>
-          </div>
         </div>
       </div>
     </aside>
+  )
+}
+
+interface RecipientToggleProps {
+  label: string
+  enabled: boolean
+  pending: boolean
+  ariaLabel: string
+  onClick: () => void
+}
+
+// Shared by every switch in the Recipients section below — a real admin's
+// "to"/"cc" columns and the fixed "Synaptech" archive-CC row alike.
+function RecipientToggle({ label, enabled, pending, ariaLabel, onClick }: RecipientToggleProps) {
+  return (
+    <div className={styles.recipientToggleGroup}>
+      <span className={styles.recipientToggleLabel}>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={ariaLabel}
+        className={enabled ? `${styles.recipientToggle} ${styles.recipientToggleOn}` : styles.recipientToggle}
+        onClick={onClick}
+        disabled={pending}
+      >
+        <span className={styles.recipientToggleKnob} />
+      </button>
+    </div>
+  )
+}
+
+interface RecipientsSectionProps {
+  templateKey: string
+  recipients: TemplateRecipient[]
+  isLoading: boolean
+  error: string | null
+  pendingKey: string | null
+  onToggle: (recipient: TemplateRecipient) => void
+  archiveCcEnabled: boolean
+  isArchiveCcPending: boolean
+  onToggleArchiveCc: () => void
+}
+
+/**
+ * Two subsections sharing one card: a fixed, non-editable description of
+ * who this template's direct recipient is (a specific member, or "every
+ * administrator" — see EMAIL_TEMPLATE_DESCRIPTIONS, which is what actually
+ * dispatches the email), and a CC list an admin can toggle — every current
+ * administrator plus a fixed "Synaptech" row for the archive CC every send
+ * otherwise gets unconditionally. The CC list is always built from the live
+ * admin roster (see fetchTemplateRecipients) rather than a stored list, so
+ * it reflects who's an admin right now — someone promoted since this
+ * template was last edited shows up with CC off by default the next time
+ * this screen loads, and someone demoted simply stops appearing.
+ */
+function RecipientsSection({
+  templateKey,
+  recipients,
+  isLoading,
+  error,
+  pendingKey,
+  onToggle,
+  archiveCcEnabled,
+  isArchiveCcPending,
+  onToggleArchiveCc,
+}: RecipientsSectionProps) {
+  const recipientDescription = EMAIL_TEMPLATE_DESCRIPTIONS[templateKey]?.recipient
+  // The object form means resolveEvent always sends this template straight
+  // to Synaptech's own address — so it's already in the "to" line and has
+  // no business also appearing as a toggleable CC below.
+  const recipientIsSynaptech = typeof recipientDescription === 'object'
+
+  return (
+    <div className={styles.formSection}>
+      <div className={styles.recipientsCard}>
+        {recipientDescription && (
+          <div className={styles.recipientSubsection}>
+            <span className={styles.recipientSubsectionLabel}>Recipient</span>
+            <div className={styles.recipientRow}>
+              {typeof recipientDescription === 'string' ? (
+                <p className={styles.recipientStaticText}>{recipientDescription}</p>
+              ) : (
+                <div className={styles.recipientIdentity}>
+                  <span className={styles.recipientName}>{recipientDescription.name}</span>
+                  <span className={styles.recipientEmail}>{recipientDescription.email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className={styles.recipientSubsection}>
+          <span className={styles.recipientSubsectionLabel}>CC</span>
+
+          {isLoading ? (
+            <ul className={styles.recipientList} aria-hidden="true">
+              {Array.from({ length: 3 }, (_, index) => (
+                <li key={index} className={styles.recipientRow}>
+                  <div className={styles.recipientIdentity}>
+                    <Skeleton width="50%" height="1rem" shape="pill" />
+                    <Skeleton width="70%" height="0.8125rem" shape="pill" />
+                  </div>
+                  <Skeleton width="3.25rem" height="1.875rem" shape="pill" />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className={styles.recipientList}>
+              {recipients.map((recipient) => (
+                <li key={recipient.id} className={styles.recipientRow}>
+                  <div className={styles.recipientIdentity}>
+                    <span className={styles.recipientName}>{recipient.name}</span>
+                    <span className={styles.recipientEmail}>{recipient.email}</span>
+                  </div>
+
+                  <RecipientToggle
+                    label="CC"
+                    enabled={recipient.ccEnabled}
+                    pending={pendingKey === recipient.id}
+                    ariaLabel={`${recipient.ccEnabled ? 'Remove' : 'Add'} ${recipient.name} as a CC`}
+                    onClick={() => onToggle(recipient)}
+                  />
+                </li>
+              ))}
+
+              {/* Every send CCs this address unconditionally unless turned
+                  off here — see EMAIL_ARCHIVE_CC_ADDRESS/archiveCcFor in
+                  supabase/functions/_shared/sendTemplatedEmail.ts. Listed
+                  like any other CC rather than back in the "About this
+                  email" panel, so there's one place that shows who actually
+                  gets a template — except when Synaptech is already this
+                  template's direct recipient (above), where offering it
+                  again as a CC would just be redundant. */}
+              {!recipientIsSynaptech && (
+                <li className={styles.recipientRow}>
+                  <div className={styles.recipientIdentity}>
+                    <span className={styles.recipientName}>Synaptech</span>
+                    <span className={styles.recipientEmail}>{EMAIL_ARCHIVE_CC_ADDRESS}</span>
+                  </div>
+
+                  <RecipientToggle
+                    label="CC"
+                    enabled={archiveCcEnabled}
+                    pending={isArchiveCcPending}
+                    ariaLabel={`${archiveCcEnabled ? 'Remove' : 'Add'} Synaptech's archive address as a CC`}
+                    onClick={onToggleArchiveCc}
+                  />
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {error && <p className={styles.inlineError}>{error}</p>}
+    </div>
   )
 }
 
@@ -205,6 +359,11 @@ export default function EditEmailTemplate() {
 
   const [isSaving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  const [recipients, setRecipients] = useState<TemplateRecipient[]>([])
+  const [isRecipientsLoading, setRecipientsLoading] = useState(true)
+  const [recipientsError, setRecipientsError] = useState<string | null>(null)
+  const [pendingRecipientKey, setPendingRecipientKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!templateId) return
@@ -232,6 +391,35 @@ export default function EditEmailTemplate() {
       cancelled = true
     }
   }, [templateId])
+
+  // Loaded separately from the template itself — the Recipients section can
+  // shimmer in a beat after the subject/body are already on screen, rather
+  // than holding up the whole page. Re-fetches whenever the template
+  // (including a route transition to a different one) changes, since CC
+  // overrides are per template-key.
+  useEffect(() => {
+    if (!template) return
+    let cancelled = false
+    setRecipientsLoading(true)
+    setRecipientsError(null)
+
+    fetchTemplateRecipients(template.key)
+      .then((data) => {
+        if (!cancelled) setRecipients(data)
+      })
+      .catch((fetchError) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load email recipients:', fetchError)
+        if (!cancelled) setRecipientsError('Could not load recipients. Please try again.')
+      })
+      .finally(() => {
+        if (!cancelled) setRecipientsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [template])
 
   // Populates the contentEditable body once the real editor is on screen.
   // This can't happen inside the fetch above: while isLoading is true, the
@@ -309,6 +497,46 @@ export default function EditEmailTemplate() {
       console.error('Failed to save email template:', updateError)
       setSaveError('Could not save this template. Please try again.')
       setSaving(false)
+    }
+  }
+
+  async function handleRecipientToggle(recipient: TemplateRecipient) {
+    if (!template || !profile || pendingRecipientKey) return
+    const nextValue = !recipient.ccEnabled
+
+    setPendingRecipientKey(recipient.id)
+    setRecipientsError(null)
+
+    try {
+      await setTemplateRecipientCc(template.key, recipient.id, nextValue, profile.id)
+      setRecipients((current) =>
+        current.map((item) => (item.id === recipient.id ? { ...item, ccEnabled: nextValue } : item)),
+      )
+    } catch (toggleError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to update email recipient:', toggleError)
+      setRecipientsError('Could not update this recipient. Please try again.')
+    } finally {
+      setPendingRecipientKey(null)
+    }
+  }
+
+  async function handleArchiveCcToggle() {
+    if (!template || !profile || pendingRecipientKey) return
+    const nextValue = !template.archiveCcEnabled
+
+    setPendingRecipientKey(ARCHIVE_CC_KEY)
+    setRecipientsError(null)
+
+    try {
+      const updated = await setEmailTemplateArchiveCc(template.key, nextValue, profile.id)
+      setTemplate(updated)
+    } catch (toggleError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to update the archive CC setting:', toggleError)
+      setRecipientsError('Could not update this recipient. Please try again.')
+    } finally {
+      setPendingRecipientKey(null)
     }
   }
 
@@ -436,6 +664,18 @@ export default function EditEmailTemplate() {
 
           {saveError && <p className={styles.inlineError}>{saveError}</p>}
         </div>
+
+        <RecipientsSection
+          templateKey={template.key}
+          recipients={recipients}
+          isLoading={isRecipientsLoading}
+          error={recipientsError}
+          pendingKey={pendingRecipientKey}
+          onToggle={(recipient) => void handleRecipientToggle(recipient)}
+          archiveCcEnabled={template.archiveCcEnabled}
+          isArchiveCcPending={pendingRecipientKey === ARCHIVE_CC_KEY}
+          onToggleArchiveCc={() => void handleArchiveCcToggle()}
+        />
       </main>
 
       {isProfileOpen && user && (

@@ -3,19 +3,15 @@
 // providers later means replacing just this one file.
 
 export interface SendEmailInput {
-  /** Multiple addresses send ONE email to all of them (Resend accepts an
-      array directly — max 50) rather than one email per address. Used for
-      "notify every admin" sends, where every admin sees the others in the
-      To line — acceptable for an internal notification, not a member-facing
-      one. */
-  to: string | string[];
+  to: string;
   subject: string;
   text: string;
   /** Optional HTML alternative — most clients prefer this when both are
       present and fall back to `text` when they can't render HTML. */
   html?: string;
-  /** Archive copy. Omitted from the request entirely when not set. */
-  cc?: string;
+  /** Archive copy plus any per-template admin CCs. Omitted from the
+      request entirely when not set/empty. */
+  cc?: string | string[];
   /** Files to attach, base64-encoded — e.g. a signed loan agreement PDF.
       Omitted from the request entirely when not set. */
   attachments?: { filename: string; content: string }[];
