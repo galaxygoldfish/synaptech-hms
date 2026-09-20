@@ -15,37 +15,39 @@
 // warns about the latter before confirming).
 
 import { createAdminClient } from "../_shared/db.ts";
+import { corsHeaders } from "../_shared/cors.ts";
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return jsonResponse({ ok: false, error: "Method not allowed" }, 405);
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const jwt = authHeader.replace(/^Bearer\s+/i, "");
   if (!jwt) {
-    return new Response(JSON.stringify({ ok: false, error: "Missing Authorization header" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: "Missing Authorization header" }, 401);
   }
 
   let payload: { userId?: string };
   try {
     payload = await req.json();
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: "Invalid JSON body" }, 400);
   }
 
   const { userId } = payload;
   if (!userId) {
-    return new Response(JSON.stringify({ ok: false, error: "userId is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: "userId is required" }, 400);
   }
 
   const admin = createAdminClient();
@@ -59,10 +61,7 @@ Deno.serve(async (req) => {
     error: callerError,
   } = await admin.auth.getUser(jwt);
   if (callerError || !caller) {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid or expired session" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: "Invalid or expired session" }, 401);
   }
 
   const { data: callerProfile, error: callerProfileError } = await admin
@@ -73,26 +72,17 @@ Deno.serve(async (req) => {
   if (callerProfileError) {
     // eslint-disable-next-line no-console
     console.error("delete-user: failed to look up caller profile:", callerProfileError);
-    return new Response(JSON.stringify({ ok: false, error: "Could not verify caller" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: "Could not verify caller" }, 500);
   }
   if (callerProfile?.role !== "admin") {
-    return new Response(JSON.stringify({ ok: false, error: "Admin access required" }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: "Admin access required" }, 403);
   }
 
   const { error: deleteProfileError } = await admin.from("profiles").delete().eq("id", userId);
   if (deleteProfileError) {
     // eslint-disable-next-line no-console
     console.error(`delete-user: failed to delete profile ${userId}:`, deleteProfileError);
-    return new Response(JSON.stringify({ ok: false, error: deleteProfileError.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: deleteProfileError.message }, 500);
   }
 
   // The profiles row is already gone at this point regardless of what
@@ -102,13 +92,8 @@ Deno.serve(async (req) => {
   if (deleteAuthError && deleteAuthError.status !== 404) {
     // eslint-disable-next-line no-console
     console.error(`delete-user: profile ${userId} deleted, but auth user deletion failed:`, deleteAuthError);
-    return new Response(JSON.stringify({ ok: false, error: deleteAuthError.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false, error: deleteAuthError.message }, 500);
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return jsonResponse({ ok: true });
 });
