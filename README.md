@@ -23,31 +23,31 @@ Live at https://hardware.synaptechuw.org
 
 ### Member functionality
 - **Authentication**
-  - Login & create account
-  - Complete profile setup
+  - [Login & create account](documentation/user-facing/login-create-account.md)
+  - [Complete profile setup](documentation/user-facing/complete-profile-setup.md)
 - **Inventory**
-  - Browse hardware inventory
+  - [Browse hardware inventory](documentation/user-facing/browse-hardware-inventory.md)
 - **Hardware loans**
-  - Check out hardware
-  - Return hardware
-  - Manage my hardware loans
+  - [Check out hardware](documentation/user-facing/check-out-hardware.md)
+  - [Return hardware](documentation/user-facing/return-hardware.md)
+  - [Manage my hardware loans](documentation/user-facing/manage-my-hardware-loans.md)
 
 ### Administrator functionality
 - **Administrative**
-  - Manage user roles
-  - Access app audit log
+  - [Manage user roles](documentation/admin-facing/manage-user-roles.md)
+  - [Access app audit log](documentation/admin-facing/access-app-audit-log.md)
 - **Hardware loans**
-  - Check out hardware
-  - Return hardware
-  - Manage all hardware loans
+  - [Check out hardware](documentation/admin-facing/check-out-hardware.md)
+  - [Return hardware](documentation/admin-facing/return-hardware.md)
+  - [Manage all hardware loans](documentation/admin-facing/manage-all-hardware-loans.md)
 - **Inventory**
-  - Manage inventory (add / edit items)
-  - Print labels
-  - Get a replacement label
-  - Run an inventory audit
+  - [Manage inventory (add / edit items)](documentation/admin-facing/manage-inventory.md)
+  - [Print labels](documentation/admin-facing/print-labels.md)
+  - [Get a replacement label](documentation/admin-facing/get-replacement-label.md)
+  - [Run an inventory audit](documentation/admin-facing/run-inventory-audit.md)
 - **Email**
-  - Manage automated email content
-  - View automated email log
+  - [Manage automated email content](documentation/admin-facing/manage-automated-email-content.md)
+  - [View automated email log](documentation/admin-facing/view-automated-email-log.md)
 
 ## Developer environment setup
 

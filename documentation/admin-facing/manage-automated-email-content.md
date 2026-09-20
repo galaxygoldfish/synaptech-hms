@@ -1,0 +1,1 @@
+# Manage automated email content

@@ -1,0 +1,1 @@
+# Browse hardware inventory
