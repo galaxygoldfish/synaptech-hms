@@ -22,32 +22,31 @@ Live at https://hardware.synaptechuw.org
 ## User documentation
 
 ### Member functionality
-- **Authentication**
+- Authentication
   - [Login & create account](documentation/user-facing/login-create-account.md)
   - [Complete profile setup](documentation/user-facing/complete-profile-setup.md)
-- **Inventory**
+- Inventory
   - [Browse hardware inventory](documentation/user-facing/browse-hardware-inventory.md)
-- **Hardware loans**
+- Hardware loans
   - [Check out hardware](documentation/user-facing/check-out-hardware.md)
   - [Return hardware](documentation/user-facing/return-hardware.md)
   - [Manage my hardware loans](documentation/user-facing/manage-my-hardware-loans.md)
 
 ### Administrator functionality
-- **Administrative**
-  - [Manage user roles](documentation/admin-facing/manage-user-roles.md)
-  - [Access app audit log](documentation/admin-facing/access-app-audit-log.md)
-- **Hardware loans**
+- Hardware loans
   - [Check out hardware](documentation/admin-facing/check-out-hardware.md)
   - [Return hardware](documentation/admin-facing/return-hardware.md)
   - [Manage all hardware loans](documentation/admin-facing/manage-all-hardware-loans.md)
-- **Inventory**
+- Inventory
   - [Manage inventory (add / edit items)](documentation/admin-facing/manage-inventory.md)
-  - [Print labels](documentation/admin-facing/print-labels.md)
-  - [Get a replacement label](documentation/admin-facing/get-replacement-label.md)
+  - [Get product labels](documentation/admin-facing/get-replacement-label.md)
   - [Run an inventory audit](documentation/admin-facing/run-inventory-audit.md)
-- **Email**
+- Email
   - [Manage automated email content](documentation/admin-facing/manage-automated-email-content.md)
   - [View automated email log](documentation/admin-facing/view-automated-email-log.md)
+- Administrative
+  - [Manage user roles](documentation/admin-facing/manage-user-roles.md)
+  - [Access app audit log](documentation/admin-facing/access-app-audit-log.md)
 
 ## Developer environment setup
 
