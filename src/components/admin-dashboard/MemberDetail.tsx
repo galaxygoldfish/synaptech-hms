@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import ConfirmActionModal from '../ConfirmActionModal'
 import { ArrowLeftIcon, CheckmarkIconFilled, CopyIcon, PersonIcon, TrashIconOutline } from './icons'
-import { fetchProfileById, updateMemberRole } from '../../lib/members'
+import { countAdmins, deleteMember, fetchProfileById, updateMemberRole } from '../../lib/members'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -143,6 +143,11 @@ export default function MemberDetail() {
   const [isUpdatingRole, setUpdatingRole] = useState(false)
   const [roleError, setRoleError] = useState<string | null>(null)
 
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [isDeleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isLastAdmin, setLastAdmin] = useState(false)
+
   useEffect(() => {
     if (!id) return
     let cancelled = false
@@ -183,18 +188,41 @@ export default function MemberDetail() {
     signOut()
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!member) return
-    const confirmed = window.confirm(
-      `Delete ${member.first_name} ${member.last_name}'s account? This cannot be undone.`,
-    )
-    if (!confirmed) return
-    // Placeholder: actually deleting another user's auth account requires a
-    // service-role key, which this client-side app doesn't have — this
-    // needs a Supabase Edge Function (or similar backend) before it can do
-    // anything for real.
-    // eslint-disable-next-line no-console
-    console.log('Delete account requested for:', member.id)
+    setDeleteError(null)
+    setLastAdmin(false)
+    if (member.role === 'admin') {
+      try {
+        const adminCount = await countAdmins()
+        setLastAdmin(adminCount <= 1)
+      } catch (countError) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to count admins:', countError)
+      }
+    }
+    setDeleteModalOpen(true)
+  }
+
+  async function handleConfirmDelete() {
+    if (!member) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteMember(member.id)
+      setDeleteModalOpen(false)
+      if (member.id === profile?.id) {
+        signOut()
+      } else {
+        navigate('/adminHome/members')
+      }
+    } catch (deleteMemberError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to delete member:', deleteMemberError)
+      setDeleteError('Could not delete this account. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const targetRole: 'member' | 'admin' | null = member ? (member.role === 'admin' ? 'member' : 'admin') : null
@@ -280,7 +308,7 @@ export default function MemberDetail() {
             </div>
 
             <div className={styles.actionsRow}>
-              <button type="button" className={styles.deleteButton} onClick={handleDelete}>
+              <button type="button" className={styles.deleteButton} onClick={() => void handleDelete()}>
                 <TrashIconOutline size={18} color="rgba(0, 0, 0, 0.8)" />
                 Delete account
               </button>
@@ -293,6 +321,7 @@ export default function MemberDetail() {
             </div>
 
             {roleError && <p className={styles.status}>{roleError}</p>}
+            {deleteError && <p className={styles.status}>{deleteError}</p>}
           </>
         )}
       </main>
@@ -316,6 +345,25 @@ export default function MemberDetail() {
           confirmDisabled={isUpdatingRole}
           onConfirm={handleConfirmRoleChange}
           onCancel={() => setRoleModalOpen(false)}
+        />
+      )}
+
+      {member && (
+        <ConfirmActionModal
+          isOpen={isDeleteModalOpen}
+          wide
+          heading="Delete account?"
+          body={[
+            `Delete ${member.first_name} ${member.last_name}'s account? This cannot be undone.`,
+            ...(isLastAdmin
+              ? ['This is the only admin account — deleting it will lock everyone out of the admin dashboard.']
+              : []),
+            ...(member.id === profile?.id ? ['You will be signed out immediately.'] : []),
+          ]}
+          confirmLabel={isDeleting ? 'Deleting…' : 'Delete account'}
+          confirmDisabled={isDeleting}
+          onConfirm={() => void handleConfirmDelete()}
+          onCancel={() => setDeleteModalOpen(false)}
         />
       )}
     </div>
