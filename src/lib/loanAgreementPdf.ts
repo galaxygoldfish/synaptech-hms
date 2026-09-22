@@ -19,6 +19,53 @@ const MARGIN_BOTTOM = 0.75
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2
 const LINE_HEIGHT = 0.185
 
+// Named so SECTION_10_FIELD_LAYOUT below can derive the table's y position
+// from the same numbers drawHeader()/heading()/keyValueTable() actually use,
+// instead of a second, independently-typed copy that could drift from them.
+const HEADER_HEIGHT = 0.85 // drawHeader()'s advance
+const HEADING_ADVANCE = 0.38 // heading()'s advance
+const TABLE_ROW_HEIGHT = 0.34
+const SECTION_10_LABEL_WIDTH = 3.1
+const SECTION_10_PARAGRAPH_GAP = 0.1
+
+// Section 10 always starts alone on a fresh page (AgreementWriter.newPage(),
+// called right before it in buildLoanAgreementPdf) with nothing above its
+// table but the header, its own heading, and its own one-line intro
+// paragraph — all fixed, unlike every section above it, none of which
+// depend on borrower-supplied text that could wrap differently loan to
+// loan. That determinism is what lets this be computed once, ahead of
+// time, instead of read back out of a rendered document: the y position
+// mirrors exactly what AgreementWriter would produce by running
+// newPage() -> heading() -> paragraph(text, SECTION_10_PARAGRAPH_GAP) ->
+// keyValueTable(rows, SECTION_10_LABEL_WIDTH), one line of intro text
+// assumed (true for the fixed "For Synaptech RSO Hardware Managers" string
+// at this content width).
+const SECTION_10_TABLE_TOP = MARGIN_TOP + HEADER_HEIGHT + HEADING_ADVANCE + (LINE_HEIGHT + SECTION_10_PARAGRAPH_GAP)
+
+// Consumed by stampApprovedAgreement (loanAgreementApproval.ts) to draw
+// directly into section 10's three value cells on an already-rendered PDF,
+// rather than appending a separate certificate page — see that file for
+// why the certificate-page approach was wrong to begin with. Row order
+// matches the keyValueTable rows built below. Units are inches, same as
+// every other coordinate in this file; the consumer converts to PDF points
+// and flips to a bottom-left origin, since pdf-lib (unlike jsPDF here)
+// works in points from the bottom of the page.
+export const SECTION_10_FIELD_LAYOUT = {
+  pageWidthIn: PAGE_WIDTH,
+  pageHeightIn: PAGE_HEIGHT,
+  valueXIn: MARGIN_X + SECTION_10_LABEL_WIDTH + 0.1,
+  // Right edge of the value cell minus its left edge (MARGIN_X +
+  // SECTION_10_LABEL_WIDTH) — same math as keyValueTable's own valueWidth.
+  valueWidthIn: CONTENT_WIDTH - SECTION_10_LABEL_WIDTH,
+  rowHeightIn: TABLE_ROW_HEIGHT,
+  fontSize: 10,
+  rows: {
+    receivedDate: { rowTopIn: SECTION_10_TABLE_TOP },
+    receivedTime: { rowTopIn: SECTION_10_TABLE_TOP + TABLE_ROW_HEIGHT },
+    managerName: { rowTopIn: SECTION_10_TABLE_TOP + TABLE_ROW_HEIGHT * 2 },
+  },
+} as const
+
 // jsPDF's default line width (~0.2) is meant for a small-unit doc — with
 // this doc's `unit: 'in'`, an unset line width renders as a 0.2in-thick
 // (nearly quarter-inch) stroke, which is why every table border looked
@@ -95,7 +142,7 @@ class AgreementWriter {
     this.doc.setFontSize(13)
     this.doc.setTextColor(...BRAND_BLUE)
     this.doc.text('SYNAPTECH', MARGIN_X + (this.logo ? 0.42 : 0), this.y + 0.2)
-    this.y += 0.85
+    this.y += HEADER_HEIGHT
   }
 
   private ensureSpace(height: number) {
@@ -104,6 +151,18 @@ class AgreementWriter {
       this.y = MARGIN_TOP
       this.drawHeader()
     }
+  }
+
+  // Unconditional page break, unlike ensureSpace — used only before section
+  // 10 (see buildLoanAgreementPdf), so that section always starts at the
+  // same y regardless of how the variable-length sections above it
+  // wrapped. That determinism is what lets stampApprovedAgreement
+  // (loanAgreementApproval.ts) find section 10's table on an already-
+  // rendered PDF and draw straight into it, instead of appending a new page.
+  newPage() {
+    this.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
+    this.y = MARGIN_TOP
+    this.drawHeader()
   }
 
   // ensureSpace() can redraw the header mid-block (Bungee, brand blue,
@@ -132,7 +191,7 @@ class AgreementWriter {
     this.doc.setFontSize(12.5)
     this.doc.setTextColor(...BODY)
     this.doc.text(text, MARGIN_X, this.y)
-    this.y += 0.38
+    this.y += HEADING_ADVANCE
   }
 
   paragraph(text: string, gapAfter = 0.32) {
@@ -159,7 +218,7 @@ class AgreementWriter {
   }
 
   keyValueTable(rows: [string, string][], labelWidth = 2.1) {
-    const rowHeight = 0.34
+    const rowHeight = TABLE_ROW_HEIGHT
     const valueWidth = CONTENT_WIDTH - labelWidth
     this.ensureSpace(rows.length * rowHeight)
     for (const [label, value] of rows) {
@@ -295,15 +354,18 @@ export async function buildLoanAgreementPdf(fields: LoanAgreementFields): Promis
     0.55,
   )
 
+  // Forced onto its own page — see AgreementWriter.newPage() and
+  // SECTION_10_FIELD_LAYOUT below for why.
+  w.newPage()
   w.heading('10. For internal use')
-  w.paragraph('For Synaptech RSO Hardware Managers', 0.1)
+  w.paragraph('For Synaptech RSO Hardware Managers', SECTION_10_PARAGRAPH_GAP)
   w.keyValueTable(
     [
       ['Received date', ''],
       ['Received time', ''],
       ['Receiving Hardware Manager name', ''],
     ],
-    3.1,
+    SECTION_10_LABEL_WIDTH,
   )
 
   return doc

@@ -361,8 +361,8 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
  * inline, which is what the loan detail screen's "Download hardware loan
  * agreement" button wants — without it the browser previews the PDF in a
  * tab, which isn't what the button says it does. It's off by default
- * because handOffLoanRequestItem fetches the same URL to stamp the
- * certificate onto, and that path only wants the bytes.
+ * because handOffLoanRequestItem fetches the same URL to fill in section 10
+ * of, and that path only wants the bytes.
  */
 export async function fetchSignedAgreementUrl(
   path: string,
@@ -413,10 +413,10 @@ export interface AdminLoanRequestItemSummary {
 export interface HandOffLoanRequestItemInput {
   itemId: string
   adminId: string
-  /** Printed on the approval certificate as who attested the agreement. */
+  /** Printed into section 10's "Receiving Hardware Manager name" cell. */
   adminName: string
   /**
-   * What the certificate records as the hand-off date. Defaults to now; the
+   * What section 10 records as the received date/time. Defaults to now; the
    * hand-off screen passes the date and time the admin typed into section 10
    * of the agreement, which may be when they actually met the member rather
    * than when they got round to recording it. `reviewed_at` stays the real
@@ -426,25 +426,26 @@ export interface HandOffLoanRequestItemInput {
 }
 
 /**
- * Records a hand-off: stamps a Certificate of Approval onto the member's
- * signed agreement, points the item at that approved copy, and moves the
- * parent request to 'approved' — which is what both dashboards read as "this
- * hardware is out". This is the whole of the hand-off, shared by the two
- * places an admin can perform one: the "Check out hardware" barcode flow
- * off the dashboard and the "Mark as handed off" button on the loan
- * detail screen. Approving in one place must not mean something subtly
- * different from approving in the other, so neither owns a copy of it.
+ * Records a hand-off: fills in section 10 of the member's signed agreement
+ * (received date, received time, receiving Hardware Manager name), points
+ * the item at that stamped copy, and moves the parent request to 'approved'
+ * — which is what both dashboards read as "this hardware is out". This is
+ * the whole of the hand-off, shared by the two places an admin can perform
+ * one: the "Check out hardware" barcode flow off the dashboard and the
+ * "Mark as handed off" button on the loan detail screen. Approving in one
+ * place must not mean something subtly different from approving in the
+ * other, so neither owns a copy of it.
  *
  * Not atomic, for the same reason submitLoanRequest isn't: storage and two
  * tables can't share a transaction from the browser. The order is chosen so
  * a failure leaves the loan un-approved rather than approved with an
- * unstamped agreement — the certificate is uploaded and linked first, and
+ * unstamped agreement — the stamped copy is uploaded and linked first, and
  * the status moves last.
  */
 export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput): Promise<void> {
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
-    .select('loan_request_id, equipment_id, equipment_unit_id, signed_agreement_path')
+    .select('loan_request_id, signed_agreement_path')
     .eq('id', input.itemId)
     .single()
 
@@ -453,21 +454,12 @@ export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput)
     throw new Error('This item has no signed agreement to approve.')
   }
 
-  const [{ data: equipment }, unit] = await Promise.all([
-    supabase.from('equipment').select('name').eq('id', item.equipment_id).single(),
-    item.equipment_unit_id
-      ? supabase.from('equipment_units').select('serial_number').eq('id', item.equipment_unit_id).single()
-      : Promise.resolve({ data: null }),
-  ])
-
   const approvedAt = new Date()
   const approvedPath = await stampApprovedAgreement({
     agreementUrl: await fetchSignedAgreementUrl(item.signed_agreement_path),
     agreementPath: item.signed_agreement_path,
-    itemName: equipment?.name ?? 'this hardware item',
-    serialNumber: unit?.data?.serial_number ?? 'Not assigned',
-    adminName: input.adminName,
-    approvedAt: input.attestedAt ?? approvedAt,
+    managerName: input.adminName,
+    receivedAt: input.attestedAt ?? approvedAt,
   })
 
   const { error: itemUpdateError } = await supabase
