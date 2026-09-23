@@ -187,10 +187,12 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                           className={
                             status === 'available'
                               ? `${styles.chip} ${styles.chipAvailable}`
-                              : `${styles.chip} ${styles.chipCheckedOut}`
+                              : status === 'requested'
+                                ? `${styles.chip} ${styles.chipRequested}`
+                                : `${styles.chip} ${styles.chipCheckedOut}`
                           }
                         >
-                          {status === 'available' ? 'available' : 'checked out'}
+                          {status === 'available' ? 'available' : status === 'requested' ? 'requested' : 'checked out'}
                         </span>
                       </td>
                       <td className={styles.tdAction}>
@@ -210,7 +212,7 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                           className={styles.actionButton}
                           aria-label={`Delete ${unit.serial_number}`}
                           onClick={() => setDeleteTarget(unit)}
-                          disabled={status === 'checked_out'}
+                          disabled={status === 'checked_out' || status === 'requested'}
                         >
                           <TrashCanIconFilled size={18} />
                         </button>

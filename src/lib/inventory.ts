@@ -139,18 +139,19 @@ export async function deleteEquipmentUnit(unitId: string): Promise<void> {
   if (error) throw error
 }
 
-export type EquipmentUnitStatus = 'available' | 'checked_out'
+export type EquipmentUnitStatus = 'available' | 'requested' | 'checked_out'
 
 export interface EquipmentUnitWithStatus {
   unit: EquipmentUnit
   status: EquipmentUnitStatus
 }
 
-// Every physical unit of a hardware product, each labeled available or
-// checked out based on whether it's reserved on an approved loan that
-// hasn't been returned — the same rule as fetchEquipmentCheckedOutCount,
-// just resolved down to the individual unit via
-// loan_request_items.equipment_unit_id instead of counted in aggregate.
+// Every physical unit of a hardware product, labeled available, requested or
+// checked out based on the status of whichever live loan holds it — same
+// rule the DB trigger enforces (equipment_unit_is_held in
+// 20260926010000_unit_reservation.sql): pending and approved requests both
+// hold the unit, pending just hasn't been reviewed yet. Resolved down to the
+// individual unit via loan_request_items.equipment_unit_id.
 export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promise<EquipmentUnitWithStatus[]> {
   const { data: units, error: unitsError } = await supabase
     .from('equipment_units')
@@ -161,32 +162,34 @@ export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promis
   if (unitsError) throw unitsError
   if (!units || units.length === 0) return []
 
-  const { data: approvedRequests, error: requestsError } = await supabase
+  const { data: liveRequests, error: requestsError } = await supabase
     .from('loan_requests')
-    .select('id')
-    .eq('status', 'approved')
+    .select('id, status')
+    .in('status', ['pending', 'approved'])
 
   if (requestsError) throw requestsError
-  const approvedRequestIds = (approvedRequests ?? []).map((request) => request.id)
+  const requestStatusById = new Map((liveRequests ?? []).map((request) => [request.id, request.status]))
 
-  const checkedOutUnitIds = new Set<string>()
-  if (approvedRequestIds.length > 0) {
+  const heldUnitStatus = new Map<string, 'requested' | 'checked_out'>()
+  if (requestStatusById.size > 0) {
     const { data: items, error: itemsError } = await supabase
       .from('loan_request_items')
-      .select('equipment_unit_id')
+      .select('equipment_unit_id, loan_request_id')
       .eq('equipment_id', equipmentId)
-      .in('loan_request_id', approvedRequestIds)
+      .in('loan_request_id', Array.from(requestStatusById.keys()))
       .is('returned_at', null)
 
     if (itemsError) throw itemsError
     for (const item of items ?? []) {
-      if (item.equipment_unit_id) checkedOutUnitIds.add(item.equipment_unit_id)
+      if (!item.equipment_unit_id) continue
+      const requestStatus = requestStatusById.get(item.loan_request_id)
+      heldUnitStatus.set(item.equipment_unit_id, requestStatus === 'approved' ? 'checked_out' : 'requested')
     }
   }
 
   return (units as EquipmentUnit[]).map((unit) => ({
     unit,
-    status: checkedOutUnitIds.has(unit.id) ? ('checked_out' as const) : ('available' as const),
+    status: heldUnitStatus.get(unit.id) ?? ('available' as const),
   }))
 }
 

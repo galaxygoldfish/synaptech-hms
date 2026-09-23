@@ -89,6 +89,11 @@
   color: #3f7a37;
 }
 
+.chipRequested {
+  background: rgba(197, 168, 74, 0.22);
+  color: #92721e;
+}
+
 .chipCheckedOut {
   background: rgba(197, 131, 131, 0.22);
   color: #9c3f3f;
