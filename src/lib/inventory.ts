@@ -71,9 +71,29 @@ export async function updateEquipment(equipmentId: string, input: UpdateEquipmen
   return data as Equipment
 }
 
+function isForeignKeyViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23503'
+}
+
+// Any product that has ever appeared on a loan request — even one long
+// since returned or denied — can't be hard-deleted:
+// loan_request_items.equipment_id has no ON DELETE behavior (see
+// 20260817030000_loan_requests.sql), and unlike audit_log/inventory_audit_entries
+// it doesn't snapshot the product name, so nulling the FK would leave the
+// loan history screens unable to say what was borrowed. Postgres raises
+// 23503 in that case, so fall back to archiving: the row survives (loan
+// history keeps resolving its name), but archived_at pulls it out of
+// listEquipment and every screen built on it.
 export async function deleteEquipment(equipmentId: string): Promise<void> {
   const { error } = await supabase.from('equipment').delete().eq('id', equipmentId)
-  if (error) throw error
+  if (!error) return
+  if (!isForeignKeyViolation(error)) throw error
+
+  const { error: archiveError } = await supabase
+    .from('equipment')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', equipmentId)
+  if (archiveError) throw archiveError
 }
 
 // Updates just the denormalized unit count on a product — used when a
@@ -195,8 +215,11 @@ export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promis
 
 // All existing catalog entries, for the add-on picker to search/link
 // against — add-ons never create new equipment, only link to these.
+// Excludes archived products (see deleteEquipment) — every catalog and
+// management screen is built on this, and an archived product should be
+// invisible to all of them while its row (and loan history) lives on.
 export async function listEquipment(): Promise<Equipment[]> {
-  const { data, error } = await supabase.from('equipment').select().order('name')
+  const { data, error } = await supabase.from('equipment').select().is('archived_at', null).order('name')
   if (error) throw error
   return data as Equipment[]
 }

@@ -98,6 +98,7 @@ const equipment = {
   documentation_url: null,
   created_at: '',
   updated_at: '',
+  archived_at: null,
 }
 
 beforeEach(() => {

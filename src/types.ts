@@ -73,6 +73,11 @@ export interface Equipment {
   documentation_url: string | null;
   created_at: string;
   updated_at: string;
+  /** Set when the product can't be hard-deleted (it has loan history) and
+   *  was archived instead — see deleteEquipment in src/lib/inventory.ts.
+   *  Excluded from every catalog/management listing, but still resolvable
+   *  by id so old loan records can keep showing its name. */
+  archived_at: string | null;
 }
 
 export interface EquipmentUnit {
