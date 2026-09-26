@@ -10,11 +10,17 @@ import {
   ArrowLeftIcon,
   ChevronRightIcon,
   DownloadIconFilled,
+  DownloadSeparateIconFilled,
   PrinterIconFilled,
   ServerIconFilled,
 } from '../components/admin-dashboard/icons'
 import { fetchEquipmentUnitBySerial } from '../lib/inventory'
-import { buildItemLabelsPdf, downloadLabelsPdf, printLabelsPdf } from '../lib/labelPdf'
+import {
+  buildItemLabelsPdf,
+  downloadItemLabelsAsPngs,
+  downloadLabelsPdf,
+  printLabelsPdf,
+} from '../lib/labelPdf'
 import type { Equipment, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
 
@@ -121,6 +127,26 @@ export default function GetReplacementLabelPage() {
     void withPdf('print', (pdf) => printLabelsPdf(pdf))
   }
 
+  async function handleDownloadSeparate() {
+    const docEl = docLabelRef.current
+    const barcodeEl = barcodeLabelRef.current
+    if (!result || !docEl || !barcodeEl || pendingAction) return
+
+    const base = `${slugify(result.equipment.name)}-${result.serial}`
+    setPendingAction('download-separate')
+    try {
+      await downloadItemLabelsAsPngs(docEl, barcodeEl, {
+        doc: `${base}-qr-label.png`,
+        barcode: `${base}-barcode-label.png`,
+      })
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to download separate label PNGs:', error)
+    } finally {
+      setPendingAction(null)
+    }
+  }
+
   return (
     <div className={styles.page}>
       <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
@@ -222,6 +248,15 @@ export default function GetReplacementLabelPage() {
                     disabled={pendingAction !== null}
                   >
                     <DownloadIconFilled size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.itemActionButton}
+                    aria-label="Download labels as separate PNGs"
+                    onClick={() => void handleDownloadSeparate()}
+                    disabled={pendingAction !== null}
+                  >
+                    <DownloadSeparateIconFilled size={20} />
                   </button>
                 </div>
               </div>

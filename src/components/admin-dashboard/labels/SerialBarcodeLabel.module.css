@@ -36,17 +36,18 @@
 /* The font size is load-bearing, not cosmetic. At 150px the symbol was
    801px wide inside a 491px box with overflow hidden, so the last third of
    it — the checksum and stop characters — was cut off and nothing could
-   decode it. 78px fits a full 16-character Code 128 symbol (the "SYN-" +
-   9-character serial from serialNumber.ts, plus start/checksum/stop) inside
-   the box with a quiet zone either side, which readers need to find the
+   decode it. A full 16-character Code 128 symbol (the "SYN-" + 9-character
+   serial from serialNumber.ts, plus start/checksum/stop) only needs ~481px
+   at 90px, which still leaves a quiet zone inside the 497px box plus the
+   42px margin to the label's edge — readers need that margin to find the
    symbol's edges. A longer serial format would need this reduced again. */
 .barcode {
   position: absolute;
   left: 42px;
-  top: 112px;
+  top: 100px;
   right: 42px;
   font-family: 'Libre Barcode 128', cursive;
-  font-size: 78px;
+  font-size: 90px;
   line-height: 1.4;
   color: var(--black);
   white-space: nowrap;
@@ -54,13 +55,13 @@
 }
 
 /* Sits just under the bars. The barcode's line box is taller than the bars
-   themselves — the font's glyphs are 78px inside a 109px box — so this is
+   themselves — the font's glyphs are 90px inside a 126px box — so this is
    positioned against where the ink actually ends, not where the box does. */
 .serialText {
   position: absolute;
   left: 0;
   right: 0;
-  top: 218px;
+  top: 226px;
   font-size: 40px;
   color: var(--black);
   text-align: center;

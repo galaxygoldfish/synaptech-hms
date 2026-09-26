@@ -385,6 +385,21 @@ export function DownloadIconFilled({ size = 20, color = "#616161", className }: 
   );
 }
 
+// Download-as-separate-files: two corner-bracketed frames around a code
+// square, distinct from DownloadIconFilled's single-arrow glyph.
+export function DownloadSeparateIconFilled({ size = 20, color = "#616161", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M5.5 1H1V5.5H2V2H5.5V1ZM11 12H5C4.73488 11.9997 4.4807 11.8942 4.29323 11.7068C4.10576 11.5193 4.0003 11.2651 4 11V5C4.0003 4.73488 4.10576 4.4807 4.29323 4.29323C4.4807 4.10576 4.73488 4.0003 5 4H11C11.2651 4.0003 11.5193 4.10576 11.7068 4.29323C11.8942 4.4807 11.9997 4.73488 12 5V11C11.9997 11.2651 11.8942 11.5193 11.7068 11.7068C11.5193 11.8942 11.2651 11.9997 11 12ZM5 5V11H11V5H5ZM1 15V10.5H2V14H5.5V15H1ZM15 5.5V1H10.5V2H14V5.5H15ZM15 15H10.5V14H14V10.5H15V15Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
 export function SaveIconFilled({ size = 20, color = "#4A4D51", className }: IconProps & { color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>

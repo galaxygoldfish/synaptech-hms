@@ -6,9 +6,19 @@ import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
-import { ArrowLeftIcon, DownloadIconFilled, PrinterIconFilled } from '../components/admin-dashboard/icons'
+import {
+  ArrowLeftIcon,
+  DownloadIconFilled,
+  DownloadSeparateIconFilled,
+  PrinterIconFilled,
+} from '../components/admin-dashboard/icons'
 import { fetchEquipment, listEquipmentUnits } from '../lib/inventory'
-import { buildItemLabelsPdf, downloadLabelsPdf, printLabelsPdf } from '../lib/labelPdf'
+import {
+  buildItemLabelsPdf,
+  downloadItemLabelsAsPngs,
+  downloadLabelsPdf,
+  printLabelsPdf,
+} from '../lib/labelPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
 
@@ -101,6 +111,26 @@ export default function GetLabelsProductPage() {
     void withPdf(serial, `print-${serial}`, (pdf) => printLabelsPdf(pdf))
   }
 
+  async function handleDownloadSeparate(serial: string) {
+    const docEl = docLabelRefs.current.get(serial)
+    const barcodeEl = barcodeLabelRefs.current.get(serial)
+    if (!equipment || !docEl || !barcodeEl || pendingAction) return
+
+    const base = `${slugify(equipment.name)}-${serial}`
+    setPendingAction(`download-separate-${serial}`)
+    try {
+      await downloadItemLabelsAsPngs(docEl, barcodeEl, {
+        doc: `${base}-qr-label.png`,
+        barcode: `${base}-barcode-label.png`,
+      })
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to download separate label PNGs:', error)
+    } finally {
+      setPendingAction(null)
+    }
+  }
+
   return (
     <div className={styles.page}>
       <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
@@ -155,6 +185,15 @@ export default function GetLabelsProductPage() {
                           disabled={pendingAction !== null}
                         >
                           <DownloadIconFilled size={20} />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.itemActionButton}
+                          aria-label={`Download labels for ${unit.serial_number} as separate PNGs`}
+                          onClick={() => void handleDownloadSeparate(unit.serial_number)}
+                          disabled={pendingAction !== null}
+                        >
+                          <DownloadSeparateIconFilled size={20} />
                         </button>
                       </div>
                     </div>
