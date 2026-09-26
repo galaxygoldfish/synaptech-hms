@@ -1,7 +1,7 @@
 .label {
   position: relative;
   width: 581px;
-  height: 315px;
+  height: 245px;
   background: var(--white);
   border: 3px solid rgba(0, 0, 0, 0.12);
   border-radius: 20px;
@@ -17,7 +17,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 39px;
+  top: 24px;
 }
 
 .brainLogo {
@@ -40,29 +40,42 @@
    serial from serialNumber.ts, plus start/checksum/stop) only needs ~481px
    at 90px, which still leaves a quiet zone inside the 497px box plus the
    42px margin to the label's edge — readers need that margin to find the
-   symbol's edges. A longer serial format would need this reduced again. */
+   symbol's edges. A longer serial format would need this reduced again.
+   line-height is 1 rather than the browser default because this font's
+   descent metric (36px of its 90px em box) is empty space no glyph in this
+   symbol set ever uses — any extra leading on top of that just pushes the
+   serial number text further away for no visual reason. top:93px puts the
+   bars' ink 24px under the logo row (bottom at 70px), matching the 24px
+   above the logo: with line-height 1 the ink starts ~1px into the box and
+   ends at 93 + 54 (the font's ascent) = 147px. The serial text below gets
+   more clearance than this on both sides — see .serialText. */
 .barcode {
   position: absolute;
   left: 42px;
-  top: 100px;
+  top: 93px;
   right: 42px;
   font-family: 'Libre Barcode 128', cursive;
   font-size: 90px;
-  line-height: 1.4;
+  line-height: 1;
   color: var(--black);
   white-space: nowrap;
   text-align: center;
 }
 
-/* Sits just under the bars. The barcode's line box is taller than the bars
-   themselves — the font's glyphs are 90px inside a 126px box — so this is
-   positioned against where the ink actually ends, not where the box does. */
+/* top is measured, not eyeballed: the bars' ink ends at 147px (see above),
+   and this puts the serial text's own ink 29px below that (5px more than
+   the bars get above them), with 34px left below its own ink to the
+   label's bottom edge at 245px. line-height is 1 for the same reason as
+   .barcode: :root sets line-height:1.5 globally, and inheriting that here
+   would give this box 60px of height for ~29px of actual letterforms,
+   silently eating the padding this spacing depends on. */
 .serialText {
   position: absolute;
   left: 0;
   right: 0;
-  top: 226px;
+  top: 171px;
   font-size: 40px;
+  line-height: 1;
   color: var(--black);
   text-align: center;
 }
