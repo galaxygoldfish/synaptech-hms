@@ -24,9 +24,15 @@
 .heading {
   font-family: 'Rubik', sans-serif;
   font-weight: 500;
-  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+  font-size: 1.75rem;
   color: rgba(0, 0, 0, 0.98);
   margin: 0;
+}
+
+@media (max-width: 640px) {
+  .heading {
+    font-size: 1.375rem;
+  }
 }
 
 .doneButton {

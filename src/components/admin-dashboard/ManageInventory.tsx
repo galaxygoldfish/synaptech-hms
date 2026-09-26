@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
-import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled } from './icons'
+import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled, PlusIconSmallFilled } from './icons'
 import { fetchEquipmentInventorySummary, type EquipmentInventoryRow } from '../../lib/inventory'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -97,7 +97,15 @@ export default function ManageInventory() {
             <span>Back</span>
           </button>
           <h1 className={styles.heading}>Manage hardware inventory</h1>
-          <div />
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={() => navigate('/adminHome/add-item')}
+            aria-label="Add item"
+          >
+            <PlusIconSmallFilled size={15} />
+            <span>Add</span>
+          </button>
         </div>
 
         <div className={styles.card}>

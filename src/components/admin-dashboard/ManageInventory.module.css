@@ -51,6 +51,24 @@
   background: rgba(131, 156, 197, 0.6);
 }
 
+.addButton {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(0, 0, 0, 0.12);
+  border: none;
+  border-radius: 1rem;
+  padding: 1rem 1.375rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+}
+
+.addButton:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+
 .heading {
   font-family: 'Rubik', sans-serif;
   font-weight: 500;
@@ -61,11 +79,13 @@
 }
 
 @media (max-width: 640px) {
-  .backButton {
+  .backButton,
+  .addButton {
     padding: 0.8125rem;
   }
 
-  .backButton span {
+  .backButton span,
+  .addButton span {
     display: none;
   }
 
