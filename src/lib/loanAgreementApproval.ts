@@ -1,4 +1,3 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { supabase } from './supabase'
 import { SECTION_10_FIELD_LAYOUT } from './loanAgreementPdf'
 
@@ -7,9 +6,37 @@ const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
 // Same body text color as the rest of the agreement — see BODY in
 // loanAgreementPdf.ts. Not imported directly since that file works in
 // jsPDF's 0-255 color scale and pdf-lib's rgb() wants 0-1.
-const BODY_COLOR = rgb(26 / 255, 26 / 255, 26 / 255)
+const BODY_RGB = [26 / 255, 26 / 255, 26 / 255] as const
 
 const IN_TO_PT = 72
+
+// pdf-lib is loaded on first use rather than imported statically: it's only
+// needed at hand-off, and keeping it out of the main bundle keeps every other
+// page light. The hand-off screen calls preloadApprovalPdfLib() when it
+// opens, so it's ready before the admin confirms.
+let pdfLib: Promise<typeof import('pdf-lib')> | null = null
+
+function loadPdfLib() {
+  pdfLib ??= import('pdf-lib').catch((error) => {
+    pdfLib = null
+    throw error
+  })
+  return pdfLib
+}
+
+export function preloadApprovalPdfLib(): void {
+  loadPdfLib().catch(() => {
+    // Retried on use; the failure is reported there.
+  })
+}
+
+const APPROVED_SUFFIX = '-approved.pdf'
+
+/** Whether an agreement path is a stamped copy (see stampApprovedAgreement) —
+    i.e. whether that item has already been handed off. */
+export function isApprovedAgreementPath(path: string): boolean {
+  return path.toLowerCase().endsWith(APPROVED_SUFFIX)
+}
 
 export interface StampApprovedAgreementInput {
   /** A signed URL for the member's agreement, fetched by the caller. */
@@ -60,6 +87,9 @@ function formatReceivedTime(date: Date): string {
 export async function stampApprovedAgreement(input: StampApprovedAgreementInput): Promise<string> {
   const response = await fetch(input.agreementUrl)
   if (!response.ok) throw new Error('Agreement download failed')
+
+  const { PDFDocument, StandardFonts, rgb } = await loadPdfLib()
+  const BODY_COLOR = rgb(...BODY_RGB)
 
   const pdf = await PDFDocument.load(await response.arrayBuffer())
   const font = await pdf.embedFont(StandardFonts.Helvetica)
@@ -113,7 +143,7 @@ export async function stampApprovedAgreement(input: StampApprovedAgreementInput)
   const approvedBuffer = new ArrayBuffer(approvedBytes.byteLength)
   new Uint8Array(approvedBuffer).set(approvedBytes)
 
-  const approvedPath = input.agreementPath.replace(/\.pdf$/i, '') + '-approved.pdf'
+  const approvedPath = input.agreementPath.replace(/\.pdf$/i, '') + APPROVED_SUFFIX
   const { error } = await supabase.storage
     .from(LOAN_AGREEMENTS_BUCKET)
     .upload(approvedPath, new Blob([approvedBuffer], { type: 'application/pdf' }), {

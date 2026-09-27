@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, invalidate } from './queryCache'
 import type { Profile } from '../types/index'
 
 export async function fetchAllProfiles(): Promise<Profile[]> {
@@ -39,6 +40,8 @@ export async function deleteMember(id: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ ok: boolean; error?: string }>('delete-user', {
     body: { userId: id },
   })
+  // Deleting a member takes their loan requests with them.
+  invalidate(CACHE_KEYS.adminLoans)
   if (error) throw error
   if (!data?.ok) throw new Error(data?.error ?? 'Failed to delete account')
 }

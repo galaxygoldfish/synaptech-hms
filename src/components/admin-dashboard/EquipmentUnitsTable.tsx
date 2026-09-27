@@ -11,7 +11,7 @@ import {
   setEquipmentQuantityTotal,
   type EquipmentUnitWithStatus,
 } from '../../lib/inventory'
-import { buildItemLabelsPdf, printLabelsPdf } from '../../lib/labelPdf'
+import { buildItemLabelsPdf, printLabelsPdf, preloadLabelPdfLibs } from '../../lib/labelPdf'
 import type { EquipmentUnit } from '../../types'
 import { Skeleton, SkeletonLabel } from '../skeleton/Skeleton'
 import styles from './EquipmentUnitsTable.module.css'
@@ -23,6 +23,9 @@ interface EquipmentUnitsTableProps {
 }
 
 export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }: EquipmentUnitsTableProps) {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadLabelPdfLibs, [])
+
   const [rows, setRows] = useState<EquipmentUnitWithStatus[]>([])
   const [isLoading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)

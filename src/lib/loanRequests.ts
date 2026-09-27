@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { fetchAvailableEquipmentUnit } from './inventory'
-import { stampApprovedAgreement } from './loanAgreementApproval'
+import { isApprovedAgreementPath, stampApprovedAgreement } from './loanAgreementApproval'
+import { CACHE_KEYS, cached, invalidate, refresh } from './queryCache'
 import { normalizeSerialNumber } from './serialNumber'
 import type { LoanRequest, LoanRequestItemRole, LoanRequestStatus } from '../types'
 
@@ -28,6 +29,32 @@ export class UnitUnavailableError extends Error {
     super(message)
     this.name = 'UnitUnavailableError'
   }
+}
+
+/**
+ * A hand-off or return that the database says has already happened, or can
+ * no longer happen — typically a second admin acting on a loan a colleague
+ * has just dealt with. The message is written for the admin to read as-is.
+ */
+export class LoanConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'LoanConflictError'
+  }
+}
+
+async function profileName(id: string | null): Promise<string | null> {
+  if (!id) return null
+  const { data } = await supabase.from('profiles').select('first_name, last_name').eq('id', id).maybeSingle()
+  return data ? `${data.first_name} ${data.last_name}` : null
+}
+
+async function alreadyHandedOff(loanRequestId: string): Promise<LoanConflictError> {
+  const { data } = await supabase.from('loan_requests').select('reviewed_by').eq('id', loanRequestId).maybeSingle()
+  const name = await profileName(data?.reviewed_by ?? null)
+  return new LoanConflictError(
+    name ? `This hardware has already been checked out by ${name}.` : 'This hardware has already been checked out.',
+  )
 }
 
 function isUnitUnavailable(error: unknown): boolean {
@@ -239,69 +266,46 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     .single()
   if (itemError) throw itemError
 
-  const { data: request, error: requestError } = await supabase
-    .from('loan_requests')
-    .select('id, user_id, status, requested_at, reviewed_at, reviewed_by, review_note')
-    .eq('id', item.loan_request_id)
-    .single()
-  if (requestError) throw requestError
+  // Everything below depends only on the item row, or on the request row,
+  // so it's fetched in dependency waves rather than one query at a time:
+  // the request and the member/reviewer names behind it form one chain, and
+  // the equipment, serial, receiver and sibling items run alongside it.
+  const fullName = (row: { first_name: string; last_name: string } | null) =>
+    row ? `${row.first_name} ${row.last_name}` : null
 
-  const { data: equipment, error: equipmentError } = await supabase
-    .from('equipment')
-    .select('id, name, description, image_url')
-    .eq('id', item.equipment_id)
-    .single()
-  if (equipmentError) throw equipmentError
+  const requestChain = (async () => {
+    const { data: request, error: requestError } = await supabase
+      .from('loan_requests')
+      .select('id, user_id, status, requested_at, reviewed_at, reviewed_by, review_note')
+      .eq('id', item.loan_request_id)
+      .single()
+    if (requestError) throw requestError
 
-  let serialNumber: string | null = null
-  if (item.equipment_unit_id) {
-    const { data: unit, error: unitError } = await supabase
-      .from('equipment_units')
-      .select('serial_number')
-      .eq('id', item.equipment_unit_id)
-      .maybeSingle()
-    if (unitError) throw unitError
-    serialNumber = unit?.serial_number ?? null
-  }
+    const [memberResult, reviewerResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, first_name, last_name, uw_email, discord')
+        .eq('id', request.user_id)
+        .single(),
+      request.reviewed_by
+        ? supabase.from('profiles').select('first_name, last_name').eq('id', request.reviewed_by).maybeSingle()
+        : null,
+    ])
+    if (memberResult.error) throw memberResult.error
+    if (reviewerResult?.error) throw reviewerResult.error
 
-  const { data: member, error: memberError } = await supabase
-    .from('profiles')
-    .select('id, first_name, last_name, uw_email, discord')
-    .eq('id', request.user_id)
-    .single()
-  if (memberError) throw memberError
+    return { request, member: memberResult.data, reviewerName: fullName(reviewerResult?.data ?? null) }
+  })()
 
-  let reviewerName: string | null = null
-  if (request.reviewed_by) {
-    const { data: reviewer, error: reviewerError } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('id', request.reviewed_by)
-      .maybeSingle()
-    if (reviewerError) throw reviewerError
-    if (reviewer) reviewerName = `${reviewer.first_name} ${reviewer.last_name}`
-  }
+  const siblingsChain = (async (): Promise<AdminLoanRequestOtherItem[]> => {
+    const { data: siblingItems, error: siblingsError } = await supabase
+      .from('loan_request_items')
+      .select('id, equipment_id, item_role')
+      .eq('loan_request_id', item.loan_request_id)
+      .neq('id', itemId)
+    if (siblingsError) throw siblingsError
+    if (!siblingItems || siblingItems.length === 0) return []
 
-  let returnedByName: string | null = null
-  if (item.returned_by) {
-    const { data: receiver, error: receiverError } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('id', item.returned_by)
-      .maybeSingle()
-    if (receiverError) throw receiverError
-    if (receiver) returnedByName = `${receiver.first_name} ${receiver.last_name}`
-  }
-
-  const { data: siblingItems, error: siblingsError } = await supabase
-    .from('loan_request_items')
-    .select('id, equipment_id, item_role')
-    .eq('loan_request_id', item.loan_request_id)
-    .neq('id', itemId)
-  if (siblingsError) throw siblingsError
-
-  let otherItems: AdminLoanRequestOtherItem[] = []
-  if (siblingItems && siblingItems.length > 0) {
     const siblingEquipmentIds = [...new Set(siblingItems.map((sibling) => sibling.equipment_id))]
     const { data: siblingEquipment, error: siblingEquipmentError } = await supabase
       .from('equipment')
@@ -310,7 +314,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     if (siblingEquipmentError) throw siblingEquipmentError
 
     const equipmentById = new Map((siblingEquipment ?? []).map((equipmentRow) => [equipmentRow.id, equipmentRow]))
-    otherItems = siblingItems.flatMap((sibling) => {
+    return siblingItems.flatMap((sibling) => {
       const equipment = equipmentById.get(sibling.equipment_id)
       return equipment
         ? [
@@ -323,7 +327,32 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
           ]
         : []
     })
-  }
+  })()
+
+  const [
+    { request, member, reviewerName },
+    otherItems,
+    equipmentResult,
+    unitResult,
+    receiverResult,
+  ] = await Promise.all([
+    requestChain,
+    siblingsChain,
+    supabase.from('equipment').select('id, name, description, image_url').eq('id', item.equipment_id).single(),
+    item.equipment_unit_id
+      ? supabase.from('equipment_units').select('serial_number').eq('id', item.equipment_unit_id).maybeSingle()
+      : null,
+    item.returned_by
+      ? supabase.from('profiles').select('first_name, last_name').eq('id', item.returned_by).maybeSingle()
+      : null,
+  ])
+  if (equipmentResult.error) throw equipmentResult.error
+  if (unitResult?.error) throw unitResult.error
+  if (receiverResult?.error) throw receiverResult.error
+
+  const equipment = equipmentResult.data
+  const serialNumber = unitResult?.data?.serial_number ?? null
+  const returnedByName = fullName(receiverResult?.data ?? null)
 
   return {
     id: item.id,
@@ -441,8 +470,27 @@ export interface HandOffLoanRequestItemInput {
  * a failure leaves the loan un-approved rather than approved with an
  * unstamped agreement — the stamped copy is uploaded and linked first, and
  * the status moves last.
+ *
+ * Guarded against a second admin handing off the same item: throws
+ * LoanConflictError rather than stamping a second certificate over the
+ * first. "Already handed off" is judged per item (its agreement already
+ * points at a stamped copy), not by the request's status — a request
+ * bundling several items is approved by its first hand-off, and the others
+ * are still handed off after it. The check is made up front, before anything
+ * is written, and again as a compare-and-set on the item row, so of two
+ * admins confirming at nearly the same moment only one update matches.
  */
 export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput): Promise<void> {
+  // Invalidated whether or not every step lands: a failure part-way can
+  // still have written something, and a refetch is cheap.
+  try {
+    await handOff(input)
+  } finally {
+    invalidate(CACHE_KEYS.adminLoans)
+  }
+}
+
+async function handOff(input: HandOffLoanRequestItemInput): Promise<void> {
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
     .select('loan_request_id, signed_agreement_path')
@@ -454,21 +502,52 @@ export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput)
     throw new Error('This item has no signed agreement to approve.')
   }
 
+  const { data: request, error: requestError } = await supabase
+    .from('loan_requests')
+    .select('status')
+    .eq('id', item.loan_request_id)
+    .single()
+  if (requestError) throw requestError
+
+  if (request.status === 'cancelled') {
+    throw new LoanConflictError('The member cancelled this request, so there is nothing to hand over.')
+  }
+  if (request.status === 'denied') {
+    throw new LoanConflictError('This request was denied, so there is nothing to hand over.')
+  }
+
+  const alreadyStamped = isApprovedAgreementPath(item.signed_agreement_path)
+  if (alreadyStamped && request.status === 'approved') {
+    throw await alreadyHandedOff(item.loan_request_id)
+  }
+
   const approvedAt = new Date()
-  const approvedPath = await stampApprovedAgreement({
-    agreementUrl: await fetchSignedAgreementUrl(item.signed_agreement_path),
-    agreementPath: item.signed_agreement_path,
-    managerName: input.adminName,
-    receivedAt: input.attestedAt ?? approvedAt,
-  })
 
-  const { error: itemUpdateError } = await supabase
-    .from('loan_request_items')
-    .update({ signed_agreement_path: approvedPath })
-    .eq('id', input.itemId)
-  if (itemUpdateError) throw itemUpdateError
+  // Stamped but still pending means an earlier attempt got as far as the
+  // certificate and failed before the status moved. Finish that one rather
+  // than stamping again.
+  if (!alreadyStamped) {
+    const approvedPath = await stampApprovedAgreement({
+      agreementUrl: await fetchSignedAgreementUrl(item.signed_agreement_path),
+      agreementPath: item.signed_agreement_path,
+      managerName: input.adminName,
+      receivedAt: input.attestedAt ?? approvedAt,
+    })
 
-  const { error: requestUpdateError } = await supabase
+    // Compare-and-set: only repoint the item if it still points at the
+    // unstamped agreement read above. If another admin got there first,
+    // nothing matches and this admin is told so.
+    const { data: claimed, error: itemUpdateError } = await supabase
+      .from('loan_request_items')
+      .update({ signed_agreement_path: approvedPath })
+      .eq('id', input.itemId)
+      .eq('signed_agreement_path', item.signed_agreement_path)
+      .select('id')
+    if (itemUpdateError) throw itemUpdateError
+    if (!claimed || claimed.length === 0) throw await alreadyHandedOff(item.loan_request_id)
+  }
+
+  const { data: approved, error: requestUpdateError } = await supabase
     .from('loan_requests')
     .update({
       status: 'approved',
@@ -476,8 +555,14 @@ export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput)
       reviewed_by: input.adminId,
     })
     .eq('id', item.loan_request_id)
+    // Not a cancellation that landed while the certificate was being made.
+    .in('status', ['pending', 'approved'])
+    .select('id')
 
   if (requestUpdateError) throw requestUpdateError
+  if (!approved || approved.length === 0) {
+    throw new LoanConflictError('The member cancelled this request while the hand-off was being recorded.')
+  }
 }
 
 /**
@@ -488,9 +573,13 @@ export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput)
  *
  * Setting returned_at is also what fires the member's return-confirmation
  * email and the admin copy, via the trigger in that migration.
+ *
+ * Throws LoanConflictError if the item was already recorded as returned: a
+ * second admin checking in hardware a colleague has just taken back should
+ * be told, not shown a success for a write that didn't happen.
  */
 export async function markLoanRequestItemReturned(itemId: string, adminId: string): Promise<void> {
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('loan_request_items')
     .update({ returned_at: new Date().toISOString(), returned_by: adminId })
     .eq('id', itemId)
@@ -498,8 +587,22 @@ export async function markLoanRequestItemReturned(itemId: string, adminId: strin
     // only emails on the null -> set transition anyway, but this also keeps
     // the recorded time and admin the first one, not the last.
     .is('returned_at', null)
+    .select('id')
 
+  invalidate(CACHE_KEYS.adminLoans)
   if (error) throw error
+
+  if (!updated || updated.length === 0) {
+    const { data: item } = await supabase
+      .from('loan_request_items')
+      .select('returned_by')
+      .eq('id', itemId)
+      .maybeSingle()
+    const name = await profileName(item?.returned_by ?? null)
+    throw new LoanConflictError(
+      name ? `This hardware was already checked in by ${name}.` : 'This hardware was already checked in.',
+    )
+  }
 }
 
 export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns' | 'returned'
@@ -539,64 +642,53 @@ export function bucketForLoanItem(
 }
 
 // Every equipment item ever requested, across all members — the admin
-// "Hardware loans" list. Same zipped-plain-queries approach as
-// fetchLoanRequestItems, plus equipment_units (for the serial shown under
-// the item name) and profiles (for the requesting member's name); admins
-// can read every row of all four tables per their RLS policies.
-export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]> {
-  const { data: requests, error: requestsError } = await supabase
-    .from('loan_requests')
-    .select('id, user_id, status, requested_at')
-    .order('requested_at', { ascending: false })
+// "Hardware loans" list, the dashboard counts and the check-out/return scan
+// matching. Same zipped-plain-queries approach as fetchLoanRequestItems,
+// plus equipment_units (for the serial shown under the item name) and
+// profiles (for the requesting member's name).
+//
+// All five tables are read whole and in parallel rather than each query
+// filtering by the ids the previous one returned: admins can read every row
+// of all five per their RLS policies, so the chained `.in(...)` filters only
+// narrowed what was already allowed, at the cost of five sequential round
+// trips. None of these tables is large at club scale.
+//
+// Cached (see queryCache.ts) for the screens that only display it — the
+// dashboard counts and the loans list — and invalidated by
+// handOffLoanRequestItem and markLoanRequestItemReturned. Screens that act
+// on it (check-out and return: scan and pick) pass `fresh: true`, because a
+// cached list can predate a request another browser submitted seconds ago.
+// Each caller gets its own copy of the array, so one screen sorting or
+// filtering it in place can't disturb another's.
+export async function fetchAllLoanRequestItems(
+  { fresh = false }: { fresh?: boolean } = {},
+): Promise<AdminLoanRequestItemSummary[]> {
+  const load = fresh ? refresh : cached
+  return [...(await load(CACHE_KEYS.adminLoans, loadAllLoanRequestItems))]
+}
 
-  if (requestsError) throw requestsError
-  if (!requests || requests.length === 0) return []
+async function loadAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]> {
+  const [requestsResult, itemsResult, equipmentResult, unitsResult, profilesResult] = await Promise.all([
+    supabase.from('loan_requests').select('id, user_id, status, requested_at'),
+    supabase
+      .from('loan_request_items')
+      .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at, return_requested_at'),
+    supabase.from('equipment').select('id, name, image_url'),
+    supabase.from('equipment_units').select('id, serial_number'),
+    supabase.from('profiles').select('id, first_name, last_name'),
+  ])
 
-  const requestIds = requests.map((request) => request.id)
-  const { data: items, error: itemsError } = await supabase
-    .from('loan_request_items')
-    .select(
-      'id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at, return_requested_at',
-    )
-    .in('loan_request_id', requestIds)
-
-  if (itemsError) throw itemsError
-  if (!items || items.length === 0) return []
-
-  const equipmentIds = [...new Set(items.map((item) => item.equipment_id))]
-  const { data: equipmentRows, error: equipmentError } = await supabase
-    .from('equipment')
-    .select('id, name, image_url')
-    .in('id', equipmentIds)
-
-  if (equipmentError) throw equipmentError
-
-  const unitIds = items
-    .map((item) => item.equipment_unit_id)
-    .filter((id): id is string => Boolean(id))
-
-  let unitRows: { id: string; serial_number: string }[] = []
-  if (unitIds.length > 0) {
-    const { data, error } = await supabase
-      .from('equipment_units')
-      .select('id, serial_number')
-      .in('id', [...new Set(unitIds)])
-    if (error) throw error
-    unitRows = data ?? []
+  for (const result of [requestsResult, itemsResult, equipmentResult, unitsResult, profilesResult]) {
+    if (result.error) throw result.error
   }
 
-  const userIds = [...new Set(requests.map((request) => request.user_id))]
-  const { data: profileRows, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, first_name, last_name')
-    .in('id', userIds)
-
-  if (profileError) throw profileError
+  const requests = requestsResult.data ?? []
+  const items = itemsResult.data ?? []
 
   const requestById = new Map(requests.map((request) => [request.id, request]))
-  const equipmentById = new Map((equipmentRows ?? []).map((equipment) => [equipment.id, equipment]))
-  const unitById = new Map(unitRows.map((unit) => [unit.id, unit]))
-  const profileById = new Map((profileRows ?? []).map((profile) => [profile.id, profile]))
+  const equipmentById = new Map((equipmentResult.data ?? []).map((equipment) => [equipment.id, equipment]))
+  const unitById = new Map((unitsResult.data ?? []).map((unit) => [unit.id, unit]))
+  const profileById = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]))
 
   const summaries = items.flatMap((item) => {
     const request = requestById.get(item.loan_request_id)

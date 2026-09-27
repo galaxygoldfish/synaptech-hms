@@ -4,6 +4,7 @@ import { BrandWordmark } from "../BrandWordmark";
 import styles from "./Home.module.css";
 
 interface HeaderProps {
+  /** Full name; the pill shows only the first name, on every page. */
   userName: string;
   onProfileClick: () => void;
 }
@@ -16,7 +17,7 @@ export function Header({ userName, onProfileClick }: HeaderProps) {
       <BrandWordmark mutedFrom="tablet" onClick={() => navigate("/home")} />
       <button className={styles.profilePill} onClick={onProfileClick} type="button">
         <UserIconFilled size={15} className={styles.profilePillIcon} />
-        <span className={styles.profilePillName}>{userName}</span>
+        <span className={styles.profilePillName}>{userName.split(" ")[0]}</span>
       </button>
     </header>
   );

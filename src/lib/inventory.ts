@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, cached, invalidate } from './queryCache'
 import { generateSerialNumbers } from './serialNumber'
 import type { Equipment, EquipmentAddon, EquipmentCategory, EquipmentProductType, EquipmentUnit } from '../types'
 
@@ -44,6 +45,7 @@ export async function createEquipment(input: CreateEquipmentInput): Promise<Equi
     .select()
     .single()
 
+  invalidate(CACHE_KEYS.equipmentList)
   if (error) throw error
   return data as Equipment
 }
@@ -67,6 +69,7 @@ export async function updateEquipment(equipmentId: string, input: UpdateEquipmen
     .select()
     .single()
 
+  invalidate(CACHE_KEYS.equipmentList)
   if (error) throw error
   return data as Equipment
 }
@@ -85,6 +88,14 @@ function isForeignKeyViolation(error: unknown): boolean {
 // history keeps resolving its name), but archived_at pulls it out of
 // listEquipment and every screen built on it.
 export async function deleteEquipment(equipmentId: string): Promise<void> {
+  try {
+    await deleteOrArchiveEquipment(equipmentId)
+  } finally {
+    invalidate(CACHE_KEYS.equipmentList)
+  }
+}
+
+async function deleteOrArchiveEquipment(equipmentId: string): Promise<void> {
   const { error } = await supabase.from('equipment').delete().eq('id', equipmentId)
   if (!error) return
   if (!isForeignKeyViolation(error)) throw error
@@ -101,6 +112,7 @@ export async function deleteEquipment(equipmentId: string): Promise<void> {
 // whole equipment record (as updateEquipment does) would be overkill.
 export async function setEquipmentQuantityTotal(equipmentId: string, quantityTotal: number): Promise<void> {
   const { error } = await supabase.from('equipment').update({ quantity_total: quantityTotal }).eq('id', equipmentId)
+  invalidate(CACHE_KEYS.equipmentList)
   if (error) throw error
 }
 
@@ -218,10 +230,17 @@ export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promis
 // Excludes archived products (see deleteEquipment) — every catalog and
 // management screen is built on this, and an archived product should be
 // invisible to all of them while its row (and loan history) lives on.
+//
+// Cached, and shared by the inventory, add-item, labels and member browse
+// screens. Each caller gets its own copy of the array so an in-place sort
+// in one screen can't reorder another's.
 export async function listEquipment(): Promise<Equipment[]> {
-  const { data, error } = await supabase.from('equipment').select().is('archived_at', null).order('name')
-  if (error) throw error
-  return data as Equipment[]
+  const rows = await cached(CACHE_KEYS.equipmentList, async () => {
+    const { data, error } = await supabase.from('equipment').select().is('archived_at', null).order('name')
+    if (error) throw error
+    return data as Equipment[]
+  })
+  return [...rows]
 }
 
 export async function fetchEquipment(equipmentId: string): Promise<Equipment> {
@@ -286,13 +305,11 @@ export interface EquipmentInventoryRow {
 // (loan_request_items.returned_at — see the 20260922000000 migration), so
 // checkedOut counts approved, not-yet-returned items per equipment_id.
 export async function fetchEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
-  const equipment = await listEquipment()
+  const [equipment, { data: approvedRequests, error: requestsError }] = await Promise.all([
+    listEquipment(),
+    supabase.from('loan_requests').select('id').eq('status', 'approved'),
+  ])
   if (equipment.length === 0) return []
-
-  const { data: approvedRequests, error: requestsError } = await supabase
-    .from('loan_requests')
-    .select('id')
-    .eq('status', 'approved')
 
   if (requestsError) throw requestsError
   const approvedRequestIds = (approvedRequests ?? []).map((request) => request.id)

@@ -1,5 +1,26 @@
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import type jsPDF from 'jspdf'
+
+// jsPDF and html2canvas are loaded on first use rather than imported
+// statically: they're only needed when labels are actually generated, and
+// keeping them out of the main bundle keeps every other page light. Screens
+// that print labels call preloadLabelPdfLibs() when they open, so the
+// download happens then and not in the middle of the admin's click (or,
+// after a deploy, fails early — see the reload handler in main.tsx).
+let labelLibs: Promise<[typeof import('jspdf'), typeof import('html2canvas')]> | null = null
+
+function loadLabelLibs() {
+  labelLibs ??= Promise.all([import('jspdf'), import('html2canvas')]).catch((error) => {
+    labelLibs = null
+    throw error
+  })
+  return labelLibs
+}
+
+export function preloadLabelPdfLibs(): void {
+  loadLabelLibs().catch(() => {
+    // Retried on use; the failure is reported there.
+  })
+}
 
 // US Letter, the standard size for a home/office printer.
 const PAGE_SIZE_IN = { width: 8.5, height: 11 }
@@ -46,6 +67,7 @@ async function waitForImages(container: HTMLElement): Promise<void> {
 async function renderLabelImage(element: HTMLElement): Promise<RenderedLabel> {
   await waitForImages(element)
   const { width, height } = element.getBoundingClientRect()
+  const [, { default: html2canvas }] = await loadLabelLibs()
   const canvas = await html2canvas(element, { scale: 2, backgroundColor: null })
   return { dataUrl: canvas.toDataURL('image/png'), width, height }
 }
@@ -70,7 +92,8 @@ export async function buildItemLabelsPdf(
   const barcodeX = PAGE_MARGIN_IN + PRINT_WIDTH_IN + LABEL_GAP_IN
   const y = PAGE_MARGIN_IN
 
-  const pdf = new jsPDF({
+  const [{ default: JsPDF }] = await loadLabelLibs()
+  const pdf = new JsPDF({
     unit: 'in',
     format: [PAGE_SIZE_IN.width, PAGE_SIZE_IN.height],
   })

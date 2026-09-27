@@ -7,7 +7,7 @@ import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
 import { DownloadIconFilled, DownloadSeparateIconFilled } from '../components/admin-dashboard/icons'
-import { buildItemLabelsPdf, downloadItemLabelsAsPngs, downloadLabelsPdf } from '../lib/labelPdf'
+import { buildItemLabelsPdf, downloadItemLabelsAsPngs, downloadLabelsPdf, preloadLabelPdfLibs } from '../lib/labelPdf'
 import type { UserProfile } from '../types'
 import styles from './AddInventoryItemLabelsPage.module.css'
 
@@ -33,6 +33,9 @@ function slugify(value: string): string {
 }
 
 export default function AddInventoryItemLabelsPage() {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadLabelPdfLibs, [])
+
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, signOut } = useAuth()

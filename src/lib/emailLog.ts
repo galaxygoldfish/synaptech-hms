@@ -14,10 +14,6 @@ export interface EmailLogEntry {
   /** Null for rows logged before the body column existed — see the
       20260916010000 migration. The UI distinguishes this from an empty body. */
   bodyText: string | null
-  /** The HTML actually sent (includes the brand signature — see
-      supabase/functions/_shared/signature.ts). Null for rows sent before
-      HTML emails existed, or if a future send path stays plain-text-only. */
-  bodyHtml: string | null
   status: EmailLogStatus
   error: string | null
   sentAt: string
@@ -30,7 +26,6 @@ interface EmailLogRow {
   cc_email: string | null
   subject: string
   body_text: string | null
-  body_html: string | null
   status: EmailLogStatus
   error: string | null
   sent_at: string
@@ -49,7 +44,6 @@ function mapRow(row: EmailLogRow): EmailLogEntry {
     ccEmail: row.cc_email,
     subject: row.subject,
     bodyText: row.body_text,
-    bodyHtml: row.body_html,
     status: row.status,
     error: row.error,
     sentAt: row.sent_at,
@@ -60,14 +54,30 @@ function mapRow(row: EmailLogRow): EmailLogEntry {
  * Every email the app has sent, newest first. Capped because this table
  * only grows — the log is a diagnostic surface, not an archive to page
  * through, and an unbounded select would eventually stall the screen.
+ *
+ * The rendered HTML is left out: it's the whole branded template for every
+ * row, many times the size of everything else, and only ever shown for the
+ * one email opened — see fetchEmailLogBodyHtml. The plain-text body stays,
+ * because the search box matches against it.
  */
 export async function fetchEmailLog(limit = 500): Promise<EmailLogEntry[]> {
   const { data, error } = await supabase
     .from('email_log')
-    .select('id, template_key, recipient_email, cc_email, subject, body_text, body_html, status, error, sent_at, email_templates(label, category)')
+    .select('id, template_key, recipient_email, cc_email, subject, body_text, status, error, sent_at, email_templates(label, category)')
     .order('sent_at', { ascending: false })
     .limit(limit)
 
   if (error) throw error
   return (data as unknown as EmailLogRow[]).map(mapRow)
+}
+
+/**
+ * The HTML actually sent for one logged email (includes the brand signature —
+ * see supabase/functions/_shared/signature.ts). Null for rows sent before
+ * HTML emails existed, or if a future send path stays plain-text-only.
+ */
+export async function fetchEmailLogBodyHtml(id: string): Promise<string | null> {
+  const { data, error } = await supabase.from('email_log').select('body_html').eq('id', id).single()
+  if (error) throw error
+  return (data as { body_html: string | null }).body_html
 }

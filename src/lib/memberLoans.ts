@@ -180,22 +180,27 @@ async function hydrateItems(requests: RequestRow[], items: ItemRow[]): Promise<M
   if (items.length === 0) return []
 
   const equipmentIds = [...new Set(items.map((item) => item.equipment_id))]
-  const { data: equipmentRows, error: equipmentError } = await supabase
-    .from('equipment')
-    .select('id, name, description, image_url, product_type, documentation_url')
-    .in('id', equipmentIds)
-  if (equipmentError) throw equipmentError
+  const unitIds = [...new Set(items.map((item) => item.equipment_unit_id).filter((id): id is string => Boolean(id)))]
 
-  const unitIds = items.map((item) => item.equipment_unit_id).filter((id): id is string => Boolean(id))
-  let unitRows: { id: string; serial_number: string }[] = []
-  if (unitIds.length > 0) {
-    const { data, error } = await supabase
-      .from('equipment_units')
-      .select('id, serial_number')
-      .in('id', [...new Set(unitIds)])
-    if (error) throw error
-    unitRows = data ?? []
-  }
+  // Independent of each other, so fetched side by side.
+  const [equipmentResult, unitRows] = await Promise.all([
+    supabase
+      .from('equipment')
+      .select('id, name, description, image_url, product_type, documentation_url')
+      .in('id', equipmentIds),
+    unitIds.length > 0
+      ? supabase
+          .from('equipment_units')
+          .select('id, serial_number')
+          .in('id', unitIds)
+          .then(({ data, error }) => {
+            if (error) throw error
+            return data ?? []
+          })
+      : Promise.resolve([] as { id: string; serial_number: string }[]),
+  ])
+  if (equipmentResult.error) throw equipmentResult.error
+  const equipmentRows = equipmentResult.data
 
   const requestById = new Map(requests.map((request) => [request.id, request]))
   const equipmentById = new Map((equipmentRows ?? []).map((equipment) => [equipment.id, equipment]))

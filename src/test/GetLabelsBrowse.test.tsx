@@ -23,6 +23,7 @@ vi.mock('../lib/labelPdf', () => ({
   buildItemLabelsPdf: vi.fn(),
   downloadLabelsPdf: vi.fn(),
   printLabelsPdf: vi.fn(),
+  preloadLabelPdfLibs: vi.fn(),
 }))
 
 vi.mock('../components/admin-dashboard/labels/QrDocLabel', () => ({ QrDocLabel: () => null }))

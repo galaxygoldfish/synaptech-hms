@@ -142,6 +142,28 @@ describe('CheckoutScan', () => {
     expect(screen.queryByLabelText('Serial number')).not.toBeInTheDocument()
   })
 
+  // The camera used to sit behind a skeleton until every loan had loaded;
+  // now it's up at once and a barcode read early simply waits for the list.
+  it('shows the scanner before the loans load and answers a scan once they do', async () => {
+    let finishLoading: (loans: AdminLoanRequestItemSummary[]) => void = () => {}
+    vi.mocked(fetchAllLoanRequestItems).mockReset().mockReturnValue(
+      new Promise((resolve) => {
+        finishLoading = resolve
+      }),
+    )
+    renderCheckout()
+
+    expect(
+      await screen.findByText(/please scan the hardware item barcode that you are checking out/i),
+    ).toBeInTheDocument()
+
+    detectBarcode?.('SYN-HJXPP41T5')
+    expect(screen.queryByText('Muse 2')).not.toBeInTheDocument()
+    finishLoading([requested])
+
+    expect(await screen.findByText('Muse 2', {}, { timeout: 3000 })).toBeInTheDocument()
+  })
+
   // The heart of the flow: a barcode is only a serial number, and this is
   // what turns it into "this is Bob's, and he's owed it".
   it('finds the open request a scanned serial belongs to and repeats it back', async () => {

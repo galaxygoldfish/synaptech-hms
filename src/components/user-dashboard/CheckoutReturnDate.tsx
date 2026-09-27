@@ -195,7 +195,7 @@ export default function CheckoutReturnDate() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <h1 className={styles.heading}>Choose your return date</h1>

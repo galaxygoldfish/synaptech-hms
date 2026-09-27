@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { PageTransition } from './components/PageTransition'
@@ -10,7 +11,6 @@ import BrowseInventoryItemPage from './pages/BrowseInventoryItemPage'
 import CheckoutSelectHardwarePage from './pages/CheckoutSelectHardwarePage'
 import CheckoutConfirmHardwarePage from './pages/CheckoutConfirmHardwarePage'
 import CheckoutReturnDatePage from './pages/CheckoutReturnDatePage'
-import CheckoutSignAgreementPage from './pages/CheckoutSignAgreementPage'
 import CheckoutAvailabilityPage from './pages/CheckoutAvailabilityPage'
 import CheckoutSuccessPage from './pages/CheckoutSuccessPage'
 import MyHardwareLoansPage from './pages/MyHardwareLoansPage'
@@ -20,31 +20,37 @@ import AdminHomePage from './pages/AdminHomePage'
 import AdminHardwareLoansPage from './pages/AdminHardwareLoansPage'
 import AdminLoanDetailPage from './pages/AdminLoanDetailPage'
 import AdminHandOffScanPage from './pages/AdminHandOffScanPage'
-import AdminHandOffPage from './pages/AdminHandOffPage'
 import AdminViewMembersPage from './pages/AdminViewMembersPage'
-import AdminAuditLogPage from './pages/AdminAuditLogPage'
 import AdminManageInventoryPage from './pages/AdminManageInventoryPage'
 import ManageInventoryItemPage from './pages/ManageInventoryItemPage'
-import AdminInventoryAuditPage from './pages/AdminInventoryAuditPage'
-import AdminInventoryAuditScanPage from './pages/AdminInventoryAuditScanPage'
-import AdminInventoryAuditReportPage from './pages/AdminInventoryAuditReportPage'
 import AdminMemberDetailPage from './pages/AdminMemberDetailPage'
 import AddInventoryItemPage from './pages/AddInventoryItemPage'
-import AddInventoryItemLabelsPage from './pages/AddInventoryItemLabelsPage'
 import AddInventoryItemDonePage from './pages/AddInventoryItemDonePage'
-import GetReplacementLabelPage from './pages/GetReplacementLabelPage'
-import GetLabelsBrowsePage from './pages/GetLabelsBrowsePage'
-import GetLabelsProductPage from './pages/GetLabelsProductPage'
 import AdminManageUserEmailsPage from './pages/AdminManageUserEmailsPage'
 import AdminManageAdminEmailsPage from './pages/AdminManageAdminEmailsPage'
-import AdminEditEmailTemplatePage from './pages/AdminEditEmailTemplatePage'
 import AdminEmailLogPage from './pages/AdminEmailLogPage'
 import AdminReturnHardwarePage from './pages/AdminReturnHardwarePage'
 import AdminReturnPickLoanPage from './pages/AdminReturnPickLoanPage'
 import AdminReturnConfirmPage from './pages/AdminReturnConfirmPage'
 import AdminCheckoutHardwarePage from './pages/AdminCheckoutHardwarePage'
 import AdminCheckoutPickLoanPage from './pages/AdminCheckoutPickLoanPage'
-import AdminCheckoutAgreementPage from './pages/AdminCheckoutAgreementPage'
+
+// Split into their own chunks: rarely visited, or built around the agreement
+// document and label rendering, so most sessions never need their code.
+// Everything else stays in the main bundle so ordinary navigation never
+// waits on a chunk.
+const CheckoutSignAgreementPage = lazy(() => import('./pages/CheckoutSignAgreementPage'))
+const AdminHandOffPage = lazy(() => import('./pages/AdminHandOffPage'))
+const AdminAuditLogPage = lazy(() => import('./pages/AdminAuditLogPage'))
+const AdminInventoryAuditPage = lazy(() => import('./pages/AdminInventoryAuditPage'))
+const AdminInventoryAuditScanPage = lazy(() => import('./pages/AdminInventoryAuditScanPage'))
+const AdminInventoryAuditReportPage = lazy(() => import('./pages/AdminInventoryAuditReportPage'))
+const AddInventoryItemLabelsPage = lazy(() => import('./pages/AddInventoryItemLabelsPage'))
+const GetReplacementLabelPage = lazy(() => import('./pages/GetReplacementLabelPage'))
+const GetLabelsBrowsePage = lazy(() => import('./pages/GetLabelsBrowsePage'))
+const GetLabelsProductPage = lazy(() => import('./pages/GetLabelsProductPage'))
+const AdminEditEmailTemplatePage = lazy(() => import('./pages/AdminEditEmailTemplatePage'))
+const AdminCheckoutAgreementPage = lazy(() => import('./pages/AdminCheckoutAgreementPage'))
 
 function LoadingScreen() {
   return <AppShellSkeleton />
@@ -113,54 +119,56 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <PageTransition>
-        <Routes>
-          <Route path="/" element={<PublicRoute><WelcomePage /></PublicRoute>} />
-          <Route path="/setup" element={<SetupRoute><ProfileSetupPage /></SetupRoute>} />
-          <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
-          <Route path="/home/browse" element={<PrivateRoute><BrowseInventoryPage /></PrivateRoute>} />
-          <Route path="/home/browse/item" element={<PrivateRoute><BrowseInventoryItemPage /></PrivateRoute>} />
-          <Route path="/home/loans" element={<PrivateRoute><MyHardwareLoansPage /></PrivateRoute>} />
-          <Route path="/home/loans/:id" element={<PrivateRoute><MyLoanDetailPage /></PrivateRoute>} />
-          <Route path="/home/loans/:id/return" element={<PrivateRoute><ReturnAvailabilityPage /></PrivateRoute>} />
-          <Route path="/home/checkout" element={<PrivateRoute><CheckoutSelectHardwarePage /></PrivateRoute>} />
-        <Route path="/home/checkout/confirm" element={<PrivateRoute><CheckoutConfirmHardwarePage /></PrivateRoute>} />
-        <Route path="/home/checkout/return-date" element={<PrivateRoute><CheckoutReturnDatePage /></PrivateRoute>} />
-        <Route path="/home/checkout/sign-agreement" element={<PrivateRoute><CheckoutSignAgreementPage /></PrivateRoute>} />
-        <Route path="/home/checkout/availability" element={<PrivateRoute><CheckoutAvailabilityPage /></PrivateRoute>} />
-        <Route path="/home/checkout/success" element={<PrivateRoute><CheckoutSuccessPage /></PrivateRoute>} />
-          <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
-          <Route path="/adminHome/loans" element={<AdminRoute><AdminHardwareLoansPage /></AdminRoute>} />
-          <Route path="/adminHome/loans/:id" element={<AdminRoute><AdminLoanDetailPage /></AdminRoute>} />
-          <Route path="/adminHome/loans/:id/hand-off" element={<AdminRoute><AdminHandOffScanPage /></AdminRoute>} />
-          <Route path="/adminHome/loans/:id/hand-off/agreement" element={<AdminRoute><AdminHandOffPage /></AdminRoute>} />
-          <Route path="/adminHome/members" element={<AdminRoute><AdminViewMembersPage /></AdminRoute>} />
-          <Route path="/adminHome/audit-log" element={<AdminRoute><AdminAuditLogPage /></AdminRoute>} />
-          <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />
-          <Route path="/adminHome/inventory/audit" element={<AdminRoute><AdminInventoryAuditPage /></AdminRoute>} />
-          {/* "new" is a static segment, so React Router ranks it above the
-              :id route below it regardless of their order here. */}
-          <Route path="/adminHome/inventory/audit/new" element={<AdminRoute><AdminInventoryAuditScanPage /></AdminRoute>} />
-          <Route path="/adminHome/inventory/audit/:id" element={<AdminRoute><AdminInventoryAuditReportPage /></AdminRoute>} />
-          <Route path="/adminHome/inventory/:id" element={<AdminRoute><ManageInventoryItemPage /></AdminRoute>} />
-          <Route path="/adminHome/members/:id" element={<AdminRoute><AdminMemberDetailPage /></AdminRoute>} />
-          <Route path="/adminHome/add-item" element={<AdminRoute><AddInventoryItemPage /></AdminRoute>} />
-          <Route path="/adminHome/add-item/labels" element={<AdminRoute><AddInventoryItemLabelsPage /></AdminRoute>} />
-          <Route path="/adminHome/add-item/done" element={<AdminRoute><AddInventoryItemDonePage /></AdminRoute>} />
-          <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
-          <Route path="/adminHome/get-labels/browse" element={<AdminRoute><GetLabelsBrowsePage /></AdminRoute>} />
-          <Route path="/adminHome/get-labels/browse/:id" element={<AdminRoute><GetLabelsProductPage /></AdminRoute>} />
-          <Route path="/adminHome/emails/user" element={<AdminRoute><AdminManageUserEmailsPage /></AdminRoute>} />
-          <Route path="/adminHome/emails/admin" element={<AdminRoute><AdminManageAdminEmailsPage /></AdminRoute>} />
-          <Route path="/adminHome/emails/log" element={<AdminRoute><AdminEmailLogPage /></AdminRoute>} />
-          <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
-          <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
-          <Route path="/adminHome/return/pick" element={<AdminRoute><AdminReturnPickLoanPage /></AdminRoute>} />
-          <Route path="/adminHome/return/:id/confirm" element={<AdminRoute><AdminReturnConfirmPage /></AdminRoute>} />
-          <Route path="/adminHome/checkout" element={<AdminRoute><AdminCheckoutHardwarePage /></AdminRoute>} />
-          <Route path="/adminHome/checkout/pick" element={<AdminRoute><AdminCheckoutPickLoanPage /></AdminRoute>} />
-          <Route path="/adminHome/checkout/:id/agreement" element={<AdminRoute><AdminCheckoutAgreementPage /></AdminRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route path="/" element={<PublicRoute><WelcomePage /></PublicRoute>} />
+            <Route path="/setup" element={<SetupRoute><ProfileSetupPage /></SetupRoute>} />
+            <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+            <Route path="/home/browse" element={<PrivateRoute><BrowseInventoryPage /></PrivateRoute>} />
+            <Route path="/home/browse/item" element={<PrivateRoute><BrowseInventoryItemPage /></PrivateRoute>} />
+            <Route path="/home/loans" element={<PrivateRoute><MyHardwareLoansPage /></PrivateRoute>} />
+            <Route path="/home/loans/:id" element={<PrivateRoute><MyLoanDetailPage /></PrivateRoute>} />
+            <Route path="/home/loans/:id/return" element={<PrivateRoute><ReturnAvailabilityPage /></PrivateRoute>} />
+            <Route path="/home/checkout" element={<PrivateRoute><CheckoutSelectHardwarePage /></PrivateRoute>} />
+          <Route path="/home/checkout/confirm" element={<PrivateRoute><CheckoutConfirmHardwarePage /></PrivateRoute>} />
+          <Route path="/home/checkout/return-date" element={<PrivateRoute><CheckoutReturnDatePage /></PrivateRoute>} />
+          <Route path="/home/checkout/sign-agreement" element={<PrivateRoute><CheckoutSignAgreementPage /></PrivateRoute>} />
+          <Route path="/home/checkout/availability" element={<PrivateRoute><CheckoutAvailabilityPage /></PrivateRoute>} />
+          <Route path="/home/checkout/success" element={<PrivateRoute><CheckoutSuccessPage /></PrivateRoute>} />
+            <Route path="/adminHome" element={<AdminRoute><AdminHomePage /></AdminRoute>} />
+            <Route path="/adminHome/loans" element={<AdminRoute><AdminHardwareLoansPage /></AdminRoute>} />
+            <Route path="/adminHome/loans/:id" element={<AdminRoute><AdminLoanDetailPage /></AdminRoute>} />
+            <Route path="/adminHome/loans/:id/hand-off" element={<AdminRoute><AdminHandOffScanPage /></AdminRoute>} />
+            <Route path="/adminHome/loans/:id/hand-off/agreement" element={<AdminRoute><AdminHandOffPage /></AdminRoute>} />
+            <Route path="/adminHome/members" element={<AdminRoute><AdminViewMembersPage /></AdminRoute>} />
+            <Route path="/adminHome/audit-log" element={<AdminRoute><AdminAuditLogPage /></AdminRoute>} />
+            <Route path="/adminHome/inventory" element={<AdminRoute><AdminManageInventoryPage /></AdminRoute>} />
+            <Route path="/adminHome/inventory/audit" element={<AdminRoute><AdminInventoryAuditPage /></AdminRoute>} />
+            {/* "new" is a static segment, so React Router ranks it above the
+                :id route below it regardless of their order here. */}
+            <Route path="/adminHome/inventory/audit/new" element={<AdminRoute><AdminInventoryAuditScanPage /></AdminRoute>} />
+            <Route path="/adminHome/inventory/audit/:id" element={<AdminRoute><AdminInventoryAuditReportPage /></AdminRoute>} />
+            <Route path="/adminHome/inventory/:id" element={<AdminRoute><ManageInventoryItemPage /></AdminRoute>} />
+            <Route path="/adminHome/members/:id" element={<AdminRoute><AdminMemberDetailPage /></AdminRoute>} />
+            <Route path="/adminHome/add-item" element={<AdminRoute><AddInventoryItemPage /></AdminRoute>} />
+            <Route path="/adminHome/add-item/labels" element={<AdminRoute><AddInventoryItemLabelsPage /></AdminRoute>} />
+            <Route path="/adminHome/add-item/done" element={<AdminRoute><AddInventoryItemDonePage /></AdminRoute>} />
+            <Route path="/adminHome/get-labels" element={<AdminRoute><GetReplacementLabelPage /></AdminRoute>} />
+            <Route path="/adminHome/get-labels/browse" element={<AdminRoute><GetLabelsBrowsePage /></AdminRoute>} />
+            <Route path="/adminHome/get-labels/browse/:id" element={<AdminRoute><GetLabelsProductPage /></AdminRoute>} />
+            <Route path="/adminHome/emails/user" element={<AdminRoute><AdminManageUserEmailsPage /></AdminRoute>} />
+            <Route path="/adminHome/emails/admin" element={<AdminRoute><AdminManageAdminEmailsPage /></AdminRoute>} />
+            <Route path="/adminHome/emails/log" element={<AdminRoute><AdminEmailLogPage /></AdminRoute>} />
+            <Route path="/adminHome/emails/:category/:templateId" element={<AdminRoute><AdminEditEmailTemplatePage /></AdminRoute>} />
+            <Route path="/adminHome/return" element={<AdminRoute><AdminReturnHardwarePage /></AdminRoute>} />
+            <Route path="/adminHome/return/pick" element={<AdminRoute><AdminReturnPickLoanPage /></AdminRoute>} />
+            <Route path="/adminHome/return/:id/confirm" element={<AdminRoute><AdminReturnConfirmPage /></AdminRoute>} />
+            <Route path="/adminHome/checkout" element={<AdminRoute><AdminCheckoutHardwarePage /></AdminRoute>} />
+            <Route path="/adminHome/checkout/pick" element={<AdminRoute><AdminCheckoutPickLoanPage /></AdminRoute>} />
+            <Route path="/adminHome/checkout/:id/agreement" element={<AdminRoute><AdminCheckoutAgreementPage /></AdminRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </PageTransition>
     </BrowserRouter>
   )

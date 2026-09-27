@@ -1,0 +1,8 @@
+# Cloudflare Workers static assets: response headers by path.
+#
+# Everything under /assets/ is emitted by Vite with a content hash in the
+# filename, so a given URL never changes content and can be cached forever.
+# index.html is deliberately not listed: it keeps the default revalidation so
+# a deploy is picked up on the next load.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

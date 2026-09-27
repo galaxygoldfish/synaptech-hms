@@ -5,7 +5,9 @@ Working notes for anyone (human or AI agent) changing this codebase: how it is l
 ## Conventions
 
 - **No server of our own.** The app is a Vite + React SPA that talks straight to Supabase (PostgREST, Auth, Storage) from the browser. Anything needing a secret runs in a Supabase Edge Function or a Postgres trigger, never in the client.
-- **Data access lives in `src/lib/`** (`inventory.ts`, `loanRequests.ts`, `memberLoans.ts`, `inventoryAudit.ts`, …). Components call these rather than querying Supabase directly. Queries are plain selects zipped client-side rather than PostgREST embedded selects, to sidestep schema-cache fragility.
+- **Data access lives in `src/lib/`** (`inventory.ts`, `loanRequests.ts`, `memberLoans.ts`, `inventoryAudit.ts`, …). Components call these rather than querying Supabase directly. Queries are plain selects zipped client-side rather than PostgREST embedded selects, to sidestep schema-cache fragility — run independent ones with `Promise.all` rather than awaiting each in turn, since every sequential query is a full network round trip.
+- **Shared reads are cached** by [`src/lib/queryCache.ts`](src/lib/queryCache.ts) (currently `fetchAllLoanRequestItems` and `listEquipment`, fresh for 60s) — for screens that only *display* the data. A screen that *acts* on it must pass `{ fresh: true }` (the check-out and return scan/pick screens do), since a cached list can predate a request another browser submitted seconds ago. The lib function that *writes* those rows is responsible for calling `invalidate(CACHE_KEYS.…)`; components never touch the cache. `AuthContext` clears it on sign-out or a change of user. If you add a write that changes loans or equipment, invalidate the matching key.
+- **The database write is the last word on conflicts.** `handOffLoanRequestItem` and `markLoanRequestItemReturned` make their updates conditional (compare-and-set on the item's agreement path; `returned_at is null`) and throw `LoanConflictError` with an admin-readable message when another admin got there first. Don't rely on a screen's copy of the data to prevent a double hand-off or return.
 - **Security is enforced in the database.** Row-level security decides who can read or write what; the UI only hides things. When adding a table, add its RLS policies *and* its table-level grants (see the equipment grants migration for why a policy alone is not enough). Admin policies should use `public.is_admin()`, not an inline subquery on `profiles`.
 - **Migrations are applied by hand** in the Supabase SQL editor, in filename order. Keep them idempotent, and keep every migration's version prefix unique.
 - **Types:** `src/types.ts` and `src/types/` both exist — Supabase row types alongside dashboard/API-shaped ones.
@@ -45,6 +47,25 @@ resolves it. **Do not add a `public/_redirects`** with the usual `/* /index.html
 rule — Workers Assets rejects it as an infinite loop, because it already rewrites
 `/index.html` to `/` and the rule would match its own output. That failure happens at
 deploy time, after a successful build.
+
+[`public/_headers`](public/_headers) marks everything under `/assets/` as
+`immutable` for a year — Vite content-hashes those filenames, so a URL never changes
+meaning. Workers Assets honours `_headers` (it's only `_redirects` that's a problem,
+above). `index.html` is left out so a deploy is picked up on the next load.
+
+Bundle size: `jspdf`, `html2canvas` and `pdf-lib` are `import()`ed inside the functions
+that use them (`src/lib/labelPdf.ts`, `loanAgreementPdf.ts`, `loanAgreementApproval.ts`),
+and the label, agreement, audit-log, inventory-audit and email-template pages are
+`React.lazy` routes in `src/router.tsx`. Keep new heavy dependencies behind a dynamic
+import the same way rather than importing them at module top level, and have the
+screen that needs one preload it on mount (see `preloadLabelPdfLibs` and friends) so
+the download isn't waiting behind a button press.
+
+Split chunks have a deploy-time consequence: a deploy removes the previous build's
+chunks, so a tab opened before it can ask for a file that no longer exists (the SPA
+fallback answers with `index.html`, which fails to import). `src/main.tsx` handles
+Vite's `vite:preloadError` by reloading once, which keeps the URL and route state; a
+second failure within 10s falls through to `ErrorBoundary` rather than looping.
 
 [`.nvmrc`](.nvmrc) pins the build image's Node. The toolchain (Vite 8, TypeScript 6)
 needs a recent version, and the error from an old one doesn't obviously point at Node.

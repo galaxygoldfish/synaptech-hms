@@ -545,7 +545,7 @@ export default function EditEmailTemplate() {
   if (isLoading) {
     return (
       <div className={styles.page}>
-        <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+        <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
         <main className={styles.main}>
           <div className={styles.topRow}>
             <button type="button" className={styles.backButton} onClick={() => navigate(listPath)} aria-label="Back">
@@ -591,7 +591,7 @@ export default function EditEmailTemplate() {
   if (loadError || !template) {
     return (
       <div className={styles.page}>
-        <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+        <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
         <main className={styles.main}>
           <p className={styles.status}>{loadError ?? "This email template couldn't be found."}</p>
         </main>
@@ -601,7 +601,7 @@ export default function EditEmailTemplate() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

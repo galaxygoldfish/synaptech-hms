@@ -18,6 +18,7 @@ import {
   downloadItemLabelsAsPngs,
   downloadLabelsPdf,
   printLabelsPdf,
+  preloadLabelPdfLibs,
 } from '../lib/labelPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
@@ -27,6 +28,9 @@ function slugify(value: string): string {
 }
 
 export default function GetLabelsProductPage() {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadLabelPdfLibs, [])
+
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()

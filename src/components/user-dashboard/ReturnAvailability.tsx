@@ -121,7 +121,7 @@ export default function ReturnAvailability() {
   if (isSubmitted) {
     return (
       <div className={styles.page}>
-        <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+        <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
         <main className={styles.successMain}>
           <div className={styles.successBadge}>
@@ -155,7 +155,7 @@ export default function ReturnAvailability() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

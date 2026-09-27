@@ -78,7 +78,7 @@ export default function BrowseInventoryItem() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <button type="button" className={styles.backButton} onClick={() => navigate('/home/browse')} aria-label="Back">

@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, CloseIcon } from './icons'
-import { fetchEmailLog, type EmailLogEntry, type EmailLogStatus } from '../../lib/emailLog'
+import { fetchEmailLog, fetchEmailLogBodyHtml, type EmailLogEntry, type EmailLogStatus } from '../../lib/emailLog'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
@@ -53,7 +53,7 @@ const STATUS_LABEL: Record<EmailLogStatus, string> = {
 
 // Wraps the stored HTML in a minimal document for the iframe — padding and
 // a background so it reads as a panel, matching .bodyBox's look. The
-// content itself (entry.bodyHtml) is untouched: this is presentation
+// content itself (the stored body_html) is untouched: this is presentation
 // chrome around it, not a change to what was actually sent.
 function buildPreviewDocument(bodyHtml: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:1.75rem;background:#f2f2f2;box-sizing:border-box;">${bodyHtml}</body></html>`
@@ -81,6 +81,27 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
+
+  // The list doesn't carry the rendered HTML (see fetchEmailLog), so it's
+  // fetched for the one email opened. undefined while loading; null when
+  // there is none or it couldn't be loaded, which falls back to the
+  // plain-text body below.
+  const [bodyHtml, setBodyHtml] = useState<string | null | undefined>(undefined)
+  useEffect(() => {
+    let cancelled = false
+    fetchEmailLogBodyHtml(entry.id)
+      .then((html) => {
+        if (!cancelled) setBodyHtml(html)
+      })
+      .catch((fetchError) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load the email body:', fetchError)
+        if (!cancelled) setBodyHtml(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [entry.id])
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose} role="presentation">
@@ -138,7 +159,9 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
 
         <div>
           <p className={styles.bodyLabel}>Body</p>
-          {entry.bodyHtml ? (
+          {bodyHtml === undefined ? (
+            <Skeleton height="14rem" radius="0.9375rem" />
+          ) : bodyHtml ? (
             // Rendered exactly as sent, signature included — but in a fully
             // sandboxed iframe. This HTML embeds admin/member-supplied data
             // (names, hardware, notes); it's escaped at render time in
@@ -150,7 +173,7 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
             <iframe
               title={`Email body — ${entry.templateLabel}`}
               sandbox=""
-              srcDoc={buildPreviewDocument(entry.bodyHtml)}
+              srcDoc={buildPreviewDocument(bodyHtml)}
               className={styles.bodyFrame}
             />
           ) : entry.bodyText === null ? (
@@ -235,7 +258,7 @@ export default function EmailLog() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

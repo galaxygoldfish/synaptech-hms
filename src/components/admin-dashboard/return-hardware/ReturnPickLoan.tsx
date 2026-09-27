@@ -33,7 +33,9 @@ export default function ReturnPickLoan() {
   useEffect(() => {
     let cancelled = false
 
-    fetchAllLoanRequestItems()
+    // Fresh, never cached: picking a loan here decides what gets handed
+    // over or taken back. See fetchAllLoanRequestItems.
+    fetchAllLoanRequestItems({ fresh: true })
       .then((items) => {
         if (!cancelled) setLoans(items)
       })
