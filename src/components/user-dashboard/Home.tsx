@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ActionList } from "./ActionList";
 import { CheckoutCallToAction } from "./CheckoutCallToAction";
@@ -10,37 +10,23 @@ import { ProfileModal } from "./ProfileModal";
 import type { UserProfile } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { memberActions } from "../../data/memberActions";
-import { fetchActiveHardwareLoans, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
+import { activeHardwareLoans, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
+import { useMemberLoans } from "../../lib/useMemberLoans";
 import styles from "./Home.module.css";
 
 export default function Home() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
-  const [loans, setLoans] = useState<MemberLoanItem[]>([]);
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isWarningOpen, setWarningOpen] = useState(false);
-  const [isLoading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!profile) return;
-    let cancelled = false;
-
-    fetchActiveHardwareLoans(profile.id)
-      .then((activeLoans) => {
-        if (!cancelled) setLoans(activeLoans);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Couldn't load your hardware loans.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [profile]);
+  // Shown from cache at once when there is one, then refreshed — see
+  // useMemberLoans. The checkout button waits for the fresh copy, since the
+  // overdue block it applies must not be decided from a stale list.
+  const { groups, isFresh, failed } = useMemberLoans(profile?.id);
+  const loans = useMemo(() => (groups ? activeHardwareLoans(groups) : []), [groups]);
+  const isLoading = groups === null && !failed;
+  const error = failed ? "Couldn't load your hardware loans." : null;
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null;
@@ -57,7 +43,7 @@ export default function Home() {
   const hasOverdueLoan = loans.some((loan) => homeLoanTone(loan) === "overdue");
 
   const handleCheckoutClick = () => {
-    if (isLoading) return;
+    if (!isFresh) return;
     if (hasOverdueLoan) {
       setWarningOpen(true);
       return;
@@ -111,7 +97,7 @@ export default function Home() {
             {/* `disabled` (truly inert) only while loading; once loans are
                 in, an overdue member sees `blocked` instead — the button
                 stays clickable/hoverable so it can open the warning below. */}
-            <CheckoutCallToAction disabled={isLoading} blocked={hasOverdueLoan} onClick={handleCheckoutClick} />
+            <CheckoutCallToAction disabled={!isFresh} blocked={hasOverdueLoan} onClick={handleCheckoutClick} />
             {hasOverdueLoan && (
               <InlineOverdueWarning open={isWarningOpen} onDismiss={() => setWarningOpen(false)} />
             )}

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, invalidate } from './queryCache'
 
 /**
  * When a member is free — for collecting hardware, and for giving it back.
@@ -120,6 +121,7 @@ export async function requestReturn(input: RequestReturnInput): Promise<void> {
     // hardware already back cannot be asked for back again.
     .is('returned_at', null)
 
+  invalidate(CACHE_KEYS.memberLoans)
   if (error) throw error
 }
 
@@ -140,5 +142,6 @@ export async function cancelReturnRequest(
 
   if (error) throw error
 
+  invalidate(CACHE_KEYS.memberLoans)
   await saveAvailability({ kind: 'return', loanRequestId, loanRequestItemId }, [])
 }

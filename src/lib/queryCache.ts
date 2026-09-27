@@ -17,6 +17,8 @@ const STALE_MS = 60_000
 export const CACHE_KEYS = {
   adminLoans: 'admin-loans',
   equipmentList: 'equipment:list',
+  /** Followed by the member's user id — one entry per member. */
+  memberLoans: 'member-loans:',
 } as const
 
 interface Entry {
@@ -57,6 +59,15 @@ export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STAL
 export function refresh<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
   invalidate(key)
   return cached(key, fetcher)
+}
+
+/**
+ * The cached promise for `key` whatever its age, or null. For showing
+ * something at once while a fresh fetch is under way — never for deciding
+ * anything (see useMemberLoans).
+ */
+export function peek<T>(key: string): Promise<T> | null {
+  return (entries.get(key)?.promise as Promise<T> | undefined) ?? null
 }
 
 /** Drops every entry whose key starts with `prefix`. */

@@ -81,6 +81,17 @@ export interface SubmitLoanRequestInput {
 // deletes it again (cascading away any items/availability that did land)
 // rather than leaving a half-submitted request behind.
 export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<LoanRequest> {
+  // Invalidated whether or not the submission lands: a failure part-way
+  // deletes the request again, but either way the member's list changed or
+  // may have.
+  try {
+    return await submit(input)
+  } finally {
+    invalidate(CACHE_KEYS.memberLoans)
+  }
+}
+
+async function submit(input: SubmitLoanRequestInput): Promise<LoanRequest> {
   const { data: requestRow, error: requestError } = await supabase
     .from('loan_requests')
     .insert({ user_id: input.userId })
