@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type jsPDF from 'jspdf'
 import ConfirmActionModal from '../ConfirmActionModal'
-import { PlusIconSmallFilled, PrinterIconFilled, TrashCanIconFilled } from './icons'
+import { Tooltip } from '../Tooltip'
+import { DownloadIconFilled, PlusIconSmallFilled, PrinterIconFilled, StepperSubtractIconFilled } from './icons'
 import { QrDocLabel } from './labels/QrDocLabel'
 import { SerialBarcodeLabel } from './labels/SerialBarcodeLabel'
 import {
@@ -11,10 +12,14 @@ import {
   setEquipmentQuantityTotal,
   type EquipmentUnitWithStatus,
 } from '../../lib/inventory'
-import { buildItemLabelsPdf, printLabelsPdf } from '../../lib/labelPdf'
+import { buildItemLabelsPdf, downloadItemLabelsAsPngs, printLabelsPdf } from '../../lib/labelPdf'
 import type { EquipmentUnit } from '../../types'
 import { Skeleton, SkeletonLabel } from '../skeleton/Skeleton'
 import styles from './EquipmentUnitsTable.module.css'
+
+function slugify(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
+}
 
 interface EquipmentUnitsTableProps {
   equipmentId: string
@@ -124,6 +129,26 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
     void withPdf(unit.id, `print-${unit.id}`, (pdf) => printLabelsPdf(pdf))
   }
 
+  async function handleDownload(unit: EquipmentUnit) {
+    const docEl = docLabelRefs.current.get(unit.id)
+    const barcodeEl = barcodeLabelRefs.current.get(unit.id)
+    if (!docEl || !barcodeEl || pendingAction) return
+
+    const base = `${slugify(productName)}-${unit.serial_number}`
+    setPendingAction(`download-${unit.id}`)
+    try {
+      await downloadItemLabelsAsPngs(docEl, barcodeEl, {
+        doc: `${base}-qr-label.png`,
+        barcode: `${base}-barcode-label.png`,
+      })
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to download separate label PNGs:', error)
+    } finally {
+      setPendingAction(null)
+    }
+  }
+
   return (
     <div className={styles.section}>
       <span className={styles.sectionLabel}>Individual units in inventory</span>
@@ -137,7 +162,7 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                 <tr>
                   <th className={styles.thSerial}>Serial number</th>
                   <th className={styles.thStatus}>Status</th>
-                  <th className={styles.thAction} aria-hidden="true" />
+                  <th className={styles.thLabels}>Labels</th>
                   <th className={styles.thAction} aria-hidden="true" />
                 </tr>
               </thead>
@@ -150,7 +175,8 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                     <td className={styles.tdStatus}>
                       <Skeleton width="6rem" height="1.75rem" shape="pill" />
                     </td>
-                    <td className={styles.tdAction}>
+                    <td className={styles.tdLabels}>
+                      <Skeleton width="2rem" height="2rem" radius="0.5rem" />
                       <Skeleton width="2rem" height="2rem" radius="0.5rem" />
                     </td>
                     <td className={styles.tdAction}>
@@ -174,7 +200,7 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                   <tr>
                     <th className={styles.thSerial}>Serial number</th>
                     <th className={styles.thStatus}>Status</th>
-                    <th className={styles.thAction} aria-hidden="true" />
+                    <th className={styles.thLabels}>Labels</th>
                     <th className={styles.thAction} aria-hidden="true" />
                   </tr>
                 </thead>
@@ -195,26 +221,39 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                           {status === 'available' ? 'available' : status === 'requested' ? 'requested' : 'checked out'}
                         </span>
                       </td>
-                      <td className={styles.tdAction}>
-                        <button
-                          type="button"
-                          className={styles.actionButton}
-                          aria-label={`Print label for ${unit.serial_number}`}
-                          onClick={() => handlePrint(unit)}
-                          disabled={pendingAction !== null}
-                        >
-                          <PrinterIconFilled size={19} />
-                        </button>
+                      <td className={styles.tdLabels}>
+                        <Tooltip text="Print labels on PDF">
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            aria-label={`Print label for ${unit.serial_number}`}
+                            onClick={() => handlePrint(unit)}
+                            disabled={pendingAction !== null}
+                          >
+                            <PrinterIconFilled size={19} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip text="Download label PNGs">
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            aria-label={`Download label for ${unit.serial_number}`}
+                            onClick={() => void handleDownload(unit)}
+                            disabled={pendingAction !== null}
+                          >
+                            <DownloadIconFilled size={17} />
+                          </button>
+                        </Tooltip>
                       </td>
                       <td className={styles.tdAction}>
                         <button
                           type="button"
-                          className={styles.actionButton}
+                          className={styles.deleteButton}
                           aria-label={`Delete ${unit.serial_number}`}
                           onClick={() => setDeleteTarget(unit)}
                           disabled={status === 'checked_out' || status === 'requested'}
                         >
-                          <TrashCanIconFilled size={18} />
+                          <StepperSubtractIconFilled size={11} color="#9c3f3f" />
                         </button>
                       </td>
                     </tr>
