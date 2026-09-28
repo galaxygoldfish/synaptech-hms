@@ -4,10 +4,11 @@ import type jsPDF from 'jspdf'
 import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
+import { Tooltip } from '../components/Tooltip'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
-import { DownloadIconFilled, DownloadSeparateIconFilled } from '../components/admin-dashboard/icons'
-import { buildItemLabelsPdf, downloadItemLabelsAsPngs, downloadLabelsPdf, preloadLabelPdfLibs } from '../lib/labelPdf'
+import { DownloadIconFilled, PrinterIconFilled } from '../components/admin-dashboard/icons'
+import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../lib/labelPdf'
 import type { UserProfile } from '../types'
 import styles from './AddInventoryItemLabelsPage.module.css'
 
@@ -99,19 +100,17 @@ export default function AddInventoryItemLabelsPage() {
     }
   }
 
-  function handleDownload(item: { name: string; serial: string }) {
-    void withPdf(item.serial, `download-${item.serial}`, (pdf) => {
-      downloadLabelsPdf(pdf, `${slugify(item.name)}-${item.serial}-labels.pdf`)
-    })
+  function handlePrint(item: { serial: string }) {
+    void withPdf(item.serial, `print-${item.serial}`, (pdf) => printLabelsPdf(pdf))
   }
 
-  async function handleDownloadSeparate(item: { name: string; serial: string }) {
+  async function handleDownload(item: { name: string; serial: string }) {
     const docEl = docLabelRefs.current.get(item.serial)
     const barcodeEl = barcodeLabelRefs.current.get(item.serial)
     if (!docEl || !barcodeEl || pendingAction) return
 
     const base = `${slugify(item.name)}-${item.serial}`
-    setPendingAction(`download-separate-${item.serial}`)
+    setPendingAction(`download-${item.serial}`)
     try {
       await downloadItemLabelsAsPngs(docEl, barcodeEl, {
         doc: `${base}-qr-label.png`,
@@ -149,24 +148,28 @@ export default function AddInventoryItemLabelsPage() {
                 <p className={styles.itemSerial}>{item.serial}</p>
               </div>
               <div className={styles.itemActions}>
-                <button
-                  type="button"
-                  className={styles.itemActionButton}
-                  aria-label="Download label"
-                  onClick={() => handleDownload(item)}
-                  disabled={pendingAction !== null}
-                >
-                  <DownloadIconFilled size={20} />
-                </button>
-                <button
-                  type="button"
-                  className={styles.itemActionButton}
-                  aria-label="Download labels as separate PNGs"
-                  onClick={() => void handleDownloadSeparate(item)}
-                  disabled={pendingAction !== null}
-                >
-                  <DownloadSeparateIconFilled size={20} />
-                </button>
+                <Tooltip text="Print labels on PDF">
+                  <button
+                    type="button"
+                    className={styles.itemActionButton}
+                    aria-label="Print label"
+                    onClick={() => handlePrint(item)}
+                    disabled={pendingAction !== null}
+                  >
+                    <PrinterIconFilled size={22} />
+                  </button>
+                </Tooltip>
+                <Tooltip text="Download label PNGs">
+                  <button
+                    type="button"
+                    className={styles.itemActionButton}
+                    aria-label="Download label"
+                    onClick={() => void handleDownload(item)}
+                    disabled={pendingAction !== null}
+                  >
+                    <DownloadIconFilled size={20} />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           ))}

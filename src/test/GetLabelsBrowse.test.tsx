@@ -28,7 +28,7 @@ vi.mock('../lib/inventory', () => ({
 // Rasterizing labels needs a real canvas; this screen only needs the markup.
 vi.mock('../lib/labelPdf', () => ({
   buildItemLabelsPdf: vi.fn(),
-  downloadLabelsPdf: vi.fn(),
+  downloadItemLabelsAsPngs: vi.fn(),
   printLabelsPdf: vi.fn(),
   preloadLabelPdfLibs: vi.fn(),
 }))

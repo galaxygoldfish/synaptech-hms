@@ -4,24 +4,18 @@ import type jsPDF from 'jspdf'
 import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
+import { Tooltip } from '../components/Tooltip'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
 import {
   ArrowLeftIcon,
   ChevronRightIcon,
   DownloadIconFilled,
-  DownloadSeparateIconFilled,
   PrinterIconFilled,
   ServerIconFilled,
 } from '../components/admin-dashboard/icons'
 import { fetchEquipmentUnitBySerial } from '../lib/inventory'
-import {
-  buildItemLabelsPdf,
-  downloadItemLabelsAsPngs,
-  downloadLabelsPdf,
-  printLabelsPdf,
-  preloadLabelPdfLibs,
-} from '../lib/labelPdf'
+import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../lib/labelPdf'
 import type { Equipment, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
 
@@ -119,25 +113,18 @@ export default function GetReplacementLabelPage() {
     }
   }
 
-  function handleDownload() {
-    if (!result) return
-    void withPdf('download', (pdf) => {
-      downloadLabelsPdf(pdf, `${slugify(result.equipment.name)}-${result.serial}-labels.pdf`)
-    })
-  }
-
   function handlePrint() {
     if (!result) return
     void withPdf('print', (pdf) => printLabelsPdf(pdf))
   }
 
-  async function handleDownloadSeparate() {
+  async function handleDownload() {
     const docEl = docLabelRef.current
     const barcodeEl = barcodeLabelRef.current
     if (!result || !docEl || !barcodeEl || pendingAction) return
 
     const base = `${slugify(result.equipment.name)}-${result.serial}`
-    setPendingAction('download-separate')
+    setPendingAction('download')
     try {
       await downloadItemLabelsAsPngs(docEl, barcodeEl, {
         doc: `${base}-qr-label.png`,
@@ -235,33 +222,28 @@ export default function GetReplacementLabelPage() {
                   <p className={styles.itemSerial}>{result.serial}</p>
                 </div>
                 <div className={styles.itemActions}>
-                  <button
-                    type="button"
-                    className={styles.itemActionButton}
-                    aria-label="Print label"
-                    onClick={handlePrint}
-                    disabled={pendingAction !== null}
-                  >
-                    <PrinterIconFilled size={22} />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.itemActionButton}
-                    aria-label="Download label"
-                    onClick={handleDownload}
-                    disabled={pendingAction !== null}
-                  >
-                    <DownloadIconFilled size={20} />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.itemActionButton}
-                    aria-label="Download labels as separate PNGs"
-                    onClick={() => void handleDownloadSeparate()}
-                    disabled={pendingAction !== null}
-                  >
-                    <DownloadSeparateIconFilled size={20} />
-                  </button>
+                  <Tooltip text="Print labels on PDF">
+                    <button
+                      type="button"
+                      className={styles.itemActionButton}
+                      aria-label="Print label"
+                      onClick={handlePrint}
+                      disabled={pendingAction !== null}
+                    >
+                      <PrinterIconFilled size={22} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip text="Download label PNGs">
+                    <button
+                      type="button"
+                      className={styles.itemActionButton}
+                      aria-label="Download label"
+                      onClick={() => void handleDownload()}
+                      disabled={pendingAction !== null}
+                    >
+                      <DownloadIconFilled size={20} />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             </div>

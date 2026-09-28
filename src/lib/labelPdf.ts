@@ -103,10 +103,6 @@ export async function buildItemLabelsPdf(
   return pdf
 }
 
-export function downloadLabelsPdf(pdf: jsPDF, filename: string): void {
-  pdf.save(filename)
-}
-
 export function printLabelsPdf(pdf: jsPDF): void {
   pdf.autoPrint()
   window.open(pdf.output('bloburl'), '_blank')
