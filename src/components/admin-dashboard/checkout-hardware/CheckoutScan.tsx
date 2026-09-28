@@ -12,7 +12,9 @@ import {
   type AdminLoanRequestItemSummary,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
-import styles from '../hardware-flow/HardwareFlow.module.css'
+import styles from '../hardware-flow/HardwareFlow.module.css'
+import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
+import { fetchHandOffData, handOffKey, type HandOffData } from '../../../lib/handOff'
 
 /**
  * Step 1 of "Check out hardware", reached from the admin dashboard: work out
@@ -75,6 +77,27 @@ export default function CheckoutScan() {
   const [isResolving, setResolving] = useState(false)
 
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // The agreement's data, fetched from the moment a loan is confirmed, while
+  // the admin reads the confirm card — so "continue" opens it drawn. One
+  // request per loan, shared by the card and the navigation.
+  const { open } = usePrefetchNavigate()
+  // Reused only while under a minute old, so an admin who studies the card
+  // for a while still gets a current agreement.
+  const handOffRequests = useRef(new Map<string, { request: Promise<HandOffData>; at: number }>())
+  function prefetchHandOff(itemId: string): Promise<HandOffData> {
+    const existing = handOffRequests.current.get(itemId)
+    if (existing && Date.now() - existing.at < 60_000) return existing.request
+    const request = fetchHandOffData(itemId)
+    request.catch(() => handOffRequests.current.delete(itemId))
+    handOffRequests.current.set(itemId, { request, at: Date.now() })
+    return request
+  }
+  useEffect(() => {
+    if (confirmed) prefetchHandOff(confirmed.id).catch(() => {})
+    // prefetchHandOff is stable in effect: it only reads and writes a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmed])
   useEffect(
     () => () => {
       if (holdTimer.current) clearTimeout(holdTimer.current)
@@ -85,9 +108,7 @@ export default function CheckoutScan() {
   useEffect(() => {
     let cancelled = false
 
-    // Fresh, never cached: this screen decides from the list. See
-    // fetchAllLoanRequestItems.
-    const loans = fetchAllLoanRequestItems({ fresh: true })
+    const loans = fetchAllLoanRequestItems()
     loansRef.current = loans
     loans.catch((fetchError) => {
       // eslint-disable-next-line no-console
@@ -134,7 +155,7 @@ export default function CheckoutScan() {
     let loans: AdminLoanRequestItemSummary[]
     setResolving(true)
     try {
-      loans = await (loansRef.current ?? fetchAllLoanRequestItems({ fresh: true }))
+      loans = await (loansRef.current ?? fetchAllLoanRequestItems())
     } catch {
       // The effect above has already put the load error on screen.
       return
@@ -245,7 +266,7 @@ export default function CheckoutScan() {
           ]}
           actionLabel="continue"
           onAction={() =>
-            navigate(`/adminHome/checkout/${confirmed.id}/agreement`, {
+            void open(handOffKey(confirmed.id), () => prefetchHandOff(confirmed.id), `/adminHome/checkout/${confirmed.id}/agreement`, {
               state: { serialVerifiedBy: confirmedVia },
             })
           }

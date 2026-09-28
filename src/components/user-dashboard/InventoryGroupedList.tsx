@@ -11,6 +11,8 @@ interface InventoryGroupedListProps {
   emptyMessage?: string
   /** When provided, each row becomes a button that calls this on click. */
   onSelectItem?: (item: Equipment) => void
+  /** The row whose click is still being handled, shown as busy. */
+  pendingItemId?: string | null
 }
 
 export function InventoryGroupedList({
@@ -19,6 +21,7 @@ export function InventoryGroupedList({
   error,
   emptyMessage = 'No items match your search.',
   onSelectItem,
+  pendingItemId = null,
 }: InventoryGroupedListProps) {
   // Two stand-in groups of three rows: enough to fill the fold without
   // promising more items than a short catalogue actually has.
@@ -70,7 +73,14 @@ export function InventoryGroupedList({
               if (onSelectItem) {
                 return (
                   <li key={item.id}>
-                    <button type="button" className={styles.itemButton} onClick={() => onSelectItem(item)}>
+                    <button
+                      type="button"
+                      className={
+                        item.id === pendingItemId ? `${styles.itemButton} ${styles.itemButtonPending}` : styles.itemButton
+                      }
+                      aria-busy={item.id === pendingItemId}
+                      onClick={() => onSelectItem(item)}
+                    >
                       {content}
                     </button>
                   </li>

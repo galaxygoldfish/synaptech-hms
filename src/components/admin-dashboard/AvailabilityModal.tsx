@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useEdgeFade, useVerticalEdgeFade } from '../../lib/useEdgeFade'
-import { fetchAvailability, type AvailabilitySlot } from '../../lib/availability'
+import { fetchAvailability, peekAvailability, type AvailabilitySlot, type AvailabilityTarget } from '../../lib/availability'
 import { CloseIcon } from './icons'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AvailabilityModal.module.css'
@@ -46,8 +46,15 @@ export function AvailabilityModal({
   purpose,
   onClose,
 }: AvailabilityModalProps) {
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([])
-  const [isLoading, setLoading] = useState(true)
+  const target: AvailabilityTarget =
+    purpose === 'return' && loanRequestItemId
+      ? { kind: 'return', loanRequestId, loanRequestItemId }
+      : { kind: 'checkout', loanRequestId }
+  // The loan detail screen fetches these in the background once it has
+  // loaded, so the dialog normally opens with them drawn; this refreshes.
+  const [initialSlots] = useState(() => peekAvailability(target))
+  const [slots, setSlots] = useState<AvailabilitySlot[]>(initialSlots ?? [])
+  const [isLoading, setLoading] = useState(initialSlots === null)
   const [error, setError] = useState<string | null>(null)
 
   const { ref: hFadeRef, maskImage: hMaskImage } = useEdgeFade<HTMLDivElement>()
@@ -55,21 +62,17 @@ export function AvailabilityModal({
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setLoading(initialSlots === null)
     setError(null)
 
-    fetchAvailability(
-      purpose === 'return' && loanRequestItemId
-        ? { kind: 'return', loanRequestId, loanRequestItemId }
-        : { kind: 'checkout', loanRequestId },
-    )
+    fetchAvailability(target)
       .then((data) => {
         if (!cancelled) setSlots(data)
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load availability:', fetchError)
-        if (!cancelled) setError('Could not load availability. Please try again.')
+        if (!cancelled && initialSlots === null) setError('Could not load availability. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -78,6 +81,8 @@ export function AvailabilityModal({
     return () => {
       cancelled = true
     }
+    // The target is rebuilt each render; these are what identify it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loanRequestId, loanRequestItemId, purpose])
 
   const selectedByDate = useMemo(() => {

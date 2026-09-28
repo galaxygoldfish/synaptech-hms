@@ -4,10 +4,12 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { CalendarIcon } from './icons'
-import { fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
+import { fetchEquipment, fetchEquipmentByIds, fetchSignAgreementData, peekEquipmentRows } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutReturnDate.module.css'
+import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { CACHE_KEYS } from '../../lib/queryCache'
 
 // The Synaptech Hardware Checkout & Usage Policy Google Doc.
 const POLICY_URL = 'https://docs.google.com/document/d/11RSFuvvg1F4aM9V0znWw7wFn_MZMx95T7EdlblAyPfc/edit?tab=t.0'
@@ -104,6 +106,10 @@ function DateSelectButton({ value, onChange, min, max }: DateSelectButtonProps) 
   )
 }
 
+function addonIdsOf(state: CheckoutState): string[] {
+  return [...state.optionalAddonIds, ...(state.requiredAddonId ? [state.requiredAddonId] : [])]
+}
+
 export default function CheckoutReturnDate() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -112,21 +118,24 @@ export default function CheckoutReturnDate() {
 
   const checkoutState = readCheckoutState(location.state)
 
-  const [items, setItems] = useState<Equipment[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The items were just picked from the catalog, so their rows are almost
+  // always cached: draw them on the first render and refresh underneath,
+  // rather than showing a skeleton between steps.
+  const [seededItems] = useState(() =>
+    checkoutState ? peekEquipmentRows([checkoutState.equipmentId, ...addonIdsOf(checkoutState)]) : null,
+  )
+  const [items, setItems] = useState<Equipment[]>(seededItems ?? [])
+  const [isLoading, setLoading] = useState(seededItems === null)
   const [error, setError] = useState<string | null>(null)
   const [selectedDates, setSelectedDates] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!checkoutState) return
     let cancelled = false
-    setLoading(true)
+    setLoading(seededItems === null)
     setError(null)
 
-    const addonIds = [
-      ...checkoutState.optionalAddonIds,
-      ...(checkoutState.requiredAddonId ? [checkoutState.requiredAddonId] : []),
-    ]
+    const addonIds = addonIdsOf(checkoutState)
 
     Promise.all([fetchEquipment(checkoutState.equipmentId), fetchEquipmentByIds(addonIds)])
       .then(([mainItem, addonItems]) => {
@@ -135,7 +144,8 @@ export default function CheckoutReturnDate() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load checkout items:', fetchError)
-        if (!cancelled) setError('Could not load your checkout items. Please try again.')
+        // Keep the drawn items rather than swapping them for an error.
+        if (!cancelled && seededItems === null) setError('Could not load your checkout items. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -184,12 +194,20 @@ export default function CheckoutReturnDate() {
     signOut()
   }
 
+  // The agreement step needs the unit each item will be (its serial is on
+  // the agreement): fetch that now, with this screen still up, so the
+  // agreement opens drawn — see fetchSignAgreementData.
+  const { open, pendingKey } = usePrefetchNavigate()
   function handleConfirm() {
     if (!canConfirm || !checkoutState) return
-    navigate('/home/checkout/sign-agreement', {
-      state: { ...checkoutState, returnDates: selectedDates },
-    })
+    void open(
+      CACHE_KEYS.signAgreement,
+      () => fetchSignAgreementData(checkoutState.equipmentId, addonIdsOf(checkoutState)),
+      '/home/checkout/sign-agreement',
+      { state: { ...checkoutState, returnDates: selectedDates } },
+    )
   }
+  const isPreparingAgreement = pendingKey === CACHE_KEYS.signAgreement
 
   if (!checkoutState) return null
 
@@ -268,7 +286,13 @@ export default function CheckoutReturnDate() {
           <button type="button" className={styles.backButton} onClick={() => navigate(-1)}>
             back
           </button>
-          <button type="button" className={styles.confirmButton} onClick={handleConfirm} disabled={!canConfirm}>
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={handleConfirm}
+            disabled={!canConfirm || isPreparingAgreement}
+            aria-busy={isPreparingAgreement}
+          >
             confirm
           </button>
         </div>

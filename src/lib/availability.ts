@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 
 /**
  * When a member is free — for collecting hardware, and for giving it back.
@@ -26,7 +26,25 @@ export type AvailabilityTarget =
   | { kind: 'checkout'; loanRequestId: string }
   | { kind: 'return'; loanRequestId: string; loanRequestItemId: string }
 
-export async function fetchAvailability(target: AvailabilityTarget): Promise<AvailabilitySlot[]> {
+function availabilityKey(target: AvailabilityTarget): string {
+  return target.kind === 'return'
+    ? `${CACHE_KEYS.availability}return:${target.loanRequestItemId}`
+    : `${CACHE_KEYS.availability}checkout:${target.loanRequestId}`
+}
+
+// Always fetched fresh, but remembered: the loan screens fetch it in the
+// background once they've loaded, so the availability dialog opens with the
+// hours already drawn (peekAvailability) instead of a skeleton.
+export function fetchAvailability(target: AvailabilityTarget): Promise<AvailabilitySlot[]> {
+  return refresh(availabilityKey(target), () => loadAvailability(target))
+}
+
+/** The hours as last loaded for this target, synchronously, or null. Display only. */
+export function peekAvailability(target: AvailabilityTarget): AvailabilitySlot[] | null {
+  return peekValue<AvailabilitySlot[]>(availabilityKey(target)) ?? null
+}
+
+async function loadAvailability(target: AvailabilityTarget): Promise<AvailabilitySlot[]> {
   let query = supabase
     .from('loan_request_availability')
     .select('available_date, available_hour')
@@ -66,6 +84,8 @@ export async function saveAvailability(
   }
 
   const { error: deleteError } = await deletion
+  // From here on the stored hours have changed, whatever happens next.
+  invalidate(CACHE_KEYS.availability)
   if (deleteError) throw deleteError
 
   if (slots.length === 0) return
@@ -79,6 +99,7 @@ export async function saveAvailability(
       available_hour: slot.hour,
     })),
   )
+  invalidate(CACHE_KEYS.availability)
   if (insertError) throw insertError
 }
 

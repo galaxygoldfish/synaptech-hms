@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlowPage } from '../hardware-flow/FlowPage'
-import { LoanPickList, formatTimestampDate } from '../hardware-flow/LoanPickList'
+import { LoanPickList, formatTimestampDate } from '../hardware-flow/LoanPickList'
+import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
+import { fetchHandOffData, handOffKey } from '../../../lib/handOff'
 import {
   bucketForLoanItem,
   fetchAllLoanRequestItems,
@@ -15,6 +17,7 @@ import {
  */
 export default function CheckoutPickLoan() {
   const navigate = useNavigate()
+  const { open, pendingKey } = usePrefetchNavigate()
 
   const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
   const [isLoading, setLoading] = useState(true)
@@ -23,9 +26,7 @@ export default function CheckoutPickLoan() {
   useEffect(() => {
     let cancelled = false
 
-    // Fresh, never cached: picking a loan here decides what gets handed
-    // over or taken back. See fetchAllLoanRequestItems.
-    fetchAllLoanRequestItems({ fresh: true })
+    fetchAllLoanRequestItems()
       .then((items) => {
         if (!cancelled) setLoans(items)
       })
@@ -62,10 +63,11 @@ export default function CheckoutPickLoan() {
         dateFor={(loan) => `Requested on ${formatTimestampDate(loan.requestedAt)}`}
         rowLabel={(loan) => `Hand over ${loan.itemName} to ${loan.memberName}`}
         onPick={(loan) =>
-          navigate(`/adminHome/checkout/${loan.id}/agreement`, {
+          void open(handOffKey(loan.id), () => fetchHandOffData(loan.id), `/adminHome/checkout/${loan.id}/agreement`, {
             state: { serialVerifiedBy: 'database' },
           })
         }
+        pendingId={pendingKey?.slice(handOffKey('').length) ?? null}
       />
     </FlowPage>
   )

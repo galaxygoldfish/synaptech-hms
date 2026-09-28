@@ -21,7 +21,9 @@ import {
   preloadLabelPdfLibs,
 } from '../lib/labelPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../types'
-import styles from './GetReplacementLabelPage.module.css'
+import styles from './GetReplacementLabelPage.module.css'
+import { labelsProductKey, type LabelsProductData } from '../lib/inventory'
+import { readStash } from '../lib/queryCache'
 
 function slugify(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
@@ -36,9 +38,12 @@ export default function GetLabelsProductPage() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [equipment, setEquipment] = useState<Equipment | null>(null)
-  const [units, setUnits] = useState<EquipmentUnit[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // Opened from the labels list, which fetched this a moment ago
+  // (usePrefetchNavigate): draw from it on the first render.
+  const [prefetched] = useState(() => (id ? readStash<LabelsProductData>(labelsProductKey(id)) : undefined))
+  const [equipment, setEquipment] = useState<Equipment | null>(prefetched?.equipment ?? null)
+  const [units, setUnits] = useState<EquipmentUnit[]>(prefetched?.units ?? [])
+  const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
 
@@ -46,7 +51,7 @@ export default function GetLabelsProductPage() {
   const barcodeLabelRefs = useRef(new Map<string, HTMLDivElement>())
 
   useEffect(() => {
-    if (!id) return
+    if (!id || prefetched) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -69,7 +74,7 @@ export default function GetLabelsProductPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, prefetched])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null

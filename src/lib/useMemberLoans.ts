@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchMemberLoans, peekMemberLoans, type MemberLoanGroup } from './memberLoans'
 
 export interface MemberLoansState {
-  /** Null until something — cached or fresh — has arrived. */
+  /** Null until something — cached or fresh — is available. */
   groups: MemberLoanGroup[] | null
   /** True once the fresh fetch has landed. Anything that decides on the
       loans (the overdue block on checkout) waits for this; what is merely
@@ -10,52 +10,46 @@ export interface MemberLoansState {
   isFresh: boolean
   /** The fresh fetch failed and there was nothing cached to show instead. */
   failed: boolean
+  /** The fresh fetch failed, whether or not a cached copy is still shown.
+      A screen that decides on the loans treats this as an error. */
+  refreshFailed: boolean
+}
+
+function initialState(userId: string | null | undefined): MemberLoansState {
+  return { groups: userId ? peekMemberLoans(userId) : null, isFresh: false, failed: false, refreshFailed: false }
 }
 
 /**
- * A member's loans, stale-while-revalidate: the copy cached by the last
- * screen that loaded them (if any) is shown at once, and a fresh fetch always
- * follows and replaces it. Handing hardware over and checking it back in
- * happen in an admin's browser, so the member's cache never hears about them
- * — serving it alone would show hardware as still requested, or still
- * overdue, after the fact. This keeps navigation instant without that.
+ * A member's loans, stale-while-revalidate: the list the last screen loaded
+ * (if any) is on the very first render — no skeleton frame — and a fresh
+ * fetch always follows and replaces it. Handing hardware over and checking it
+ * back in happen in an admin's browser, so the member's cache never hears
+ * about them; serving it alone would show hardware as still requested, or
+ * still overdue, after the fact.
  *
  * Lives outside memberLoans.ts so the fetches go through that module's
  * exports, which is what tests mock.
  */
 export function useMemberLoans(userId: string | null | undefined): MemberLoansState {
-  const [state, setState] = useState<MemberLoansState>({ groups: null, isFresh: false, failed: false })
+  const [state, setState] = useState<MemberLoansState>(() => initialState(userId))
 
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    let freshArrived = false
-    let showedCached = false
-    setState({ groups: null, isFresh: false, failed: false })
-
-    // Taken before the fresh fetch starts, which replaces the cache entry.
-    peekMemberLoans(userId)
-      ?.then((groups) => {
-        if (cancelled || freshArrived) return
-        showedCached = true
-        setState({ groups, isFresh: false, failed: false })
-      })
-      .catch(() => {
-        // Nothing to show from cache; the fresh fetch reports its own failure.
-      })
+    const cachedGroups = peekMemberLoans(userId)
+    setState({ groups: cachedGroups, isFresh: false, failed: false, refreshFailed: false })
 
     fetchMemberLoans(userId, { fresh: true })
       .then((groups) => {
-        if (cancelled) return
-        freshArrived = true
-        setState({ groups, isFresh: true, failed: false })
+        if (!cancelled) setState({ groups, isFresh: true, failed: false, refreshFailed: false })
       })
       .catch((error) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load hardware loans:', error)
-        if (cancelled) return
         // Keep a cached list on screen rather than swapping it for an error.
-        if (!showedCached) setState({ groups: null, isFresh: false, failed: true })
+        if (!cancelled) {
+          setState({ groups: cachedGroups, isFresh: false, failed: !cachedGroups, refreshFailed: true })
+        }
       })
 
     return () => {

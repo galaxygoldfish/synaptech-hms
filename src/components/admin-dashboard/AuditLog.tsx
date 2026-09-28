@@ -13,6 +13,7 @@ import {
   type AuditCategory,
   type AuditChange,
   type AuditLogEntry,
+  peekAuditLog,
 } from '../../lib/auditLog'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -316,9 +317,11 @@ export default function AuditLog() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [entries, setEntries] = useState<AuditLogEntry[]>([])
-  const [isCapped, setCapped] = useState(false)
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialPage] = useState(peekAuditLog)
+  const [entries, setEntries] = useState<AuditLogEntry[]>(initialPage?.entries ?? [])
+  const [isCapped, setCapped] = useState(initialPage?.hasMore ?? false)
+  const [isLoading, setLoading] = useState(initialPage === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
@@ -337,7 +340,7 @@ export default function AuditLog() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load the audit log:', fetchError)
-        if (!cancelled) setError('Could not load the audit log. Please try again.')
+        if (!cancelled && initialPage === null) setError('Could not load the audit log. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

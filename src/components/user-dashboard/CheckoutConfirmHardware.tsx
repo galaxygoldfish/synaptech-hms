@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
@@ -10,7 +10,9 @@ import {
   fetchEquipmentAddonOptions,
   fetchEquipmentAvailability,
   type EquipmentAddonOption,
+  peekEquipmentRows,
 } from '../../lib/inventory'
+import type { PrefetchedCheckout } from './useStartCheckout'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutConfirmHardware.module.css'
@@ -83,18 +85,43 @@ export default function CheckoutConfirmHardware() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const equipmentId = (location.state as { equipmentId?: string } | null)?.equipmentId ?? null
+  const routeState = location.state as { equipmentId?: string; prefetched?: PrefetchedCheckout } | null
+  const equipmentId = routeState?.equipmentId ?? null
 
-  const [equipment, setEquipment] = useState<Equipment | null>(null)
-  const [addonOptions, setAddonOptions] = useState<EquipmentAddonOption[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // Arriving from the item list (useStartCheckout), the add-ons and fresh
+  // stock are already in hand and the product row is in the cached catalog,
+  // so the screen draws on its first render instead of a skeleton. Reached
+  // any other way (a reload, a deep link), it loads as it always did.
+  // Only on the way in: coming back to this step with the browser's Back
+  // button restores the same route state, whose stock numbers are from the
+  // first visit — load fresh then instead.
+  const navigationType = useNavigationType()
+  const [initial] = useState(() => {
+    const prefetched = navigationType === 'POP' ? undefined : routeState?.prefetched
+    const row = equipmentId ? peekEquipmentRows([equipmentId])?.[0] : undefined
+    if (!prefetched || !row) return null
+    return {
+      equipment: { ...row, quantity_total: availableQuantity(row, prefetched.availability) },
+      addonOptions: prefetched.addonOptions.map((option) => ({
+        ...option,
+        equipment: {
+          ...option.equipment,
+          quantity_total: availableQuantity(option.equipment, prefetched.availability),
+        },
+      })),
+    }
+  })
+
+  const [equipment, setEquipment] = useState<Equipment | null>(initial?.equipment ?? null)
+  const [addonOptions, setAddonOptions] = useState<EquipmentAddonOption[]>(initial?.addonOptions ?? [])
+  const [isLoading, setLoading] = useState(initial === null)
   const [error, setError] = useState<string | null>(null)
 
   const [selectedOptionalIds, setSelectedOptionalIds] = useState<Set<string>>(new Set())
   const [selectedRequiredId, setSelectedRequiredId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!equipmentId) return
+    if (!equipmentId || initial) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -126,7 +153,7 @@ export default function CheckoutConfirmHardware() {
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [equipmentId, initial])
 
   useEffect(() => {
     if (!equipmentId) navigate('/home/checkout', { replace: true })
@@ -146,13 +173,14 @@ export default function CheckoutConfirmHardware() {
   // date — when an item has none, it's nothing but a second look at what
   // BrowseInventoryItem already showed, so skip straight past it rather
   // than making that the confirmation click's reward.
+  const willSkip = !isLoading && !error && equipment !== null && !hasAddons && !isOutOfStock(equipment)
   useEffect(() => {
-    if (isLoading || error || !equipment || hasAddons || isOutOfStock(equipment)) return
+    if (!willSkip || !equipment) return
     navigate('/home/checkout/return-date', {
       replace: true,
       state: { equipmentId: equipment.id, optionalAddonIds: [], requiredAddonId: null },
     })
-  }, [isLoading, error, equipment, hasAddons, navigate])
+  }, [willSkip, equipment, navigate])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -212,7 +240,10 @@ export default function CheckoutConfirmHardware() {
       <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
-        {isLoading && (
+        {/* Also while about to skip ahead: the redirect runs after a paint, and
+            drawing the item for that one frame flashed a page the member
+            never meant to see. */}
+        {(isLoading || willSkip) && (
           <SkeletonScreen label="Loading item…" className={styles.layoutCentered}>
             <div className={styles.itemColumn}>
               <div className={styles.itemInfo}>
@@ -226,7 +257,7 @@ export default function CheckoutConfirmHardware() {
         )}
         {!isLoading && error && <p className={styles.status}>{error}</p>}
 
-        {!isLoading && !error && equipment && (
+        {!isLoading && !error && equipment && !willSkip && (
           <div className={hasAddons ? styles.layoutWithAddons : styles.layoutCentered}>
             <div className={styles.itemColumn}>
               <div className={styles.itemInfo}>

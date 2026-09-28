@@ -5,10 +5,17 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled, PlusIconSmallFilled } from './icons'
-import { fetchEquipmentInventorySummary, type EquipmentInventoryRow } from '../../lib/inventory'
+import {
+  fetchEquipmentInventorySummary,
+  peekEquipmentInventorySummary,
+  manageItemKey,
+  prefetchManageItem,
+  type EquipmentInventoryRow,
+} from '../../lib/inventory'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageInventory.module.css'
+import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 
 function matchesQuery(row: EquipmentInventoryRow, query: string): boolean {
   return row.equipment.name.toLowerCase().includes(query)
@@ -33,10 +40,18 @@ export default function ManageInventory() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [rows, setRows] = useState<EquipmentInventoryRow[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The list as last loaded is on the first render, then refreshed.
+  const [initialRows] = useState(peekEquipmentInventorySummary)
+  const [rows, setRows] = useState<EquipmentInventoryRow[]>(initialRows ?? [])
+  const [isLoading, setLoading] = useState(initialRows === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  // Opening an item fetches its page's data first, with this list still on
+  // screen, so the page draws immediately — see prefetchManageItem.
+  const { open, pendingKey } = usePrefetchNavigate()
+  function openItem(equipmentId: string) {
+    void open(manageItemKey(equipmentId), () => prefetchManageItem(equipmentId), `/adminHome/inventory/${equipmentId}`)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -48,7 +63,8 @@ export default function ManageInventory() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load inventory:', fetchError)
-        if (!cancelled) setError('Could not load inventory. Please try again.')
+        // Keep the last-seen list on screen rather than swapping it for an error.
+        if (!cancelled && initialRows === null) setError('Could not load inventory. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -57,7 +73,7 @@ export default function ManageInventory() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initialRows])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -153,7 +169,9 @@ export default function ManageInventory() {
                   <button
                     type="button"
                     className={styles.itemRow}
-                    onClick={() => navigate(`/adminHome/inventory/${equipment.id}`)}
+                    onClick={() => openItem(equipment.id)}
+                    aria-busy={pendingKey === manageItemKey(equipment.id)}
+                    style={pendingKey === manageItemKey(equipment.id) ? PENDING_ROW_STYLE : undefined}
                   >
                     {equipment.image_url ? (
                       <img src={equipment.image_url} alt="" className={styles.itemThumb} />

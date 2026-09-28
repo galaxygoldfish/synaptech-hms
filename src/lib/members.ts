@@ -1,8 +1,19 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 import type { Profile } from '../types/index'
 
-export async function fetchAllProfiles(): Promise<Profile[]> {
+// Always fetched fresh, but remembered so the screen can paint it
+// straight away next time (see useFreshData).
+export function fetchAllProfiles(): Promise<Profile[]> {
+  return refresh(CACHE_KEYS.members, () => loadAllProfiles())
+}
+
+/** The list as last loaded, synchronously, or null. Display only. */
+export function peekAllProfiles(): Profile[] | null {
+  return peekValue<Profile[]>(CACHE_KEYS.members) ?? null
+}
+
+async function loadAllProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -20,6 +31,7 @@ export async function fetchProfileById(id: string): Promise<Profile> {
 
 export async function updateMemberRole(id: string, role: 'member' | 'admin'): Promise<Profile> {
   const { data, error } = await supabase.from('profiles').update({ role }).eq('id', id).select().single()
+  invalidate(CACHE_KEYS.membersAll)
   if (error) throw error
   return data as Profile
 }
@@ -42,6 +54,7 @@ export async function deleteMember(id: string): Promise<void> {
   })
   // Deleting a member takes their loan requests with them.
   invalidate(CACHE_KEYS.adminLoans)
+  invalidate(CACHE_KEYS.membersAll)
   if (error) throw error
   if (!data?.ok) throw new Error(data?.error ?? 'Failed to delete account')
 }

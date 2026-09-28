@@ -15,6 +15,7 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './InventoryAudit.module.css'
+import { CACHE_KEYS, readStash } from '../../lib/queryCache'
 
 /**
  * What one past audit found: the four headline counts, who ran it and when,
@@ -64,14 +65,17 @@ export default function InventoryAuditReport() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [audit, setAudit] = useState<InventoryAuditDetail | null>(null)
-  const [isLoading, setLoading] = useState(true)
+  // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
+  // draw from that on the first render instead of behind a skeleton.
+  const [prefetched] = useState(() => (id ? readStash<InventoryAuditDetail>(`${CACHE_KEYS.inventoryAuditReport}${id}`) : undefined))
+  const [audit, setAudit] = useState<InventoryAuditDetail | null>(prefetched ?? null)
+  const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<EntryFilter>('all')
   const { ref: filterRowRef, maskImage: filterRowMask } = useEdgeFade<HTMLDivElement>()
 
   useEffect(() => {
-    if (!id) return
+    if (!id || prefetched) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -92,7 +96,7 @@ export default function InventoryAuditReport() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, prefetched])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null

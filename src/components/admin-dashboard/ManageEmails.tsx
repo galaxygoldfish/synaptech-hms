@@ -9,10 +9,14 @@ import {
   setEmailTemplateEnabled,
   type EmailTemplate,
   type EmailTemplateCategory,
+  peekEmailTemplates,
+  fetchTemplateEditorData,
+  templateEditorKey,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageEmails.module.css'
+import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 
 interface ManageEmailsProps {
   heading: string
@@ -25,11 +29,14 @@ interface ManageEmailsProps {
 
 export function ManageEmails({ heading, shortHeading, listPath, category }: ManageEmailsProps) {
   const navigate = useNavigate()
+  const { open } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [templates, setTemplates] = useState<EmailTemplate[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialTemplates] = useState(() => peekEmailTemplates(category))
+  const [templates, setTemplates] = useState<EmailTemplate[]>(initialTemplates ?? [])
+  const [isLoading, setLoading] = useState(initialTemplates === null)
   const [error, setError] = useState<string | null>(null)
 
   const [pendingToggleKey, setPendingToggleKey] = useState<string | null>(null)
@@ -37,7 +44,7 @@ export function ManageEmails({ heading, shortHeading, listPath, category }: Mana
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setLoading(initialTemplates === null)
     setError(null)
 
     fetchEmailTemplates(category)
@@ -47,7 +54,7 @@ export function ManageEmails({ heading, shortHeading, listPath, category }: Mana
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load email templates:', fetchError)
-        if (!cancelled) setError('Could not load email templates. Please try again.')
+        if (!cancelled && initialTemplates === null) setError('Could not load email templates. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -75,7 +82,7 @@ export function ManageEmails({ heading, shortHeading, listPath, category }: Mana
   }
 
   function handleEdit(templateKey: string) {
-    navigate(`${listPath}/${templateKey}`)
+    void open(templateEditorKey(templateKey), () => fetchTemplateEditorData(templateKey), `${listPath}/${templateKey}`)
   }
 
   async function handleToggle(template: EmailTemplate) {

@@ -23,10 +23,12 @@ import {
   fetchEquipmentAddonOptions,
   fetchEquipmentCheckedOutCount,
   listEquipment,
+  readManageItemPrefetch,
   replaceEquipmentAddons,
   updateEquipment,
   uploadEquipmentImage,
   type CreateEquipmentAddonInput,
+  type ManageItemData,
 } from '../lib/inventory'
 import { CATEGORY_OPTIONS } from '../lib/equipmentCategories'
 import type { Equipment, EquipmentCategory, UserProfile } from '../types'
@@ -51,6 +53,28 @@ interface FormSnapshot {
   requiredAddonIds: string[]
 }
 
+// The form's starting values from the loaded item — shared by the normal
+// load and the prefetched path (see prefetchManageItem), so the two can't
+// fill the form differently.
+function formFromData({ equipment, checkedOutCount, addonOptions }: ManageItemData) {
+  const optional = addonOptions.filter((addon) => addon.addonType === 'optional').map((addon) => addon.equipment)
+  const required = addonOptions.filter((addon) => addon.addonType === 'required').map((addon) => addon.equipment)
+  const snapshot: FormSnapshot = {
+    productName: equipment.name,
+    description: equipment.description ?? '',
+    replacementValue: equipment.replacement_value != null ? String(equipment.replacement_value) : '',
+    quantity: equipment.quantity_total,
+    productType: equipment.product_type,
+    category: equipment.category ?? '',
+    docLink: equipment.documentation_url ?? '',
+    hasOptionalAddons: optional.length > 0,
+    hasRequiredAddons: required.length > 0,
+    optionalAddonIds: optional.map((item) => item.id),
+    requiredAddonIds: required.map((item) => item.id),
+  }
+  return { snapshot, optional, required, imageUrl: equipment.image_url, checkedOutCount }
+}
+
 function sameIdSet(list: Equipment[], ids: string[]): boolean {
   if (list.length !== ids.length) return false
   const idSet = new Set(ids)
@@ -63,26 +87,34 @@ export default function ManageInventoryItemPage() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [isLoading, setLoading] = useState(true)
+  // Opened from the inventory list, this item's data was fetched a moment
+  // ago and is waiting (see prefetchManageItem): build the form from it on
+  // the first render instead of behind a skeleton. Otherwise load as usual.
+  const [initial] = useState(() => {
+    const data = id ? readManageItemPrefetch(id) : undefined
+    return data ? formFromData(data) : null
+  })
+
+  const [isLoading, setLoading] = useState(initial === null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [checkedOutCount, setCheckedOutCount] = useState(0)
+  const [checkedOutCount, setCheckedOutCount] = useState(initial?.checkedOutCount ?? 0)
 
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(initial?.imageUrl ?? null)
   const [isDraggingImage, setDraggingImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [productName, setProductName] = useState('')
-  const [description, setDescription] = useState('')
-  const [replacementValue, setReplacementValue] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [productType, setProductType] = useState<ProductType>('hardware')
-  const [category, setCategory] = useState<EquipmentCategory | ''>('')
-  const [docLink, setDocLink] = useState('')
-  const [hasOptionalAddons, setHasOptionalAddons] = useState(false)
-  const [hasRequiredAddons, setHasRequiredAddons] = useState(false)
-  const [optionalAddons, setOptionalAddons] = useState<Equipment[]>([])
-  const [requiredAddons, setRequiredAddons] = useState<Equipment[]>([])
+  const [productName, setProductName] = useState(initial?.snapshot.productName ?? '')
+  const [description, setDescription] = useState(initial?.snapshot.description ?? '')
+  const [replacementValue, setReplacementValue] = useState(initial?.snapshot.replacementValue ?? '')
+  const [quantity, setQuantity] = useState(initial?.snapshot.quantity ?? 1)
+  const [productType, setProductType] = useState<ProductType>(initial?.snapshot.productType ?? 'hardware')
+  const [category, setCategory] = useState<EquipmentCategory | ''>(initial?.snapshot.category ?? '')
+  const [docLink, setDocLink] = useState(initial?.snapshot.docLink ?? '')
+  const [hasOptionalAddons, setHasOptionalAddons] = useState(initial?.snapshot.hasOptionalAddons ?? false)
+  const [hasRequiredAddons, setHasRequiredAddons] = useState(initial?.snapshot.hasRequiredAddons ?? false)
+  const [optionalAddons, setOptionalAddons] = useState<Equipment[]>(initial?.optional ?? [])
+  const [requiredAddons, setRequiredAddons] = useState<Equipment[]>(initial?.required ?? [])
   const [activePicker, setActivePicker] = useState<AddonType | null>(null)
   const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([])
   const [isLoadingEquipment, setLoadingEquipment] = useState(false)
@@ -94,47 +126,33 @@ export default function ManageInventoryItemPage() {
   const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [isQuantityLimitOpen, setQuantityLimitOpen] = useState(false)
   const [isUnsavedChangesOpen, setUnsavedChangesOpen] = useState(false)
-  const [snapshot, setSnapshot] = useState<FormSnapshot | null>(null)
+  const [snapshot, setSnapshot] = useState<FormSnapshot | null>(initial?.snapshot ?? null)
 
   useEffect(() => {
-    if (!id) return
+    // Already built from the prefetched data above.
+    if (!id || initial) return
     let cancelled = false
     setLoading(true)
     setLoadError(null)
 
     Promise.all([fetchEquipment(id), fetchEquipmentCheckedOutCount(id), fetchEquipmentAddonOptions(id)])
-      .then(([equipment, checkedOut, addons]) => {
+      .then(([equipment, checkedOutCount, addonOptions]) => {
         if (cancelled) return
-        setProductName(equipment.name)
-        setDescription(equipment.description ?? '')
-        setReplacementValue(equipment.replacement_value != null ? String(equipment.replacement_value) : '')
-        setQuantity(equipment.quantity_total)
-        setProductType(equipment.product_type)
-        setCategory(equipment.category ?? '')
-        setDocLink(equipment.documentation_url ?? '')
-        setImagePreviewUrl(equipment.image_url)
-        setCheckedOutCount(checkedOut)
-
-        const optional = addons.filter((addon) => addon.addonType === 'optional').map((addon) => addon.equipment)
-        const required = addons.filter((addon) => addon.addonType === 'required').map((addon) => addon.equipment)
-        setOptionalAddons(optional)
-        setRequiredAddons(required)
-        setHasOptionalAddons(optional.length > 0)
-        setHasRequiredAddons(required.length > 0)
-
-        setSnapshot({
-          productName: equipment.name,
-          description: equipment.description ?? '',
-          replacementValue: equipment.replacement_value != null ? String(equipment.replacement_value) : '',
-          quantity: equipment.quantity_total,
-          productType: equipment.product_type,
-          category: equipment.category ?? '',
-          docLink: equipment.documentation_url ?? '',
-          hasOptionalAddons: optional.length > 0,
-          hasRequiredAddons: required.length > 0,
-          optionalAddonIds: optional.map((item) => item.id),
-          requiredAddonIds: required.map((item) => item.id),
-        })
+        const form = formFromData({ equipment, checkedOutCount, addonOptions })
+        setProductName(form.snapshot.productName)
+        setDescription(form.snapshot.description)
+        setReplacementValue(form.snapshot.replacementValue)
+        setQuantity(form.snapshot.quantity)
+        setProductType(form.snapshot.productType)
+        setCategory(form.snapshot.category)
+        setDocLink(form.snapshot.docLink)
+        setImagePreviewUrl(form.imageUrl)
+        setCheckedOutCount(form.checkedOutCount)
+        setOptionalAddons(form.optional)
+        setRequiredAddons(form.required)
+        setHasOptionalAddons(form.snapshot.hasOptionalAddons)
+        setHasRequiredAddons(form.snapshot.hasRequiredAddons)
+        setSnapshot(form.snapshot)
       })
       .catch((error) => {
         // eslint-disable-next-line no-console
@@ -148,7 +166,7 @@ export default function ManageInventoryItemPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, initial])
 
   useEffect(() => {
     let cancelled = false

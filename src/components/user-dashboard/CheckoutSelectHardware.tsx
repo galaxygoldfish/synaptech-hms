@@ -8,6 +8,7 @@ import { SearchField } from './SearchField'
 import { InventoryFilterChips } from './InventoryFilterChips'
 import { InventoryGroupedList } from './InventoryGroupedList'
 import { useInventoryCatalog } from '../../lib/useInventoryCatalog'
+import { useStartCheckout } from './useStartCheckout'
 import type { Equipment, UserProfile } from '../../types'
 import styles from './CheckoutSelectHardware.module.css'
 
@@ -34,8 +35,10 @@ export default function CheckoutSelectHardware() {
     signOut()
   }
 
+  const { startCheckout, pendingId } = useStartCheckout()
+
   function handleSelectItem(item: Equipment) {
-    navigate('/home/checkout/confirm', { state: { equipmentId: item.id } })
+    void startCheckout(item)
   }
 
   return (
@@ -64,7 +67,13 @@ export default function CheckoutSelectHardware() {
 
         <InventoryFilterChips selected={selectedFilters} onToggle={toggleFilter} />
 
-        <InventoryGroupedList groups={groups} isLoading={isLoading} error={error} onSelectItem={handleSelectItem} />
+        <InventoryGroupedList
+          groups={groups}
+          isLoading={isLoading}
+          error={error}
+          onSelectItem={handleSelectItem}
+          pendingItemId={pendingId}
+        />
       </main>
 
       {isProfileOpen && user && (

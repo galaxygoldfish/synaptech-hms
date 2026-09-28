@@ -9,11 +9,17 @@ import {
   fetchInventoryAudits,
   INVENTORY_AUDIT_LIMIT,
   type InventoryAuditSummary,
+  peekInventoryAudits,
+  fetchAuditableInventory,
+  fetchInventoryAudit,
 } from '../../lib/inventoryAudit'
 import { formatAuditTimestamp } from './InventoryAuditParts'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './InventoryAudit.module.css'
+import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { auditReportKey } from '../../lib/detailKeys'
+import { CACHE_KEYS } from '../../lib/queryCache'
 
 /**
  * The history of inventory audits, newest first, with a "+" that starts a
@@ -82,12 +88,15 @@ function matchesQuery(audit: InventoryAuditSummary, query: string): boolean {
 
 export default function InventoryAudit() {
   const navigate = useNavigate()
+  const { open, pendingKey } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [audits, setAudits] = useState<InventoryAuditSummary[]>([])
-  const [isCapped, setCapped] = useState(false)
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialPage] = useState(peekInventoryAudits)
+  const [audits, setAudits] = useState<InventoryAuditSummary[]>(initialPage?.audits ?? [])
+  const [isCapped, setCapped] = useState(initialPage?.hasMore ?? false)
+  const [isLoading, setLoading] = useState(initialPage === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -103,7 +112,7 @@ export default function InventoryAudit() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load inventory audits:', fetchError)
-        if (!cancelled) setError('Could not load past audits. Please try again.')
+        if (!cancelled && initialPage === null) setError('Could not load past audits. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -163,7 +172,11 @@ export default function InventoryAudit() {
             <button
               type="button"
               className={styles.newAuditButton}
-              onClick={() => navigate('/adminHome/inventory/audit/new')}
+              onClick={() =>
+                void open(CACHE_KEYS.auditableInventory, fetchAuditableInventory, '/adminHome/inventory/audit/new')
+              }
+              aria-busy={pendingKey === CACHE_KEYS.auditableInventory}
+              style={pendingKey === CACHE_KEYS.auditableInventory ? PENDING_ROW_STYLE : undefined}
             >
               <PlusIconSmallFilled size={15} color="#4a647f" />
               New audit
@@ -216,7 +229,15 @@ export default function InventoryAudit() {
                       <button
                         type="button"
                         className={styles.auditItem}
-                        onClick={() => navigate(`/adminHome/inventory/audit/${audit.id}`)}
+                        onClick={() =>
+                          void open(
+                            auditReportKey(audit.id),
+                            () => fetchInventoryAudit(audit.id),
+                            `/adminHome/inventory/audit/${audit.id}`,
+                          )
+                        }
+                        aria-busy={pendingKey === auditReportKey(audit.id)}
+                        style={pendingKey === auditReportKey(audit.id) ? PENDING_ROW_STYLE : undefined}
                       >
                         <span className={`${styles.badge} ${badge.className} ${styles.outcomeChip}`}>
                           {badge.label}

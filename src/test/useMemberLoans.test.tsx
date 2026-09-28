@@ -35,15 +35,16 @@ describe('useMemberLoans', () => {
 
   // The point of the hook: instant from cache, but never *only* the cache,
   // since an admin's hand-off or return happens in another browser.
-  it('shows the cached copy at once, then replaces it with the fresh one', async () => {
-    vi.mocked(peekMemberLoans).mockReturnValue(Promise.resolve(cachedGroups))
+  it('has the cached copy on the first render, then replaces it with the fresh one', async () => {
+    vi.mocked(peekMemberLoans).mockReturnValue(cachedGroups)
     let finishFresh: (groups: MemberLoanGroup[]) => void = () => {}
     vi.mocked(fetchMemberLoans).mockReturnValue(new Promise((resolve) => (finishFresh = resolve)))
 
     const { result } = renderHook(() => useMemberLoans('member-1'))
 
-    await waitFor(() => expect(result.current.groups).toBe(cachedGroups))
-    // Shown, but not to be decided on yet.
+    // On the very first render — no skeleton frame — but not to be decided
+    // on yet.
+    expect(result.current.groups).toBe(cachedGroups)
     expect(result.current.isFresh).toBe(false)
 
     finishFresh(freshGroups)
@@ -52,7 +53,7 @@ describe('useMemberLoans', () => {
   })
 
   it('keeps the cached copy on screen if the refresh fails', async () => {
-    vi.mocked(peekMemberLoans).mockReturnValue(Promise.resolve(cachedGroups))
+    vi.mocked(peekMemberLoans).mockReturnValue(cachedGroups)
     vi.mocked(fetchMemberLoans).mockRejectedValue(new Error('offline'))
 
     const { result } = renderHook(() => useMemberLoans('member-1'))

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, peekValue, refresh } from './queryCache'
 
 export type EmailLogStatus = 'sent' | 'failed'
 
@@ -60,7 +61,18 @@ function mapRow(row: EmailLogRow): EmailLogEntry {
  * one email opened — see fetchEmailLogBodyHtml. The plain-text body stays,
  * because the search box matches against it.
  */
-export async function fetchEmailLog(limit = 500): Promise<EmailLogEntry[]> {
+// Always fetched fresh, but remembered so the screen can paint it
+// straight away next time (see useFreshData).
+export function fetchEmailLog(limit = 500): Promise<EmailLogEntry[]> {
+  return refresh(CACHE_KEYS.emailLog, () => loadEmailLog(limit))
+}
+
+/** As last loaded, synchronously, or null. Display only. */
+export function peekEmailLog(): EmailLogEntry[] | null {
+  return peekValue<EmailLogEntry[]>(CACHE_KEYS.emailLog) ?? null
+}
+
+async function loadEmailLog(limit = 500): Promise<EmailLogEntry[]> {
   const { data, error } = await supabase
     .from('email_log')
     .select('id, template_key, recipient_email, cc_email, subject, body_text, status, error, sent_at, email_templates(label, category)')

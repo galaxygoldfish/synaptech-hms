@@ -11,12 +11,15 @@ import {
   type MemberLoanGroup,
   type MemberLoanItem,
   type MemberLoanState,
+  fetchMemberLoanItem,
 } from '../../lib/memberLoans'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import { useMemberLoans } from '../../lib/useMemberLoans'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MyHardwareLoans.module.css'
+import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { memberLoanItemKey } from '../../lib/detailKeys'
 
 type LoanFilter = 'all' | 'current' | 'past' | 'pending'
 
@@ -113,6 +116,7 @@ function dateLines(item: MemberLoanItem, state: MemberLoanState): DateLine[] {
 
 export default function MyHardwareLoans() {
   const navigate = useNavigate()
+  const { open, pendingKey } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
@@ -225,8 +229,10 @@ export default function MyHardwareLoans() {
       <button
         type="button"
         className={styles.loanItem}
-        onClick={() => navigate(`/home/loans/${item.id}`)}
+        onClick={() => void open(memberLoanItemKey(item.id), () => fetchMemberLoanItem(item.id), `/home/loans/${item.id}`)}
         aria-label={`View details for ${item.itemName}`}
+        aria-busy={pendingKey === memberLoanItemKey(item.id)}
+        style={pendingKey === memberLoanItemKey(item.id) ? PENDING_ROW_STYLE : undefined}
       >
         {body}
       </button>

@@ -20,6 +20,8 @@ import {
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './EditEmailTemplate.module.css'
+import { templateEditorKey, type TemplateEditorData } from '../../lib/emailTemplates'
+import { readStash } from '../../lib/queryCache'
 
 const CLOSE_ICON_SVG =
   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -349,24 +351,30 @@ export default function EditEmailTemplate() {
 
   const listPath = `/adminHome/emails/${category}`
 
-  const [template, setTemplate] = useState<EmailTemplate | null>(null)
-  const [isLoading, setLoading] = useState(true)
+  // Opened from the template list, which fetched the template and its
+  // recipients a moment ago (usePrefetchNavigate): draw from them on the
+  // first render.
+  const [prefetched] = useState(() =>
+    templateId ? readStash<TemplateEditorData>(templateEditorKey(templateId)) : undefined,
+  )
+  const [template, setTemplate] = useState<EmailTemplate | null>(prefetched?.template ?? null)
+  const [isLoading, setLoading] = useState(prefetched === undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const editorRef = useRef<HTMLDivElement>(null)
   const savedRangeRef = useRef<Range | null>(null)
-  const [subject, setSubject] = useState('')
+  const [subject, setSubject] = useState(prefetched?.template?.subject ?? '')
 
   const [isSaving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const [recipients, setRecipients] = useState<TemplateRecipient[]>([])
-  const [isRecipientsLoading, setRecipientsLoading] = useState(true)
+  const [recipients, setRecipients] = useState<TemplateRecipient[]>(prefetched?.recipients ?? [])
+  const [isRecipientsLoading, setRecipientsLoading] = useState(prefetched === undefined)
   const [recipientsError, setRecipientsError] = useState<string | null>(null)
   const [pendingRecipientKey, setPendingRecipientKey] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!templateId) return
+    if (!templateId || prefetched) return
     let cancelled = false
     setLoading(true)
     setLoadError(null)
@@ -390,7 +398,7 @@ export default function EditEmailTemplate() {
     return () => {
       cancelled = true
     }
-  }, [templateId])
+  }, [templateId, prefetched])
 
   // Loaded separately from the template itself — the Recipients section can
   // shimmer in a beat after the subject/body are already on screen, rather
@@ -399,6 +407,9 @@ export default function EditEmailTemplate() {
   // overrides are per template-key.
   useEffect(() => {
     if (!template) return
+    // Already have these for the prefetched template; a later save makes a
+    // new template object, which re-reads them as before.
+    if (prefetched && template === prefetched.template) return
     let cancelled = false
     setRecipientsLoading(true)
     setRecipientsError(null)
@@ -419,7 +430,7 @@ export default function EditEmailTemplate() {
     return () => {
       cancelled = true
     }
-  }, [template])
+  }, [template, prefetched])
 
   // Populates the contentEditable body once the real editor is on screen.
   // This can't happen inside the fetch above: while isLoading is true, the

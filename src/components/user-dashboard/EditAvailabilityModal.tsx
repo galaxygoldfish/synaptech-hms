@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AvailabilityGrid, AvailabilityGridSkeleton, parseSlotKey, slotKey } from './AvailabilityGrid'
 import { CloseIcon } from './icons'
 import {
   fetchAvailability,
+  peekAvailability,
   saveAvailability,
   type AvailabilityTarget,
 } from '../../lib/availability'
@@ -47,8 +48,20 @@ const SUBTEXT: Record<AvailabilityTarget['kind'], [string, string]> = {
 }
 
 export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabilityModalProps) {
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [isLoading, setLoading] = useState(true)
+  // The loan screen fetches these in the background once it has loaded, so
+  // the dialog normally opens with the member's hours already painted; the
+  // fetch below refreshes them — unless the member has started changing
+  // them, which it must never undo.
+  const [initialSlots] = useState(() => peekAvailability(target))
+  const [selected, setSelectedState] = useState<Set<string>>(
+    () => new Set((initialSlots ?? []).map((slot) => slotKey(slot.date, slot.hour))),
+  )
+  const hasEdited = useRef(false)
+  const setSelected = (next: Set<string>) => {
+    hasEdited.current = true
+    setSelectedState(next)
+  }
+  const [isLoading, setLoading] = useState(initialSlots === null)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -58,17 +71,19 @@ export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabi
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setLoading(initialSlots === null)
     setError(null)
 
     fetchAvailability(target)
       .then((slots) => {
-        if (!cancelled) setSelected(new Set(slots.map((slot) => slotKey(slot.date, slot.hour))))
+        if (!cancelled && !hasEdited.current) {
+          setSelectedState(new Set(slots.map((slot) => slotKey(slot.date, slot.hour))))
+        }
       })
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load availability:', fetchError)
-        if (!cancelled) setError('Could not load your availability. Please try again.')
+        if (!cancelled && initialSlots === null) setError('Could not load your availability. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

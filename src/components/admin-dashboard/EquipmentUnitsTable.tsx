@@ -9,6 +9,7 @@ import {
   deleteEquipmentUnit,
   fetchEquipmentUnitsWithStatus,
   setEquipmentQuantityTotal,
+  readManageItemUnitsPrefetch,
   type EquipmentUnitWithStatus,
 } from '../../lib/inventory'
 import { buildItemLabelsPdf, printLabelsPdf, preloadLabelPdfLibs } from '../../lib/labelPdf'
@@ -26,8 +27,10 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
   // Fetch the PDF library now, not when the button is pressed.
   useEffect(preloadLabelPdfLibs, [])
 
-  const [rows, setRows] = useState<EquipmentUnitWithStatus[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // Prefetched by the inventory list when the page was opened from it.
+  const [initialRows] = useState(() => readManageItemUnitsPrefetch(equipmentId))
+  const [rows, setRows] = useState<EquipmentUnitWithStatus[]>(initialRows ?? [])
+  const [isLoading, setLoading] = useState(initialRows === undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [isAdding, setAdding] = useState(false)
@@ -43,6 +46,7 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
   const barcodeLabelRefs = useRef(new Map<string, HTMLDivElement>())
 
   useEffect(() => {
+    if (initialRows) return
     let cancelled = false
     setLoading(true)
     setLoadError(null)
@@ -63,7 +67,7 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [equipmentId, initialRows])
 
   async function handleAddItem() {
     if (isAdding) return

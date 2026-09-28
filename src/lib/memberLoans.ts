@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, cached, invalidate, peek, refresh } from './queryCache'
+import { CACHE_KEYS, cached, invalidate, peekValue, refresh } from './queryCache'
 import type { LoanRequestItemRole, LoanRequestStatus } from '../types'
 
 /**
@@ -326,9 +326,11 @@ export async function fetchMemberLoans(
   return [...(await load(memberLoansKey(userId), () => loadMemberLoans(userId)))]
 }
 
-/** Whatever is cached for this member, however old, or null. Display only. */
-export function peekMemberLoans(userId: string): Promise<MemberLoanGroup[]> | null {
-  return peek<MemberLoanGroup[]>(memberLoansKey(userId))?.then((groups) => [...groups]) ?? null
+/** The last loans loaded for this member, however old, or null — synchronously,
+    for a first paint. Display only. */
+export function peekMemberLoans(userId: string): MemberLoanGroup[] | null {
+  const groups = peekValue<MemberLoanGroup[]>(memberLoansKey(userId))
+  return groups ? [...groups] : null
 }
 
 /**
@@ -404,6 +406,8 @@ export async function cancelLoanRequest(loanRequestId: string): Promise<void> {
     .eq('id', loanRequestId)
     .eq('status', 'pending')
 
+  // Cancelling also releases the request's units.
   invalidate(CACHE_KEYS.memberLoans)
+  invalidate(CACHE_KEYS.equipmentAvailability)
   if (error) throw error
 }

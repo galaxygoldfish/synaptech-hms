@@ -19,6 +19,47 @@ export const CACHE_KEYS = {
   equipmentList: 'equipment:list',
   /** Followed by the member's user id — one entry per member. */
   memberLoans: 'member-loans:',
+  equipmentAvailability: 'equipment:availability',
+  inventorySummary: 'equipment:summary',
+  /** Every equipment-derived key above, and the stashes below — what an
+      inventory write invalidates. */
+  equipmentAll: 'equipment:',
+  /** Followed by an equipment id: the admin item page's data, stashed by the
+      inventory list just before opening it. */
+  manageItem: 'equipment:manage-item:',
+  /** Followed by an equipment id: that item's units table, likewise. */
+  manageItemUnits: 'equipment:manage-units:',
+  /** Followed by a loan_request_items id: the admin loan detail screen. */
+  loanDetail: 'admin-loans:detail:',
+  /** Followed by a loan_request_items id: the member's loan detail screen. */
+  memberLoanItem: 'member-loans:item:',
+  members: 'members:list',
+  /** Followed by a profile id: the admin member detail screen. */
+  memberDetail: 'members:detail:',
+  /** Everything members-derived — what a profile write invalidates. */
+  membersAll: 'members:',
+  emailTemplates: 'emails:templates',
+  /** Followed by a template id: the template editor. */
+  emailTemplate: 'emails:template:',
+  emailLog: 'emails:log',
+  /** Everything email-derived — what a template write invalidates. */
+  emailsAll: 'emails:',
+  auditLog: 'audit-log',
+  inventoryAudits: 'inventory-audits:list',
+  /** Followed by an audit id: a past audit's report. */
+  inventoryAuditReport: 'inventory-audits:report:',
+  /** Everything audit-derived — what recording an audit invalidates. */
+  inventoryAuditsAll: 'inventory-audits:',
+  /** The new-audit scan screen's inventory, prefetched from the audit list. */
+  auditableInventory: 'equipment:auditable',
+  /** Followed by an equipment id: the "get labels" product screen. */
+  labelsProduct: 'equipment:labels:',
+  /** Followed by a loan_request_items id: the hand-off agreement screen. */
+  handOff: 'admin-loans:handoff:',
+  /** The member's sign-agreement step: its items and the units they'll get. */
+  signAgreement: 'equipment:sign-agreement',
+  /** Followed by a target key: a request's or item's availability hours. */
+  availability: 'availability:',
 } as const
 
 interface Entry {
@@ -27,6 +68,16 @@ interface Entry {
 }
 
 const entries = new Map<string, Entry>()
+
+// Data fetched for one imminent navigation (see stash). Separate from the
+// cache proper: only ever read while very fresh, so an edit form can start
+// from it.
+const stashed = new Map<string, { value: unknown; at: number }>()
+
+// The last value each key resolved to, kept through invalidations and
+// refreshes (unlike `entries`) so a screen can paint it on its very first
+// render while the fresh copy loads. Display only; cleared with clearCache.
+const lastValues = new Map<string, unknown>()
 
 /**
  * Returns the cached promise for `key` while it is younger than `staleMs`,
@@ -43,9 +94,14 @@ export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STAL
   const promise = fetcher()
   const entry: Entry = { promise, fetchedAt: Date.now() }
   entries.set(key, entry)
-  promise.catch(() => {
-    if (entries.get(key) === entry) entries.delete(key)
-  })
+  promise.then(
+    (value) => {
+      lastValues.set(key, value)
+    },
+    () => {
+      if (entries.get(key) === entry) entries.delete(key)
+    },
+  )
   return promise
 }
 
@@ -57,26 +113,62 @@ export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STAL
  * predates a request submitted from another browser a moment ago.
  */
 export function refresh<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-  invalidate(key)
+  // Only the entry: the last value stays on screen until this one lands.
+  entries.delete(key)
   return cached(key, fetcher)
 }
 
 /**
- * The cached promise for `key` whatever its age, or null. For showing
- * something at once while a fresh fetch is under way — never for deciding
- * anything (see useMemberLoans).
+ * The last value `key` resolved to, however old, synchronously — or
+ * undefined if it never has. Synchronous so a screen can render it on its
+ * first paint instead of flashing a skeleton for a frame. For showing
+ * something while a fresh fetch is under way, never for deciding anything
+ * (see useMemberLoans and useInventoryCatalog).
  */
-export function peek<T>(key: string): Promise<T> | null {
-  return (entries.get(key)?.promise as Promise<T> | undefined) ?? null
+export function peekValue<T>(key: string): T | undefined {
+  return lastValues.get(key) as T | undefined
 }
 
-/** Drops every entry whose key starts with `prefix`. */
+/**
+ * Drops every entry whose key starts with `prefix`, and its last value: the
+ * write that calls this changed the data, so the old copy shouldn't be
+ * painted even for a moment (a member who just cancelled a request must not
+ * see it listed as pending on the way back to their loans).
+ */
 export function invalidate(prefix: string): void {
   for (const key of entries.keys()) {
     if (key.startsWith(prefix)) entries.delete(key)
   }
+  for (const key of lastValues.keys()) {
+    if (key.startsWith(prefix)) lastValues.delete(key)
+  }
+  for (const key of stashed.keys()) {
+    if (key.startsWith(prefix)) stashed.delete(key)
+  }
+}
+
+/**
+ * Hands data fetched just before a navigation to the screen it opens, so
+ * that screen can draw on its first render instead of fetching again behind
+ * a skeleton — the admin inventory list does this for the item page.
+ */
+export function stash(key: string, value: unknown): void {
+  stashed.set(key, { value, at: Date.now() })
+}
+
+/**
+ * The stashed value for `key` if it was stashed within `maxAgeMs`, else
+ * undefined. Only that fresh, because a form may be built from it; a write
+ * to the data (invalidate) removes it outright.
+ */
+export function readStash<T>(key: string, maxAgeMs = 10_000): T | undefined {
+  const entry = stashed.get(key)
+  if (!entry || Date.now() - entry.at > maxAgeMs) return undefined
+  return entry.value as T
 }
 
 export function clearCache(): void {
   entries.clear()
+  lastValues.clear()
+  stashed.clear()
 }

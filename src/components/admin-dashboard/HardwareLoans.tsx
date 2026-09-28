@@ -10,11 +10,15 @@ import {
   fetchAllLoanRequestItems,
   type AdminLoanRequestItemSummary,
   type LoanBucket,
+  peekAllLoanRequestItems,
+  fetchLoanRequestItemDetail,
 } from '../../lib/loanRequests'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './HardwareLoans.module.css'
+import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { loanDetailKey } from '../../lib/detailKeys'
 
 type LoanFilter = 'all' | 'active' | 'overdue' | 'requests' | 'returned'
 
@@ -102,12 +106,15 @@ function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanBucket | null):
 
 export default function HardwareLoans() {
   const navigate = useNavigate()
+  const { open, pendingKey } = usePrefetchNavigate()
   const [searchParams] = useSearchParams()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialLoans] = useState(peekAllLoanRequestItems)
+  const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>(initialLoans ?? [])
+  const [isLoading, setLoading] = useState(initialLoans === null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<LoanFilter>(() => parseFilter(searchParams.get('filter')))
   const { ref: chipRowRef, maskImage: chipRowMask } = useEdgeFade<HTMLDivElement>()
@@ -123,7 +130,7 @@ export default function HardwareLoans() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load hardware loans:', fetchError)
-        if (!cancelled) setError('Could not load hardware loans. Please try again.')
+        if (!cancelled && initialLoans === null) setError('Could not load hardware loans. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -163,7 +170,7 @@ export default function HardwareLoans() {
   }
 
   function handleRowClick(loan: AdminLoanRequestItemSummary) {
-    navigate(`/adminHome/loans/${loan.id}`)
+    void open(loanDetailKey(loan.id), () => fetchLoanRequestItemDetail(loan.id), `/adminHome/loans/${loan.id}`)
   }
 
   const emptyMessage = query.trim()
@@ -267,6 +274,8 @@ export default function HardwareLoans() {
                     type="button"
                     className={styles.loanItem}
                     onClick={() => handleRowClick(loan)}
+                    aria-busy={pendingKey === loanDetailKey(loan.id)}
+                    style={pendingKey === loanDetailKey(loan.id) ? PENDING_ROW_STYLE : undefined}
                     aria-label={`View loan details for ${loan.itemName}`}
                   >
                     {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}

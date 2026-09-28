@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, peekValue, refresh } from './queryCache'
 
 export type AuditCategory = 'members' | 'inventory' | 'loans' | 'emails'
 
@@ -100,7 +101,18 @@ export interface AuditLogPage {
  * would eventually stall the screen. One extra row is requested so "there
  * is more than this" can be answered without a second count query.
  */
-export async function fetchAuditLog(limit = AUDIT_LOG_LIMIT): Promise<AuditLogPage> {
+// Always fetched fresh, but remembered so the screen can paint it
+// straight away next time (see useFreshData).
+export function fetchAuditLog(limit = AUDIT_LOG_LIMIT): Promise<AuditLogPage> {
+  return refresh(CACHE_KEYS.auditLog, () => loadAuditLog(limit))
+}
+
+/** As last loaded, synchronously, or null. Display only. */
+export function peekAuditLog(): AuditLogPage | null {
+  return peekValue<AuditLogPage>(CACHE_KEYS.auditLog) ?? null
+}
+
+async function loadAuditLog(limit = AUDIT_LOG_LIMIT): Promise<AuditLogPage> {
   const { data, error } = await supabase
     .from('audit_log')
     .select(

@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { LoanAgreementSignOff } from '../LoanAgreementSignOff'
+import { LoanAgreementSignOff } from '../LoanAgreementSignOff'
+import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
+import { loanDetailKey } from '../../../lib/detailKeys'
+import { fetchLoanRequestItemDetail } from '../../../lib/loanRequests'
 
 /**
  * Step 2 of "Check out hardware": the agreement, shared with the hand-off
@@ -11,6 +14,7 @@ import { LoanAgreementSignOff } from '../LoanAgreementSignOff'
 export default function CheckoutAgreement() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { open } = usePrefetchNavigate()
   const location = useLocation()
 
   // Step 1 is what decided this is the right loan — by scan, by typed
@@ -33,7 +37,11 @@ export default function CheckoutAgreement() {
       heading="Loan agreement sign off"
       subtext="Check that the borrower signed the agreement and that all fields are correct, then sign section 10."
       onBack={() => navigate(verifiedBy === 'database' ? '/adminHome/checkout/pick' : '/adminHome/checkout')}
-      onRecorded={(detail) => navigate(`/adminHome/loans/${detail.id}`, { replace: true })}
+      onRecorded={(detail) =>
+        void open(loanDetailKey(detail.id), () => fetchLoanRequestItemDetail(detail.id), `/adminHome/loans/${detail.id}`, {
+          replace: true,
+        })
+      }
     />
   )
 }

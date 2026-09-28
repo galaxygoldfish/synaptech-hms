@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { preloadInBackground } from './lib/backgroundPreload'
 import { PageTransition } from './components/PageTransition'
 import { AppShellSkeleton } from './components/skeleton/AppShellSkeleton'
 import WelcomePage from './pages/WelcomePage'
@@ -39,18 +40,62 @@ import AdminCheckoutPickLoanPage from './pages/AdminCheckoutPickLoanPage'
 // document and label rendering, so most sessions never need their code.
 // Everything else stays in the main bundle so ordinary navigation never
 // waits on a chunk.
-const CheckoutSignAgreementPage = lazy(() => import('./pages/CheckoutSignAgreementPage'))
-const AdminHandOffPage = lazy(() => import('./pages/AdminHandOffPage'))
-const AdminAuditLogPage = lazy(() => import('./pages/AdminAuditLogPage'))
-const AdminInventoryAuditPage = lazy(() => import('./pages/AdminInventoryAuditPage'))
-const AdminInventoryAuditScanPage = lazy(() => import('./pages/AdminInventoryAuditScanPage'))
-const AdminInventoryAuditReportPage = lazy(() => import('./pages/AdminInventoryAuditReportPage'))
-const AddInventoryItemLabelsPage = lazy(() => import('./pages/AddInventoryItemLabelsPage'))
-const GetReplacementLabelPage = lazy(() => import('./pages/GetReplacementLabelPage'))
-const GetLabelsBrowsePage = lazy(() => import('./pages/GetLabelsBrowsePage'))
-const GetLabelsProductPage = lazy(() => import('./pages/GetLabelsProductPage'))
-const AdminEditEmailTemplatePage = lazy(() => import('./pages/AdminEditEmailTemplatePage'))
-const AdminCheckoutAgreementPage = lazy(() => import('./pages/AdminCheckoutAgreementPage'))
+//
+// Each chunk is also fetched in the background once the signed-in user's
+// role is known (PreloadRoutes, below), so visiting one normally finds its
+// code already here and the Suspense fallback never shows.
+const memberChunks = {
+  checkoutSignAgreement: () => import('./pages/CheckoutSignAgreementPage'),
+}
+const adminChunks = {
+  handOff: () => import('./pages/AdminHandOffPage'),
+  auditLog: () => import('./pages/AdminAuditLogPage'),
+  inventoryAudit: () => import('./pages/AdminInventoryAuditPage'),
+  inventoryAuditScan: () => import('./pages/AdminInventoryAuditScanPage'),
+  inventoryAuditReport: () => import('./pages/AdminInventoryAuditReportPage'),
+  addItemLabels: () => import('./pages/AddInventoryItemLabelsPage'),
+  replacementLabel: () => import('./pages/GetReplacementLabelPage'),
+  labelsBrowse: () => import('./pages/GetLabelsBrowsePage'),
+  labelsProduct: () => import('./pages/GetLabelsProductPage'),
+  editEmailTemplate: () => import('./pages/AdminEditEmailTemplatePage'),
+  checkoutAgreement: () => import('./pages/AdminCheckoutAgreementPage'),
+}
+
+const CheckoutSignAgreementPage = lazy(memberChunks.checkoutSignAgreement)
+const AdminHandOffPage = lazy(adminChunks.handOff)
+const AdminAuditLogPage = lazy(adminChunks.auditLog)
+const AdminInventoryAuditPage = lazy(adminChunks.inventoryAudit)
+const AdminInventoryAuditScanPage = lazy(adminChunks.inventoryAuditScan)
+const AdminInventoryAuditReportPage = lazy(adminChunks.inventoryAuditReport)
+const AddInventoryItemLabelsPage = lazy(adminChunks.addItemLabels)
+const GetReplacementLabelPage = lazy(adminChunks.replacementLabel)
+const GetLabelsBrowsePage = lazy(adminChunks.labelsBrowse)
+const GetLabelsProductPage = lazy(adminChunks.labelsProduct)
+const AdminEditEmailTemplatePage = lazy(adminChunks.editEmailTemplate)
+const AdminCheckoutAgreementPage = lazy(adminChunks.checkoutAgreement)
+
+// Fetches the lazy pages this user's role can reach, once, when the browser
+// is idle after sign-in — after the first screen has painted, so it never
+// competes with it. A failed fetch is ignored here; visiting the page
+// retries it (and main.tsx recovers from a deploy in between).
+function PreloadRoutes() {
+  const { profile } = useAuth()
+  const role = profile?.role
+
+  useEffect(() => {
+    if (!role) return
+    const chunks = Object.values(role === 'admin' ? adminChunks : memberChunks)
+    const load = () => preloadInBackground(chunks)
+    if ('requestIdleCallback' in window) {
+      const handle = window.requestIdleCallback(load, { timeout: 3000 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const handle = setTimeout(load, 1500)
+    return () => clearTimeout(handle)
+  }, [role])
+
+  return null
+}
 
 function LoadingScreen() {
   return <AppShellSkeleton />
@@ -118,6 +163,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <PreloadRoutes />
       <PageTransition>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>

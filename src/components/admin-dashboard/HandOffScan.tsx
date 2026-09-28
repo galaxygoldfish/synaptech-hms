@@ -18,6 +18,8 @@ import { normalizeSerialNumber } from '../../lib/serialNumber'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HandOffAgreement.module.css'
+import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { fetchHandOffData, handOffKey } from '../../lib/handOff'
 
 // Long enough to register as a result rather than a flicker, short enough
 // not to hold up someone standing there with the hardware in their hands.
@@ -59,6 +61,7 @@ function ScanMarker({ feedback }: { feedback: ScanFeedback }) {
 export default function HandOffScan() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { open } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
@@ -113,7 +116,10 @@ export default function HandOffScan() {
   }, [profile])
 
   function goToAgreement(verifiedBy: 'scan' | 'attestation') {
-    navigate(`/adminHome/loans/${id}/hand-off/agreement`, { state: { serialVerifiedBy: verifiedBy } })
+    if (!id) return
+    void open(handOffKey(id), () => fetchHandOffData(id), `/adminHome/loans/${id}/hand-off/agreement`, {
+      state: { serialVerifiedBy: verifiedBy },
+    })
   }
 
   function showFailure(reason: string) {

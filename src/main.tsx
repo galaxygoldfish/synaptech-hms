@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AuthProvider } from './context/AuthContext'
 import App from './App'
+import { isBackgroundPreloading } from './lib/backgroundPreload'
 import './index.css'
 
 // Some pages and the PDF libraries are separate code chunks, loaded on first
@@ -12,8 +13,13 @@ import './index.css'
 // member mid-checkout lands back on the same step. At most one reload per
 // 10 seconds, so a genuinely broken chunk falls through to ErrorBoundary
 // rather than reloading forever.
+//
+// Not while offline (a reload would only show the browser's offline page),
+// and not for chunks the app fetched in the background on its own — see
+// backgroundPreload.ts.
 const CHUNK_RELOAD_KEY = 'hms_chunk_reload_at'
 window.addEventListener('vite:preloadError', (event) => {
+  if (!navigator.onLine || isBackgroundPreloading()) return
   let lastReload = 0
   try {
     lastReload = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY)) || 0

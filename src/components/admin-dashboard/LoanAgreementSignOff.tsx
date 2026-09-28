@@ -18,6 +18,8 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HandOffAgreement.module.css'
 import { preloadApprovalPdfLib } from '../../lib/loanAgreementApproval'
+import { handOffKey, type HandOffData } from '../../lib/handOff'
+import { readStash } from '../../lib/queryCache'
 
 /**
  * Signing off a loan agreement and recording the hand-off — the last step of
@@ -91,10 +93,14 @@ export function LoanAgreementSignOff({
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(null)
-  const [member, setMember] = useState<Profile | null>(null)
-  const [equipment, setEquipment] = useState<Equipment | null>(null)
-  const [isLoading, setLoading] = useState(true)
+  // The check-out screens fetch this while the admin looks at the confirm
+  // card (see fetchHandOffData): draw the agreement from it on the first
+  // render instead of behind a skeleton.
+  const [prefetched] = useState(() => (itemId ? readStash<HandOffData>(handOffKey(itemId)) : undefined))
+  const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(prefetched?.detail ?? null)
+  const [member, setMember] = useState<Profile | null>(prefetched?.member ?? null)
+  const [equipment, setEquipment] = useState<Equipment | null>(prefetched?.equipment ?? null)
+  const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)
 
   const [receivedDate, setReceivedDate] = useState(todayIso)
@@ -107,7 +113,7 @@ export function LoanAgreementSignOff({
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!itemId) return
+    if (!itemId || prefetched) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -138,7 +144,7 @@ export function LoanAgreementSignOff({
     return () => {
       cancelled = true
     }
-  }, [itemId])
+  }, [itemId, prefetched])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null

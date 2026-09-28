@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { fetchAvailableEquipmentUnit } from './inventory'
 import { isApprovedAgreementPath, stampApprovedAgreement } from './loanAgreementApproval'
-import { CACHE_KEYS, cached, invalidate, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 import { normalizeSerialNumber } from './serialNumber'
 import type { LoanRequest, LoanRequestItemRole, LoanRequestStatus } from '../types'
 
@@ -82,12 +82,14 @@ export interface SubmitLoanRequestInput {
 // rather than leaving a half-submitted request behind.
 export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<LoanRequest> {
   // Invalidated whether or not the submission lands: a failure part-way
-  // deletes the request again, but either way the member's list changed or
-  // may have.
+  // deletes the request again, but either way the member's list and the free
+  // unit counts changed or may have.
   try {
     return await submit(input)
   } finally {
     invalidate(CACHE_KEYS.memberLoans)
+    invalidate(CACHE_KEYS.equipmentAvailability)
+    invalidate(CACHE_KEYS.availability)
   }
 }
 
@@ -498,6 +500,8 @@ export async function handOffLoanRequestItem(input: HandOffLoanRequestItemInput)
     await handOff(input)
   } finally {
     invalidate(CACHE_KEYS.adminLoans)
+    // Checked-out counts and unit statuses on the inventory screens.
+    invalidate(CACHE_KEYS.equipmentAll)
   }
 }
 
@@ -601,6 +605,8 @@ export async function markLoanRequestItemReturned(itemId: string, adminId: strin
     .select('id')
 
   invalidate(CACHE_KEYS.adminLoans)
+  // Checked-out counts and unit statuses on the inventory screens.
+  invalidate(CACHE_KEYS.equipmentAll)
   if (error) throw error
 
   if (!updated || updated.length === 0) {
@@ -664,18 +670,20 @@ export function bucketForLoanItem(
 // narrowed what was already allowed, at the cost of five sequential round
 // trips. None of these tables is large at club scale.
 //
-// Cached (see queryCache.ts) for the screens that only display it — the
-// dashboard counts and the loans list — and invalidated by
-// handOffLoanRequestItem and markLoanRequestItemReturned. Screens that act
-// on it (check-out and return: scan and pick) pass `fresh: true`, because a
-// cached list can predate a request another browser submitted seconds ago.
-// Each caller gets its own copy of the array, so one screen sorting or
+// Always fetched fresh — the check-out and return screens decide from it,
+// and a copy even a minute old can predate a request another browser just
+// submitted — but remembered, so the dashboard and the loans list can paint
+// the last copy on their first render (peekAllLoanRequestItems) while this
+// runs. Each caller gets its own copy of the array, so one screen sorting or
 // filtering it in place can't disturb another's.
-export async function fetchAllLoanRequestItems(
-  { fresh = false }: { fresh?: boolean } = {},
-): Promise<AdminLoanRequestItemSummary[]> {
-  const load = fresh ? refresh : cached
-  return [...(await load(CACHE_KEYS.adminLoans, loadAllLoanRequestItems))]
+export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]> {
+  return [...(await refresh(CACHE_KEYS.adminLoans, loadAllLoanRequestItems))]
+}
+
+/** Every loan item as last loaded, synchronously, or null. Display only. */
+export function peekAllLoanRequestItems(): AdminLoanRequestItemSummary[] | null {
+  const items = peekValue<AdminLoanRequestItemSummary[]>(CACHE_KEYS.adminLoans)
+  return items ? [...items] : null
 }
 
 async function loadAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]> {

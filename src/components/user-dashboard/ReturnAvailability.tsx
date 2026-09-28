@@ -9,6 +9,9 @@ import { requestReturn, type AvailabilitySlot } from '../../lib/availability'
 import { fetchMemberLoanItem, isOutWithMember, memberLoanState, type MemberLoanItem } from '../../lib/memberLoans'
 import type { UserProfile } from '../../types'
 import styles from './ReturnAvailability.module.css'
+import { CACHE_KEYS, readStash } from '../../lib/queryCache'
+import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { memberLoanItemKey } from '../../lib/detailKeys'
 
 /**
  * Raising a return: the member says when they are free over the next two
@@ -18,15 +21,31 @@ import styles from './ReturnAvailability.module.css'
  * the admin reading the answer sees one kind of schedule whichever end of the
  * loan it came from.
  */
+// Only hardware actually in the member's hands can be handed back. Reaching
+// this by URL for anything else is a dead end, so it says so rather than
+// offering a grid that could never be submitted. Null when it can go back.
+function returnBlocker(loan: MemberLoanItem): string | null {
+  if (!isOutWithMember(memberLoanState(loan))) return 'This loan is not out with you, so there is nothing to return.'
+  if (loan.returnRequestedAt) return 'You have already asked to return this. A Hardware Manager will be in touch.'
+  return null
+}
+
 export default function ReturnAvailability() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { open } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [item, setItem] = useState<MemberLoanItem | null>(null)
-  const [isLoading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Opened from the loan's detail screen, which hands over the loan it just
+  // showed (usePrefetchNavigate): judge and draw it on the first render.
+  const [initial] = useState(() => {
+    const loan = id ? readStash<MemberLoanItem>(`${CACHE_KEYS.memberLoanItem}${id}`) : undefined
+    return loan ? { item: returnBlocker(loan) ? null : loan, error: returnBlocker(loan) } : null
+  })
+  const [item, setItem] = useState<MemberLoanItem | null>(initial?.item ?? null)
+  const [isLoading, setLoading] = useState(initial === null)
+  const [error, setError] = useState<string | null>(initial?.error ?? null)
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isSubmitting, setSubmitting] = useState(false)
@@ -34,7 +53,7 @@ export default function ReturnAvailability() {
   const [isSubmitted, setSubmitted] = useState(false)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || initial) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -42,15 +61,9 @@ export default function ReturnAvailability() {
     fetchMemberLoanItem(id)
       .then((loan) => {
         if (cancelled) return
-        // Only hardware actually in the member's hands can be handed back.
-        // Reaching this by URL for anything else is a dead end, so it says so
-        // rather than offering a grid that could never be submitted.
-        if (!isOutWithMember(memberLoanState(loan))) {
-          setError('This loan is not out with you, so there is nothing to return.')
-          return
-        }
-        if (loan.returnRequestedAt) {
-          setError('You have already asked to return this. A Hardware Manager will be in touch.')
+        const blocker = returnBlocker(loan)
+        if (blocker) {
+          setError(blocker)
           return
         }
         setItem(loan)
@@ -67,7 +80,7 @@ export default function ReturnAvailability() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, initial])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -162,7 +175,11 @@ export default function ReturnAvailability() {
           <button
             type="button"
             className={styles.topBackButton}
-            onClick={() => navigate(`/home/loans/${id}`)}
+            onClick={() =>
+              id
+                ? void open(memberLoanItemKey(id), () => fetchMemberLoanItem(id), `/home/loans/${id}`)
+                : navigate('/home/loans')
+            }
             aria-label="Back"
           >
             <ArrowLeftIcon size={20} />

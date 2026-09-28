@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 
 export type EmailBodySegment = { type: 'text'; value: string } | { type: 'chip'; field: string }
 
@@ -205,7 +206,18 @@ function mapRow(row: EmailTemplateRow): EmailTemplate {
   }
 }
 
-export async function fetchEmailTemplates(category: EmailTemplateCategory): Promise<EmailTemplate[]> {
+// Always fetched fresh, but remembered so the screen can paint it
+// straight away next time (see useFreshData).
+export function fetchEmailTemplates(category: EmailTemplateCategory): Promise<EmailTemplate[]> {
+  return refresh(`${CACHE_KEYS.emailTemplates}:${category}`, () => loadEmailTemplates(category))
+}
+
+/** As last loaded, synchronously, or null. Display only. */
+export function peekEmailTemplates(category: EmailTemplateCategory): EmailTemplate[] | null {
+  return peekValue<EmailTemplate[]>(`${CACHE_KEYS.emailTemplates}:${category}`) ?? null
+}
+
+async function loadEmailTemplates(category: EmailTemplateCategory): Promise<EmailTemplate[]> {
   const { data, error } = await supabase
     .from('email_templates')
     .select(EMAIL_TEMPLATE_COLUMNS)
@@ -244,6 +256,7 @@ export async function updateEmailTemplateContent(
     .select(EMAIL_TEMPLATE_COLUMNS)
     .single()
 
+  invalidate(CACHE_KEYS.emailsAll)
   if (error) throw error
   return mapRow(data as EmailTemplateRow)
 }
@@ -256,6 +269,7 @@ export async function setEmailTemplateEnabled(key: string, enabled: boolean, upd
     .select(EMAIL_TEMPLATE_COLUMNS)
     .single()
 
+  invalidate(CACHE_KEYS.emailsAll)
   if (error) throw error
   return mapRow(data as EmailTemplateRow)
 }
@@ -272,6 +286,7 @@ export async function setEmailTemplateArchiveCc(
     .select(EMAIL_TEMPLATE_COLUMNS)
     .single()
 
+  invalidate(CACHE_KEYS.emailsAll)
   if (error) throw error
   return mapRow(data as EmailTemplateRow)
 }
@@ -339,5 +354,21 @@ export async function setTemplateRecipientCc(
     },
     { onConflict: 'template_key,admin_id' },
   )
+  invalidate(CACHE_KEYS.emailsAll)
   if (error) throw error
+}
+
+/** The template editor's data: the template and who it goes to. */
+export interface TemplateEditorData {
+  template: EmailTemplate | null
+  recipients: TemplateRecipient[]
+}
+
+export async function fetchTemplateEditorData(key: string): Promise<TemplateEditorData> {
+  const [template, recipients] = await Promise.all([fetchEmailTemplate(key), fetchTemplateRecipients(key)])
+  return { template, recipients }
+}
+
+export function templateEditorKey(key: string): string {
+  return `${CACHE_KEYS.emailTemplate}${key}`
 }

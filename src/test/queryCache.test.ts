@@ -1,4 +1,4 @@
-import { cached, clearCache, invalidate } from '../lib/queryCache'
+import { cached, clearCache, invalidate, peekValue, readStash, refresh, stash } from '../lib/queryCache'
 
 afterEach(() => {
   clearCache()
@@ -52,5 +52,47 @@ describe('invalidate', () => {
 
     expect(loans).toHaveBeenCalledTimes(1)
     expect(equipment).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('peekValue', () => {
+  // A refresh keeps the last value on screen until the new one lands.
+  it('keeps the last value through a refresh', async () => {
+    await cached('k', () => Promise.resolve('old'))
+    let finish: (value: string) => void = () => {}
+    const pending = refresh('k', () => new Promise<string>((resolve) => (finish = resolve)))
+
+    expect(peekValue('k')).toBe('old')
+    finish('new')
+    await pending
+    expect(peekValue('k')).toBe('new')
+  })
+
+  // A write means the old copy is wrong: it must not be painted, even briefly.
+  it('drops the last value on invalidate and on clearCache', async () => {
+    await cached('member-loans:1', () => Promise.resolve('before cancel'))
+    invalidate('member-loans:')
+    expect(peekValue('member-loans:1')).toBeUndefined()
+
+    await cached('k', () => Promise.resolve('value'))
+    clearCache()
+    expect(peekValue('k')).toBeUndefined()
+  })
+})
+
+describe('stash', () => {
+  // Built into an edit form, so only ever read while very fresh.
+  it('is readable briefly, then expires', () => {
+    vi.useFakeTimers()
+    stash('equipment:manage-item:1', 'data')
+    expect(readStash('equipment:manage-item:1')).toBe('data')
+    vi.advanceTimersByTime(10_001)
+    expect(readStash('equipment:manage-item:1')).toBeUndefined()
+  })
+
+  it('is removed by an inventory write', () => {
+    stash('equipment:manage-item:1', 'data')
+    invalidate('equipment:')
+    expect(readStash('equipment:manage-item:1')).toBeUndefined()
   })
 })

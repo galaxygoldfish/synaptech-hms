@@ -9,9 +9,13 @@ import {
   fetchAllLoanRequestItems,
   matchReturnSerial,
   type AdminLoanRequestItemSummary,
+  fetchLoanRequestItemDetail,
+  type AdminLoanRequestDetail,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
 import styles from '../hardware-flow/HardwareFlow.module.css'
+import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
+import { loanDetailKey } from '../../../lib/detailKeys'
 
 /**
  * Step 1 of "Return hardware": work out which loan the hardware being handed
@@ -67,9 +71,7 @@ export default function ReturnScan() {
   useEffect(() => {
     let cancelled = false
 
-    // Fresh, never cached: this screen decides from the list. See
-    // fetchAllLoanRequestItems.
-    const loans = fetchAllLoanRequestItems({ fresh: true })
+    const loans = fetchAllLoanRequestItems()
     loansRef.current = loans
     loans.catch((fetchError) => {
       // eslint-disable-next-line no-console
@@ -99,8 +101,26 @@ export default function ReturnScan() {
     }, FAILURE_HOLD_MS)
   }
 
+  // The confirm step's data, fetched from the moment a scan matches — the
+  // success tick is held for a beat anyway, so by the time it moves on the
+  // confirm screen can open drawn. One request per loan, shared by the
+  // match and the navigation.
+  const { open } = usePrefetchNavigate()
+  const detailRequests = useRef(new Map<string, Promise<AdminLoanRequestDetail>>())
+  function prefetchDetail(itemId: string): Promise<AdminLoanRequestDetail> {
+    let request = detailRequests.current.get(itemId)
+    if (!request) {
+      request = fetchLoanRequestItemDetail(itemId)
+      request.catch(() => detailRequests.current.delete(itemId))
+      detailRequests.current.set(itemId, request)
+    }
+    return request
+  }
+
   function goToConfirm(loan: AdminLoanRequestItemSummary, source: SerialSource) {
-    navigate(`/adminHome/return/${loan.id}/confirm`, { state: { serialVerifiedBy: source } })
+    void open(loanDetailKey(loan.id), () => prefetchDetail(loan.id), `/adminHome/return/${loan.id}/confirm`, {
+      state: { serialVerifiedBy: source },
+    })
   }
 
   /**
@@ -119,7 +139,7 @@ export default function ReturnScan() {
     let loans: AdminLoanRequestItemSummary[]
     setResolving(true)
     try {
-      loans = await (loansRef.current ?? fetchAllLoanRequestItems({ fresh: true }))
+      loans = await (loansRef.current ?? fetchAllLoanRequestItems())
     } catch {
       // The effect above has already put the load error on screen.
       return
@@ -131,6 +151,7 @@ export default function ReturnScan() {
 
     if (match.outcome === 'ready' && match.loan) {
       const loan = match.loan
+      prefetchDetail(loan.id).catch(() => {})
       setManualError(null)
       setResolved(true)
       if (source === 'manual') {

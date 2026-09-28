@@ -10,6 +10,7 @@ import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MemberDetail.module.css'
+import { CACHE_KEYS, readStash } from '../../lib/queryCache'
 
 function formatRegistrationDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
@@ -135,8 +136,11 @@ export default function MemberDetail() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [member, setMember] = useState<Profile | null>(null)
-  const [isLoading, setLoading] = useState(true)
+  // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
+  // draw from that on the first render instead of behind a skeleton.
+  const [prefetched] = useState(() => (id ? readStash<Profile>(`${CACHE_KEYS.memberDetail}${id}`) : undefined))
+  const [member, setMember] = useState<Profile | null>(prefetched ?? null)
+  const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)
 
   const [isRoleModalOpen, setRoleModalOpen] = useState(false)
@@ -149,7 +153,7 @@ export default function MemberDetail() {
   const [isLastAdmin, setLastAdmin] = useState(false)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || prefetched) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -170,7 +174,7 @@ export default function MemberDetail() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, prefetched])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null

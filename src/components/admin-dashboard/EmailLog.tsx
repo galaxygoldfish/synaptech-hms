@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, CloseIcon } from './icons'
-import { fetchEmailLog, fetchEmailLogBodyHtml, type EmailLogEntry, type EmailLogStatus } from '../../lib/emailLog'
+import { fetchEmailLog, fetchEmailLogBodyHtml, type EmailLogEntry, type EmailLogStatus, peekEmailLog } from '../../lib/emailLog'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
@@ -200,8 +200,10 @@ export default function EmailLog() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [entries, setEntries] = useState<EmailLogEntry[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialEntries] = useState(peekEmailLog)
+  const [entries, setEntries] = useState<EmailLogEntry[]>(initialEntries ?? [])
+  const [isLoading, setLoading] = useState(initialEntries === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -218,7 +220,7 @@ export default function EmailLog() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load the email log:', fetchError)
-        if (!cancelled) setError('Could not load the email log. Please try again.')
+        if (!cancelled && initialEntries === null) setError('Could not load the email log. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

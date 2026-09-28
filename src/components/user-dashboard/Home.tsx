@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ActionList } from "./ActionList";
 import { CheckoutCallToAction } from "./CheckoutCallToAction";
@@ -10,9 +10,11 @@ import { ProfileModal } from "./ProfileModal";
 import type { UserProfile } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { memberActions } from "../../data/memberActions";
-import { activeHardwareLoans, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
+import { activeHardwareLoans, fetchMemberLoanItem, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
 import { useMemberLoans } from "../../lib/useMemberLoans";
 import styles from "./Home.module.css";
+import { usePrefetchNavigate } from "../../lib/usePrefetchNavigate";
+import { memberLoanItemKey } from "../../lib/detailKeys";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -21,12 +23,15 @@ export default function Home() {
   const [isWarningOpen, setWarningOpen] = useState(false);
 
   // Shown from cache at once when there is one, then refreshed — see
-  // useMemberLoans. The checkout button waits for the fresh copy, since the
-  // overdue block it applies must not be decided from a stale list.
-  const { groups, isFresh, failed } = useMemberLoans(profile?.id);
+  // useMemberLoans. The overdue block on checkout must not be decided from a
+  // stale list, so a click that lands before the fresh copy is held and
+  // decided when it arrives. Here a failed refresh is an error even with a
+  // cached list showing, since that list can't be trusted for the decision.
+  const { groups, isFresh, failed, refreshFailed } = useMemberLoans(profile?.id);
   const loans = useMemo(() => (groups ? activeHardwareLoans(groups) : []), [groups]);
   const isLoading = groups === null && !failed;
-  const error = failed ? "Couldn't load your hardware loans." : null;
+  const error = failed || refreshFailed ? "Couldn't load your hardware loans." : null;
+  const [isCheckoutPending, setCheckoutPending] = useState(false);
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null;
@@ -43,7 +48,10 @@ export default function Home() {
   const hasOverdueLoan = loans.some((loan) => homeLoanTone(loan) === "overdue");
 
   const handleCheckoutClick = () => {
-    if (!isFresh) return;
+    if (!isFresh) {
+      setCheckoutPending(true);
+      return;
+    }
     if (hasOverdueLoan) {
       setWarningOpen(true);
       return;
@@ -51,8 +59,16 @@ export default function Home() {
     navigate("/home/checkout");
   };
 
+  useEffect(() => {
+    if (!isCheckoutPending || !isFresh) return;
+    setCheckoutPending(false);
+    if (hasOverdueLoan) setWarningOpen(true);
+    else navigate("/home/checkout");
+  }, [isCheckoutPending, isFresh, hasOverdueLoan, navigate]);
+
+  const { open } = usePrefetchNavigate();
   const handleMoreDetails = (loan: MemberLoanItem) => {
-    navigate(`/home/loans/${loan.id}`);
+    void open(memberLoanItemKey(loan.id), () => fetchMemberLoanItem(loan.id), `/home/loans/${loan.id}`);
   };
 
   const handleAction = (actionId: string) => {
@@ -97,7 +113,7 @@ export default function Home() {
             {/* `disabled` (truly inert) only while loading; once loans are
                 in, an overdue member sees `blocked` instead — the button
                 stays clickable/hoverable so it can open the warning below. */}
-            <CheckoutCallToAction disabled={!isFresh} blocked={hasOverdueLoan} onClick={handleCheckoutClick} />
+            <CheckoutCallToAction disabled={isLoading} blocked={hasOverdueLoan} onClick={handleCheckoutClick} />
             {hasOverdueLoan && (
               <InlineOverdueWarning open={isWarningOpen} onDismiss={() => setWarningOpen(false)} />
             )}
