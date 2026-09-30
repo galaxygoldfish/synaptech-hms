@@ -65,7 +65,18 @@ export const CACHE_KEYS = {
 interface Entry {
   promise: Promise<unknown>
   fetchedAt: number
+  /** When the fetch resolved; unset while it's still in flight. */
+  settledAt?: number
 }
+
+/**
+ * How long a display screen reuses a just-fetched copy instead of fetching
+ * again. Short: it exists so bouncing between screens (dashboard → list →
+ * dashboard) and React's doubled effects in development don't re-read whole
+ * tables every time, not to let data go stale. Screens that decide something
+ * from the data pass `fresh: true` to their fetch and skip it.
+ */
+export const DISPLAY_REUSE_MS = 5_000
 
 const entries = new Map<string, Entry>()
 
@@ -96,6 +107,11 @@ export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STAL
   entries.set(key, entry)
   promise.then(
     (value) => {
+      // Only if this is still the current request for the key. A fetch
+      // started before a write and landing after it (the write invalidated
+      // it) must not repaint the old data.
+      if (entries.get(key) !== entry) return
+      entry.settledAt = Date.now()
       lastValues.set(key, value)
     },
     () => {
@@ -112,7 +128,13 @@ export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STAL
  * flows) rather than just display it: they must never act on a list that
  * predates a request submitted from another browser a moment ago.
  */
-export function refresh<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+export function refresh<T>(key: string, fetcher: () => Promise<T>, maxAgeMs = 0): Promise<T> {
+  // A request already in flight is as fresh as a new one would be, so share
+  // it; a settled one is reused only while younger than maxAgeMs.
+  const existing = entries.get(key)
+  if (existing && (existing.settledAt === undefined || Date.now() - existing.settledAt < maxAgeMs)) {
+    return existing.promise as Promise<T>
+  }
   // Only the entry: the last value stays on screen until this one lands.
   entries.delete(key)
   return cached(key, fetcher)

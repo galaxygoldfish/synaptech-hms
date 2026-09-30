@@ -1,11 +1,11 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import type { Profile } from '../types/index'
 
 // Always fetched fresh, but remembered so the screen can paint it
 // straight away next time (see useFreshData).
 export function fetchAllProfiles(): Promise<Profile[]> {
-  return refresh(CACHE_KEYS.members, () => loadAllProfiles())
+  return refresh(CACHE_KEYS.members, () => loadAllProfiles(), DISPLAY_REUSE_MS)
 }
 
 /** The list as last loaded, synchronously, or null. Display only. */

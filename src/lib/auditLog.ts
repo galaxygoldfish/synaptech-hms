@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 
 export type AuditCategory = 'members' | 'inventory' | 'loans' | 'emails'
 
@@ -104,7 +104,7 @@ export interface AuditLogPage {
 // Always fetched fresh, but remembered so the screen can paint it
 // straight away next time (see useFreshData).
 export function fetchAuditLog(limit = AUDIT_LOG_LIMIT): Promise<AuditLogPage> {
-  return refresh(CACHE_KEYS.auditLog, () => loadAuditLog(limit))
+  return refresh(CACHE_KEYS.auditLog, () => loadAuditLog(limit), DISPLAY_REUSE_MS)
 }
 
 /** As last loaded, synchronously, or null. Display only. */

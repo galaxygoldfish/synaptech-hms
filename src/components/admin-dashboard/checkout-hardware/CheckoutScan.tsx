@@ -108,7 +108,7 @@ export default function CheckoutScan() {
   useEffect(() => {
     let cancelled = false
 
-    const loans = fetchAllLoanRequestItems()
+    const loans = fetchAllLoanRequestItems({ fresh: true })
     loansRef.current = loans
     loans.catch((fetchError) => {
       // eslint-disable-next-line no-console
@@ -155,7 +155,7 @@ export default function CheckoutScan() {
     let loans: AdminLoanRequestItemSummary[]
     setResolving(true)
     try {
-      loans = await (loansRef.current ?? fetchAllLoanRequestItems())
+      loans = await (loansRef.current ?? fetchAllLoanRequestItems({ fresh: true }))
     } catch {
       // The effect above has already put the load error on screen.
       return

@@ -126,7 +126,7 @@ export default function CheckoutConfirmHardware() {
     setLoading(true)
     setError(null)
 
-    Promise.all([fetchEquipment(equipmentId), fetchEquipmentAddonOptions(equipmentId), fetchEquipmentAvailability()])
+    Promise.all([fetchEquipment(equipmentId), fetchEquipmentAddonOptions(equipmentId), fetchEquipmentAvailability({ fresh: true })])
       .then(([item, addons, availability]) => {
         if (cancelled) return
         // Free units, not units owned — see availableQuantity.

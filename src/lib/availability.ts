@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 
 /**
  * When a member is free — for collecting hardware, and for giving it back.
@@ -36,7 +36,7 @@ function availabilityKey(target: AvailabilityTarget): string {
 // background once they've loaded, so the availability dialog opens with the
 // hours already drawn (peekAvailability) instead of a skeleton.
 export function fetchAvailability(target: AvailabilityTarget): Promise<AvailabilitySlot[]> {
-  return refresh(availabilityKey(target), () => loadAvailability(target))
+  return refresh(availabilityKey(target), () => loadAvailability(target), DISPLAY_REUSE_MS)
 }
 
 /** The hours as last loaded for this target, synchronously, or null. Display only. */

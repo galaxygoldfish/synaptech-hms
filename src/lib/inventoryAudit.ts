@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 
 /**
  * What an audit concluded about one unit.
@@ -266,7 +266,7 @@ export interface InventoryAuditPage {
 // Always fetched fresh, but remembered so the screen can paint it
 // straight away next time (see useFreshData).
 export function fetchInventoryAudits(limit = INVENTORY_AUDIT_LIMIT): Promise<InventoryAuditPage> {
-  return refresh(CACHE_KEYS.inventoryAudits, () => loadInventoryAudits(limit))
+  return refresh(CACHE_KEYS.inventoryAudits, () => loadInventoryAudits(limit), DISPLAY_REUSE_MS)
 }
 
 /** As last loaded, synchronously, or null. Display only. */

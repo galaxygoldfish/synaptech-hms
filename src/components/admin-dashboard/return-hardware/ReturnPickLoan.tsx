@@ -37,7 +37,7 @@ export default function ReturnPickLoan() {
   useEffect(() => {
     let cancelled = false
 
-    fetchAllLoanRequestItems()
+    fetchAllLoanRequestItems({ fresh: true })
       .then((items) => {
         if (!cancelled) setLoans(items)
       })

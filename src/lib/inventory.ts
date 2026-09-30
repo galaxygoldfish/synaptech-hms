@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate, peekValue, readStash, refresh, stash } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, readStash, refresh, stash, DISPLAY_REUSE_MS } from './queryCache'
 import { generateSerialNumbers } from './serialNumber'
 import type { Equipment, EquipmentAddon, EquipmentCategory, EquipmentProductType, EquipmentUnit } from '../types'
 
@@ -240,7 +240,7 @@ export async function listEquipment(): Promise<Equipment[]> {
     const { data, error } = await supabase.from('equipment').select().is('archived_at', null).order('name')
     if (error) throw error
     return data as Equipment[]
-  })
+  }, DISPLAY_REUSE_MS)
   return [...rows]
 }
 
@@ -284,7 +284,10 @@ export async function fetchAvailableEquipmentUnit(equipmentId: string): Promise<
 // Always fetched fresh — the checkout confirm step decides "out of stock"
 // from it — but the result is remembered so the browse screens can paint the
 // last-seen counts on their first render (see peekEquipmentCatalog).
-export function fetchEquipmentAvailability(): Promise<Record<string, number>> {
+//
+// `fresh: true` for a screen deciding "out of stock" (starting a checkout, the
+// confirm step); otherwise a copy from the last few seconds is reused.
+export function fetchEquipmentAvailability({ fresh = false }: { fresh?: boolean } = {}): Promise<Record<string, number>> {
   return refresh(CACHE_KEYS.equipmentAvailability, async () => {
     const { data, error } = await supabase.rpc('equipment_availability')
     if (error) throw error
@@ -294,7 +297,7 @@ export function fetchEquipmentAvailability(): Promise<Record<string, number>> {
       availability[row.equipment_id] = row.available
     }
     return availability
-  })
+  }, fresh ? 0 : DISPLAY_REUSE_MS)
 }
 
 /**
@@ -349,7 +352,7 @@ export interface EquipmentInventoryRow {
 export function fetchEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
   // Always fresh, but remembered so the list can paint it straight away next
   // time (peekEquipmentInventorySummary).
-  return refresh(CACHE_KEYS.inventorySummary, loadEquipmentInventorySummary)
+  return refresh(CACHE_KEYS.inventorySummary, loadEquipmentInventorySummary, DISPLAY_REUSE_MS)
 }
 
 /** The inventory list as last loaded, synchronously, or null. Display only. */

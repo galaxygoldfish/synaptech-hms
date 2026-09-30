@@ -47,7 +47,7 @@ export function useStartCheckout() {
     try {
       const [addonOptions, availability] = await Promise.all([
         fetchEquipmentAddonOptions(item.id),
-        fetchEquipmentAvailability(),
+        fetchEquipmentAvailability({ fresh: true }),
       ])
       if (!mounted.current) return
 

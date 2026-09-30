@@ -26,7 +26,7 @@ export default function CheckoutPickLoan() {
   useEffect(() => {
     let cancelled = false
 
-    fetchAllLoanRequestItems()
+    fetchAllLoanRequestItems({ fresh: true })
       .then((items) => {
         if (!cancelled) setLoans(items)
       })

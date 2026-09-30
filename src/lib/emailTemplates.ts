@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 
 export type EmailBodySegment = { type: 'text'; value: string } | { type: 'chip'; field: string }
 
@@ -209,7 +209,7 @@ function mapRow(row: EmailTemplateRow): EmailTemplate {
 // Always fetched fresh, but remembered so the screen can paint it
 // straight away next time (see useFreshData).
 export function fetchEmailTemplates(category: EmailTemplateCategory): Promise<EmailTemplate[]> {
-  return refresh(`${CACHE_KEYS.emailTemplates}:${category}`, () => loadEmailTemplates(category))
+  return refresh(`${CACHE_KEYS.emailTemplates}:${category}`, () => loadEmailTemplates(category), DISPLAY_REUSE_MS)
 }
 
 /** As last loaded, synchronously, or null. Display only. */

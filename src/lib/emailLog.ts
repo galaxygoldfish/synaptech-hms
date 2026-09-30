@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 
 export type EmailLogStatus = 'sent' | 'failed'
 
@@ -64,7 +64,7 @@ function mapRow(row: EmailLogRow): EmailLogEntry {
 // Always fetched fresh, but remembered so the screen can paint it
 // straight away next time (see useFreshData).
 export function fetchEmailLog(limit = 500): Promise<EmailLogEntry[]> {
-  return refresh(CACHE_KEYS.emailLog, () => loadEmailLog(limit))
+  return refresh(CACHE_KEYS.emailLog, () => loadEmailLog(limit), DISPLAY_REUSE_MS)
 }
 
 /** As last loaded, synchronously, or null. Display only. */

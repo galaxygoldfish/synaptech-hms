@@ -14,6 +14,13 @@ import HandOffAgreement from '../components/admin-dashboard/HandOffAgreement'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
 
+// The screen preloads pdf-lib on mount; loading the real library in every
+// test is slow enough to time tests out under a full, parallel run.
+vi.mock('../lib/loanAgreementApproval', async () => {
+  const actual = await vi.importActual<typeof import('../lib/loanAgreementApproval')>('../lib/loanAgreementApproval')
+  return { ...actual, preloadApprovalPdfLib: vi.fn() }
+})
+
 vi.mock('../lib/loanRequests', async () => {
   const actual = await vi.importActual<typeof import('../lib/loanRequests')>('../lib/loanRequests')
   return {

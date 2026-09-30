@@ -96,3 +96,52 @@ describe('stash', () => {
     expect(readStash('equipment:manage-item:1')).toBeUndefined()
   })
 })
+
+describe('refresh', () => {
+  // React runs effects twice in development, and screens can ask at the same
+  // moment: both must share one request, not re-read the tables twice.
+  it('shares a request that is still in flight', async () => {
+    let finish: (value: string) => void = () => {}
+    const fetcher = vi.fn(() => new Promise<string>((resolve) => (finish = resolve)))
+
+    const first = refresh('k', fetcher)
+    const second = refresh('k', fetcher)
+    finish('value')
+
+    expect(await first).toBe('value')
+    expect(await second).toBe('value')
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('reuses a copy settled within maxAgeMs, and fetches again after', async () => {
+    vi.useFakeTimers()
+    const fetcher = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second')
+
+    expect(await refresh('k', fetcher, 5_000)).toBe('first')
+    expect(await refresh('k', fetcher, 5_000)).toBe('first')
+    vi.advanceTimersByTime(5_001)
+    expect(await refresh('k', fetcher, 5_000)).toBe('second')
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  // What the check-out and return screens rely on.
+  it('never reuses a settled copy when maxAgeMs is 0', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second')
+
+    await refresh('k', fetcher)
+    expect(await refresh('k', fetcher)).toBe('second')
+  })
+
+  // A read started before a write, landing after it, must not repaint the
+  // pre-write data.
+  it('discards a result that lands after the key was invalidated', async () => {
+    let finish: (value: string) => void = () => {}
+    const pending = refresh('member-loans:1', () => new Promise<string>((resolve) => (finish = resolve)))
+
+    invalidate('member-loans:')
+    finish('before the write')
+    await pending
+
+    expect(peekValue('member-loans:1')).toBeUndefined()
+  })
+})

@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { fetchAvailableEquipmentUnit } from './inventory'
 import { isApprovedAgreementPath, stampApprovedAgreement } from './loanAgreementApproval'
-import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import { normalizeSerialNumber } from './serialNumber'
 import type { LoanRequest, LoanRequestItemRole, LoanRequestStatus } from '../types'
 
@@ -676,8 +676,14 @@ export function bucketForLoanItem(
 // the last copy on their first render (peekAllLoanRequestItems) while this
 // runs. Each caller gets its own copy of the array, so one screen sorting or
 // filtering it in place can't disturb another's.
-export async function fetchAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]> {
-  return [...(await refresh(CACHE_KEYS.adminLoans, loadAllLoanRequestItems))]
+//
+// `fresh: true` for the check-out and return screens, which decide from it;
+// the dashboard and loans list reuse a copy from the last few seconds, so
+// moving between screens doesn't re-read five tables each time.
+export async function fetchAllLoanRequestItems(
+  { fresh = false }: { fresh?: boolean } = {},
+): Promise<AdminLoanRequestItemSummary[]> {
+  return [...(await refresh(CACHE_KEYS.adminLoans, loadAllLoanRequestItems, fresh ? 0 : DISPLAY_REUSE_MS))]
 }
 
 /** Every loan item as last loaded, synchronously, or null. Display only. */
