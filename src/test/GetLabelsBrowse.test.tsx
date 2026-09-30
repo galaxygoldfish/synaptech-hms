@@ -17,12 +17,6 @@ vi.mock('../lib/inventory', () => ({
   listEquipmentUnits: vi.fn(),
   fetchEquipmentUnitBySerial: vi.fn(),
   peekEquipmentList: vi.fn(() => null),
-  labelsProductKey: (id: string) => `equipment:labels:${id}`,
-  // The real one is composed of the two mocks above.
-  fetchLabelsProduct: vi.fn(async (id: string) => {
-    const inventory = await import('../lib/inventory')
-    return { equipment: await inventory.fetchEquipment(id), units: await inventory.listEquipmentUnits(id) }
-  }),
 }))
 
 // Rasterizing labels needs a real canvas; this screen only needs the markup.

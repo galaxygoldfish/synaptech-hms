@@ -363,7 +363,7 @@ export async function recordInventoryAudit(
     p_note: note,
   })
 
-  invalidate(CACHE_KEYS.inventoryAuditsAll)
+  invalidate(CACHE_KEYS.inventoryAudits)
   if (error) throw error
   return data as string
 }

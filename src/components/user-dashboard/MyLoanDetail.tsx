@@ -24,13 +24,10 @@ import {
   type MemberLoanItem,
 } from '../../lib/memberLoans'
 import { fetchSignedAgreementUrl } from '../../lib/loanRequests'
-import { cancelReturnRequest, type AvailabilityTarget, fetchAvailability } from '../../lib/availability'
+import { cancelReturnRequest, type AvailabilityTarget } from '../../lib/availability'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MyLoanDetail.module.css'
-import { readStash } from '../../lib/queryCache'
-import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { memberLoanItemKey } from '../../lib/detailKeys'
 
 // Help & support always points at the club's Discord — the same link the
 // browse and checkout screens use.
@@ -57,15 +54,11 @@ function formatLongDate(iso: string, isDateOnly = false): string {
 export default function MyLoanDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { open, pendingKey } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
-  // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<MemberLoanItem>(memberLoanItemKey(id)) : undefined))
-  const [item, setItem] = useState<MemberLoanItem | null>(prefetched ?? null)
-  const [isLoading, setLoading] = useState(prefetched === undefined)
+  const [item, setItem] = useState<MemberLoanItem | null>(null)
+  const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [isCancelOpen, setCancelOpen] = useState(false)
@@ -76,7 +69,7 @@ export default function MyLoanDetail() {
   const [isDownloading, setDownloading] = useState(false)
 
   useEffect(() => {
-    if (!id || prefetched) return
+    if (!id) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -97,7 +90,7 @@ export default function MyLoanDetail() {
     return () => {
       cancelled = true
     }
-  }, [id, prefetched])
+  }, [id])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -111,22 +104,6 @@ export default function MyLoanDetail() {
   }, [profile])
 
   const state = item ? memberLoanState(item) : null
-
-  // Fetch the hours behind whichever "edit availability" dialog this screen
-  // offers, in the background, so the dialog opens with them drawn.
-  const warmTarget: AvailabilityTarget | null = !item
-    ? null
-    : state === 'return_requested'
-      ? { kind: 'return', loanRequestId: item.loanRequestId, loanRequestItemId: item.id }
-      : state === 'checkout_requested'
-        ? { kind: 'checkout', loanRequestId: item.loanRequestId }
-        : null
-  const warmKey = warmTarget ? JSON.stringify(warmTarget) : null
-  useEffect(() => {
-    if (warmTarget) fetchAvailability(warmTarget).catch(() => {})
-    // warmKey identifies the target; the object itself is rebuilt each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [warmKey])
 
   async function handleDownloadAgreement() {
     if (!item?.signedAgreementPath || isDownloading) return
@@ -274,10 +251,7 @@ export default function MyLoanDetail() {
                 <button
                   type="button"
                   className={`${styles.linkRow} ${styles.linkRowTop} ${styles.linkRowPrimary}`}
-                  onClick={() =>
-                    void open(memberLoanItemKey(item.id), () => fetchMemberLoanItem(item.id), `/home/loans/${item.id}/return`)
-                  }
-                  aria-busy={pendingKey === memberLoanItemKey(item.id)}
+                  onClick={() => navigate(`/home/loans/${item.id}/return`)}
                 >
                   <span className={styles.linkRowLeft}>
                     <span className={styles.linkRowIcon}>

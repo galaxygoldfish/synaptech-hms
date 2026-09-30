@@ -10,13 +10,10 @@ import {
   type EmailTemplate,
   type EmailTemplateCategory,
   peekEmailTemplates,
-  fetchTemplateEditorData,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageEmails.module.css'
-import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { templateEditorKey } from '../../lib/detailKeys'
 
 interface ManageEmailsProps {
   heading: string
@@ -29,7 +26,6 @@ interface ManageEmailsProps {
 
 export function ManageEmails({ heading, shortHeading, listPath, category }: ManageEmailsProps) {
   const navigate = useNavigate()
-  const { open } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
@@ -82,7 +78,7 @@ export function ManageEmails({ heading, shortHeading, listPath, category }: Mana
   }
 
   function handleEdit(templateKey: string) {
-    void open(templateEditorKey(templateKey), () => fetchTemplateEditorData(templateKey), `${listPath}/${templateKey}`)
+    navigate(`${listPath}/${templateKey}`)
   }
 
   async function handleToggle(template: EmailTemplate) {

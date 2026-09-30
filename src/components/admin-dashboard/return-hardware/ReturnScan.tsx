@@ -9,14 +9,9 @@ import {
   fetchAllLoanRequestItems,
   matchReturnSerial,
   type AdminLoanRequestItemSummary,
-  fetchLoanRequestItemDetail,
-  type AdminLoanRequestDetail,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
 import styles from '../hardware-flow/HardwareFlow.module.css'
-import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
-import { loanDetailKey } from '../../../lib/detailKeys'
-import { refresh } from '../../../lib/queryCache'
 
 /**
  * Step 1 of "Return hardware": work out which loan the hardware being handed
@@ -72,6 +67,8 @@ export default function ReturnScan() {
   useEffect(() => {
     let cancelled = false
 
+    // Fresh, never cached: this screen decides from the list. See
+    // fetchAllLoanRequestItems.
     const loans = fetchAllLoanRequestItems({ fresh: true })
     loansRef.current = loans
     loans.catch((fetchError) => {
@@ -102,19 +99,8 @@ export default function ReturnScan() {
     }, FAILURE_HOLD_MS)
   }
 
-  // The confirm step's data, fetched from the moment a scan matches — the
-  // success tick is held for a beat anyway, so by the time it moves on the
-  // confirm screen can open drawn. The match and the navigation share one
-  // request (refresh).
-  const { open } = usePrefetchNavigate()
-  function prefetchDetail(itemId: string): Promise<AdminLoanRequestDetail> {
-    return refresh(loanDetailKey(itemId), () => fetchLoanRequestItemDetail(itemId), 10_000)
-  }
-
   function goToConfirm(loan: AdminLoanRequestItemSummary, source: SerialSource) {
-    void open(loanDetailKey(loan.id), () => prefetchDetail(loan.id), `/adminHome/return/${loan.id}/confirm`, {
-      state: { serialVerifiedBy: source },
-    })
+    navigate(`/adminHome/return/${loan.id}/confirm`, { state: { serialVerifiedBy: source } })
   }
 
   /**
@@ -145,7 +131,6 @@ export default function ReturnScan() {
 
     if (match.outcome === 'ready' && match.loan) {
       const loan = match.loan
-      prefetchDetail(loan.id).catch(() => {})
       setManualError(null)
       setResolved(true)
       if (source === 'manual') {

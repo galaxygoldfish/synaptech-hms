@@ -31,7 +31,7 @@ export async function fetchProfileById(id: string): Promise<Profile> {
 
 export async function updateMemberRole(id: string, role: 'member' | 'admin'): Promise<Profile> {
   const { data, error } = await supabase.from('profiles').update({ role }).eq('id', id).select().single()
-  invalidate(CACHE_KEYS.membersAll)
+  invalidate(CACHE_KEYS.members)
   if (error) throw error
   return data as Profile
 }
@@ -54,7 +54,7 @@ export async function deleteMember(id: string): Promise<void> {
   })
   // Deleting a member takes their loan requests with them.
   invalidate(CACHE_KEYS.adminLoans)
-  invalidate(CACHE_KEYS.membersAll)
+  invalidate(CACHE_KEYS.members)
   if (error) throw error
   if (!data?.ok) throw new Error(data?.error ?? 'Failed to delete account')
 }

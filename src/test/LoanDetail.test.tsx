@@ -349,13 +349,11 @@ describe('LoanDetail — the other items in a request', () => {
     renderDetail()
     await userEvent.click(await screen.findByRole('button', { name: 'View loan details for Oculus VR' }))
 
-    // The sibling's record is fetched before the route changes, so wait for
-    // it to land rather than assuming an instant swap.
-    expect(await screen.findByText('SYN-VR9087')).toBeInTheDocument()
+    expect(await screen.findByText('Oculus VR')).toBeInTheDocument()
     expect(fetchLoanRequestItemDetail).toHaveBeenLastCalledWith('item-2')
     // The screen stays mounted across the route change, so the whole record
     // has to swap — including the way back to the item just left.
-    expect(screen.getByText('Oculus VR')).toBeInTheDocument()
+    expect(screen.getByText('SYN-VR9087')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'View loan details for Muse 2' })).toBeInTheDocument()
   })
 

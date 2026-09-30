@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AgreementPreview } from './AgreementPreview'
 import { CheckmarkIcon } from './icons'
-import { fetchAvailableEquipmentUnit, fetchEquipment, fetchEquipmentByIds, readSignAgreementPrefetch } from '../../lib/inventory'
+import { fetchAvailableEquipmentUnit, fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
 import { buildLoanAgreementPdf, preloadAgreementPdfLib } from '../../lib/loanAgreementPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -66,26 +66,16 @@ export default function CheckoutSignAgreement() {
 
   const checkoutState = readCheckoutState(location.state)
 
-  // Fetched when the return-date step's "next" was pressed
-  // (usePrefetchNavigate): draw the agreement from it on the first render.
-  const [prefetched] = useState(() =>
-    checkoutState
-      ? readSignAgreementPrefetch(checkoutState.equipmentId, [
-          ...checkoutState.optionalAddonIds,
-          ...(checkoutState.requiredAddonId ? [checkoutState.requiredAddonId] : []),
-        ])
-      : undefined,
-  )
-  const [items, setItems] = useState<Equipment[]>(prefetched?.items ?? [])
-  const [units, setUnits] = useState<Record<string, EquipmentUnit | null>>(prefetched?.units ?? {})
-  const [isLoading, setLoading] = useState(prefetched === undefined)
+  const [items, setItems] = useState<Equipment[]>([])
+  const [units, setUnits] = useState<Record<string, EquipmentUnit | null>>({})
+  const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [signatures, setSignatures] = useState<Record<string, SignatureEntry>>({})
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const [isSubmitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!checkoutState || prefetched) return
+    if (!checkoutState) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -120,7 +110,7 @@ export default function CheckoutSignAgreement() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkoutState?.equipmentId, prefetched])
+  }, [checkoutState?.equipmentId])
 
   useEffect(() => {
     if (!checkoutState) navigate('/home/checkout', { replace: true })

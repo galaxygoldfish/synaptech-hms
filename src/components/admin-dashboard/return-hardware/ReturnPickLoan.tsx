@@ -2,13 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlowPage } from '../hardware-flow/FlowPage'
 import { LoanPickList } from '../hardware-flow/LoanPickList'
-import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
-import { loanDetailKey } from '../../../lib/detailKeys'
 import {
   bucketForLoanItem,
   fetchAllLoanRequestItems,
   type AdminLoanRequestItemSummary,
-  fetchLoanRequestItemDetail,
 } from '../../../lib/loanRequests'
 
 /**
@@ -28,7 +25,6 @@ function formatCalendarDate(iso: string): string {
 
 export default function ReturnPickLoan() {
   const navigate = useNavigate()
-  const { open, pendingKey } = usePrefetchNavigate()
 
   const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
   const [isLoading, setLoading] = useState(true)
@@ -37,6 +33,8 @@ export default function ReturnPickLoan() {
   useEffect(() => {
     let cancelled = false
 
+    // Fresh, never cached: picking a loan here decides what gets handed
+    // over or taken back. See fetchAllLoanRequestItems.
     fetchAllLoanRequestItems({ fresh: true })
       .then((items) => {
         if (!cancelled) setLoans(items)
@@ -82,11 +80,10 @@ export default function ReturnPickLoan() {
         }
         rowLabel={(loan) => `Take back ${loan.itemName} from ${loan.memberName}`}
         onPick={(loan) =>
-          void open(loanDetailKey(loan.id), () => fetchLoanRequestItemDetail(loan.id), `/adminHome/return/${loan.id}/confirm`, {
+          navigate(`/adminHome/return/${loan.id}/confirm`, {
             state: { serialVerifiedBy: 'database' },
           })
         }
-        pendingId={pendingKey?.slice(loanDetailKey('').length) ?? null}
       />
     </FlowPage>
   )

@@ -21,11 +21,6 @@ import {
 import type { LoanRequestItemRole, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './LoanDetail.module.css'
-import { readStash } from '../../lib/queryCache'
-import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { loanDetailKey, memberDetailKey } from '../../lib/detailKeys'
-import { fetchProfileById } from '../../lib/members'
-import { fetchAvailability, type AvailabilityTarget } from '../../lib/availability'
 
 // Every state a loan can be in from this screen's point of view. A denied
 // request has no bucket (it never became a loan, so it's kept out of the
@@ -90,15 +85,11 @@ function DetailRow({ label, value }: DetailRowProps) {
 export default function LoanDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { open, pendingKey } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
-  // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<AdminLoanRequestDetail>(loanDetailKey(id)) : undefined))
-  const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(prefetched ?? null)
-  const [isLoading, setLoading] = useState(prefetched === undefined)
+  const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(null)
+  const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [isDownloading, setDownloading] = useState(false)
@@ -108,15 +99,6 @@ export default function LoanDetail() {
 
   useEffect(() => {
     if (!id) return
-    // A stash for this loan — on first mount, or when moving between loans
-    // without a remount — is drawn as-is rather than fetched again.
-    const stashed = readStash<AdminLoanRequestDetail>(loanDetailKey(id))
-    if (stashed) {
-      setDetail(stashed)
-      setLoading(false)
-      setError(null)
-      return
-    }
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -154,21 +136,6 @@ export default function LoanDetail() {
   const bucket = detail ? bucketForLoanItem(detail) : null
   // bucketForLoanItem returns null only for a denied request.
   const state: LoanState | null = detail ? (bucket ?? 'denied') : null
-
-  // Fetch the hours behind the "view availability" dialog in the background,
-  // so it opens with them drawn.
-  const warmTarget: AvailabilityTarget | null =
-    detail && state === 'returns'
-      ? { kind: 'return', loanRequestId: detail.loanRequestId, loanRequestItemId: detail.id }
-      : detail && state === 'requests'
-        ? { kind: 'checkout', loanRequestId: detail.loanRequestId }
-        : null
-  const warmKey = warmTarget ? JSON.stringify(warmTarget) : null
-  useEffect(() => {
-    if (warmTarget) fetchAvailability(warmTarget).catch(() => {})
-    // warmKey identifies the target; the object itself is rebuilt each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [warmKey])
 
   function handleLogOut() {
     setProfileOpen(false)
@@ -283,14 +250,7 @@ export default function LoanDetail() {
               <button
                 type="button"
                 className={styles.memberRow}
-                onClick={() =>
-                  void open(
-                    memberDetailKey(detail.memberId),
-                    () => fetchProfileById(detail.memberId),
-                    `/adminHome/members/${detail.memberId}`,
-                  )
-                }
-                aria-busy={pendingKey === memberDetailKey(detail.memberId)}
+                onClick={() => navigate(`/adminHome/members/${detail.memberId}`)}
               >
                 <span className={styles.rowLabel}>Member</span>
                 <span className={styles.rowValueLink}>{detail.memberName}</span>
@@ -324,11 +284,7 @@ export default function LoanDetail() {
                       <button
                         type="button"
                         className={styles.otherItem}
-                        onClick={() =>
-                          void open(loanDetailKey(item.id), () => fetchLoanRequestItemDetail(item.id), `/adminHome/loans/${item.id}`)
-                        }
-                        aria-busy={pendingKey === loanDetailKey(item.id)}
-                        style={pendingKey === loanDetailKey(item.id) ? PENDING_ROW_STYLE : undefined}
+                        onClick={() => navigate(`/adminHome/loans/${item.id}`)}
                         aria-label={`View loan details for ${item.itemName}`}
                       >
                         {/* A fixed-size slot either way: a product with no

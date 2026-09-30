@@ -8,12 +8,10 @@ import { Tooltip } from '../components/Tooltip'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
 import { ArrowLeftIcon, DownloadIconFilled, PrinterIconFilled } from '../components/admin-dashboard/icons'
-import { fetchEquipment, listEquipmentUnits, type LabelsProductData } from '../lib/inventory'
-import { readStash } from '../lib/queryCache'
+import { fetchEquipment, listEquipmentUnits } from '../lib/inventory'
 import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../lib/labelPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
-import { labelsProductKey } from '../lib/detailKeys'
 
 function slugify(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
@@ -28,12 +26,9 @@ export default function GetLabelsProductPage() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  // Opened from the labels list, which fetched this a moment ago
-  // (usePrefetchNavigate): draw from it on the first render.
-  const [prefetched] = useState(() => (id ? readStash<LabelsProductData>(labelsProductKey(id)) : undefined))
-  const [equipment, setEquipment] = useState<Equipment | null>(prefetched?.equipment ?? null)
-  const [units, setUnits] = useState<EquipmentUnit[]>(prefetched?.units ?? [])
-  const [isLoading, setLoading] = useState(prefetched === undefined)
+  const [equipment, setEquipment] = useState<Equipment | null>(null)
+  const [units, setUnits] = useState<EquipmentUnit[]>([])
+  const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
 
@@ -41,7 +36,7 @@ export default function GetLabelsProductPage() {
   const barcodeLabelRefs = useRef(new Map<string, HTMLDivElement>())
 
   useEffect(() => {
-    if (!id || prefetched) return
+    if (!id) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -64,7 +59,7 @@ export default function GetLabelsProductPage() {
     return () => {
       cancelled = true
     }
-  }, [id, prefetched])
+  }, [id])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null

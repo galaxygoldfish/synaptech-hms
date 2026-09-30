@@ -1,6 +1,5 @@
 import { supabase } from './supabase'
-import { manageItemKey, manageItemUnitsKey } from './detailKeys'
-import { CACHE_KEYS, invalidate, peekValue, readStash, refresh, stash, DISPLAY_REUSE_MS } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import { generateSerialNumbers } from './serialNumber'
 import type { Equipment, EquipmentAddon, EquipmentCategory, EquipmentProductType, EquipmentUnit } from '../types'
 
@@ -533,85 +532,4 @@ export async function replaceEquipmentAddons(
   if (added.length > 0) {
     await createEquipmentAddons(equipmentId, added)
   }
-}
-
-/** What the admin item page needs to draw its form. */
-export interface ManageItemData {
-  equipment: Equipment
-  checkedOutCount: number
-  addonOptions: EquipmentAddonOption[]
-}
-
-/**
- * Fetches everything the admin item page and its units table load, and
- * stashes it for them (see stash in queryCache.ts) — called by the inventory
- * list on a row click, so the page opens already drawn, from data a moment
- * old, rather than behind a skeleton. Rejects like the fetches it wraps.
- */
-export async function prefetchManageItem(equipmentId: string): Promise<ManageItemData> {
-  const [equipment, checkedOutCount, addonOptions, units] = await Promise.all([
-    fetchEquipment(equipmentId),
-    fetchEquipmentCheckedOutCount(equipmentId),
-    fetchEquipmentAddonOptions(equipmentId),
-    fetchEquipmentUnitsWithStatus(equipmentId),
-  ])
-  // The page's own data is stashed by the caller (usePrefetchNavigate, under
-  // manageItemKey); the units table's goes in alongside.
-  stash(manageItemUnitsKey(equipmentId), units)
-  return { equipment, checkedOutCount, addonOptions }
-}
-
-
-/** The item page's data if the list just prefetched it, else undefined. */
-export function readManageItemPrefetch(equipmentId: string): ManageItemData | undefined {
-  return readStash<ManageItemData>(manageItemKey(equipmentId))
-}
-
-/** The units table's rows if the list just prefetched them, else undefined. */
-export function readManageItemUnitsPrefetch(equipmentId: string): EquipmentUnitWithStatus[] | undefined {
-  return readStash<EquipmentUnitWithStatus[]>(manageItemUnitsKey(equipmentId))
-}
-
-/** The "get labels" product screen: a product and every one of its units. */
-export interface LabelsProductData {
-  equipment: Equipment
-  units: EquipmentUnit[]
-}
-
-export async function fetchLabelsProduct(equipmentId: string): Promise<LabelsProductData> {
-  const [equipment, units] = await Promise.all([fetchEquipment(equipmentId), listEquipmentUnits(equipmentId)])
-  return { equipment, units }
-}
-
-
-/**
- * The member's sign-agreement step: the products being checked out and, for
- * each hardware one, the unit they'll get (the agreement names its serial).
- * Fetched when the return-date step's "next" is pressed, so the agreement
- * opens drawn; the unit is still a fresh answer, and submission re-checks it.
- */
-export interface SignAgreementData {
-  equipmentId: string
-  addonIds: string[]
-  items: Equipment[]
-  units: Record<string, EquipmentUnit | null>
-}
-
-export async function fetchSignAgreementData(equipmentId: string, addonIds: string[]): Promise<SignAgreementData> {
-  const [mainItem, addonItems] = await Promise.all([fetchEquipment(equipmentId), fetchEquipmentByIds(addonIds)])
-  const items = [mainItem, ...addonItems]
-  const unitEntries = await Promise.all(
-    items
-      .filter((item) => item.product_type === 'hardware')
-      .map(async (item) => [item.id, await fetchAvailableEquipmentUnit(item.id)] as const),
-  )
-  return { equipmentId, addonIds, items, units: Object.fromEntries(unitEntries) }
-}
-
-/** The prefetched sign-agreement data, if it's for exactly this checkout. */
-export function readSignAgreementPrefetch(equipmentId: string, addonIds: string[]): SignAgreementData | undefined {
-  const data = readStash<SignAgreementData>(CACHE_KEYS.signAgreement)
-  if (!data || data.equipmentId !== equipmentId) return undefined
-  const same = data.addonIds.length === addonIds.length && data.addonIds.every((id, i) => id === addonIds[i])
-  return same ? data : undefined
 }

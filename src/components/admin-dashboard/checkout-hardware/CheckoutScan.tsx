@@ -13,10 +13,6 @@ import {
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
 import styles from '../hardware-flow/HardwareFlow.module.css'
-import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
-import { fetchHandOffData, type HandOffData } from '../../../lib/handOff'
-import { handOffKey } from '../../../lib/detailKeys'
-import { refresh } from '../../../lib/queryCache'
 
 /**
  * Step 1 of "Check out hardware", reached from the admin dashboard: work out
@@ -79,22 +75,6 @@ export default function CheckoutScan() {
   const [isResolving, setResolving] = useState(false)
 
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // The agreement's data, fetched from the moment a loan is confirmed, while
-  // the admin reads the confirm card — so "continue" opens it drawn. One
-  // request per loan, shared by the card and the navigation.
-  const { open } = usePrefetchNavigate()
-  // Shares the request between the card and "continue", and reuses it only
-  // while under a minute old, so an admin who studies the card for a while
-  // still gets a current agreement.
-  function prefetchHandOff(itemId: string): Promise<HandOffData> {
-    return refresh(handOffKey(itemId), () => fetchHandOffData(itemId), 60_000)
-  }
-  useEffect(() => {
-    if (confirmed) prefetchHandOff(confirmed.id).catch(() => {})
-    // prefetchHandOff has no state of its own; confirmed is the only input.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmed])
   useEffect(
     () => () => {
       if (holdTimer.current) clearTimeout(holdTimer.current)
@@ -105,6 +85,8 @@ export default function CheckoutScan() {
   useEffect(() => {
     let cancelled = false
 
+    // Fresh, never cached: this screen decides from the list. See
+    // fetchAllLoanRequestItems.
     const loans = fetchAllLoanRequestItems({ fresh: true })
     loansRef.current = loans
     loans.catch((fetchError) => {
@@ -263,7 +245,7 @@ export default function CheckoutScan() {
           ]}
           actionLabel="continue"
           onAction={() =>
-            void open(handOffKey(confirmed.id), () => prefetchHandOff(confirmed.id), `/adminHome/checkout/${confirmed.id}/agreement`, {
+            navigate(`/adminHome/checkout/${confirmed.id}/agreement`, {
               state: { serialVerifiedBy: confirmedVia },
             })
           }

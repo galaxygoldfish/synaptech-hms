@@ -10,11 +10,9 @@ import { ProfileModal } from "./ProfileModal";
 import type { UserProfile } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { memberActions } from "../../data/memberActions";
-import { activeHardwareLoans, fetchMemberLoanItem, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
+import { activeHardwareLoans, homeLoanTone, type MemberLoanItem } from "../../lib/memberLoans";
 import { useMemberLoans } from "../../lib/useMemberLoans";
 import styles from "./Home.module.css";
-import { usePrefetchNavigate } from "../../lib/usePrefetchNavigate";
-import { memberLoanItemKey } from "../../lib/detailKeys";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -66,9 +64,8 @@ export default function Home() {
     else navigate("/home/checkout");
   }, [isCheckoutPending, isFresh, hasOverdueLoan, navigate]);
 
-  const { open } = usePrefetchNavigate();
   const handleMoreDetails = (loan: MemberLoanItem) => {
-    void open(memberLoanItemKey(loan.id), () => fetchMemberLoanItem(loan.id), `/home/loans/${loan.id}`);
+    navigate(`/home/loans/${loan.id}`);
   };
 
   const handleAction = (actionId: string) => {

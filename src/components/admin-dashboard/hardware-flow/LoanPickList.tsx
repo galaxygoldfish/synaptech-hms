@@ -7,7 +7,6 @@ import {
 import type { AdminLoanRequestItemSummary } from '../../../lib/loanRequests'
 import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
 import styles from './HardwareFlow.module.css'
-import { PENDING_ROW_STYLE } from '../../../lib/usePrefetchNavigate'
 
 /**
  * The list a flow falls back to when the barcode can't help: a label that has
@@ -37,8 +36,6 @@ interface LoanPickListProps {
   /** Names the action for assistive tech, e.g. "Hand over X to Y". */
   rowLabel: (loan: AdminLoanRequestItemSummary) => string
   onPick: (loan: AdminLoanRequestItemSummary) => void
-  /** The row whose next screen is being fetched, shown as busy. */
-  pendingId?: string | null
 }
 
 export function LoanPickList({
@@ -50,7 +47,6 @@ export function LoanPickList({
   dateFor,
   rowLabel,
   onPick,
-  pendingId = null,
 }: LoanPickListProps) {
   return (
     <div className={styles.pickCard}>
@@ -94,8 +90,6 @@ export function LoanPickList({
                 type="button"
                 className={styles.pickItem}
                 onClick={() => onPick(loan)}
-                aria-busy={loan.id === pendingId}
-                style={loan.id === pendingId ? PENDING_ROW_STYLE : undefined}
                 aria-label={rowLabel(loan)}
               >
                 {loan.imageUrl ? (

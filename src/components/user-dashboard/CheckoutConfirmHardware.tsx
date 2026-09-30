@@ -12,8 +12,7 @@ import {
   type EquipmentAddonOption,
   peekEquipmentRows,
 } from '../../lib/inventory'
-import type { CheckoutStartData } from './useStartCheckout'
-import { checkoutStartKey } from '../../lib/detailKeys'
+import { checkoutStartKey, type CheckoutStartData } from './useStartCheckout'
 import { readStash } from '../../lib/queryCache'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'

@@ -89,7 +89,6 @@ export async function submitLoanRequest(input: SubmitLoanRequestInput): Promise<
   } finally {
     invalidate(CACHE_KEYS.memberLoans)
     invalidate(CACHE_KEYS.equipmentAvailability)
-    invalidate(CACHE_KEYS.availability)
   }
 }
 

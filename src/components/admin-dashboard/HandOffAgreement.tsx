@@ -1,9 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { LoanAgreementSignOff } from './LoanAgreementSignOff'
-import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { loanDetailKey } from '../../lib/detailKeys'
-import { fetchLoanRequestItemDetail } from '../../lib/loanRequests'
 
 /**
  * Step 2 of the hand-off reached from a loan: the agreement itself is
@@ -15,7 +12,6 @@ import { fetchLoanRequestItemDetail } from '../../lib/loanRequests'
 export default function HandOffAgreement() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { open } = usePrefetchNavigate()
   const location = useLocation()
 
   // The serial has to have been verified on step 1, by scan or by
@@ -36,11 +32,7 @@ export default function HandOffAgreement() {
       heading="Loan agreement sign off"
       subtext="Check that the borrower signed the agreement and that all fields are correct, then sign section 10."
       onBack={() => navigate(`/adminHome/loans/${id}/hand-off`)}
-      onRecorded={(detail) =>
-        void open(loanDetailKey(detail.id), () => fetchLoanRequestItemDetail(detail.id), `/adminHome/loans/${detail.id}`, {
-          replace: true,
-        })
-      }
+      onRecorded={(detail) => navigate(`/adminHome/loans/${detail.id}`, { replace: true })}
     />
   )
 }

@@ -8,14 +8,11 @@ import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled, PlusIcon
 import {
   fetchEquipmentInventorySummary,
   peekEquipmentInventorySummary,
-  prefetchManageItem,
   type EquipmentInventoryRow,
 } from '../../lib/inventory'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageInventory.module.css'
-import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { manageItemKey } from '../../lib/detailKeys'
 
 function matchesQuery(row: EquipmentInventoryRow, query: string): boolean {
   return row.equipment.name.toLowerCase().includes(query)
@@ -46,12 +43,6 @@ export default function ManageInventory() {
   const [isLoading, setLoading] = useState(initialRows === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  // Opening an item fetches its page's data first, with this list still on
-  // screen, so the page draws immediately — see prefetchManageItem.
-  const { open, pendingKey } = usePrefetchNavigate()
-  function openItem(equipmentId: string) {
-    void open(manageItemKey(equipmentId), () => prefetchManageItem(equipmentId), `/adminHome/inventory/${equipmentId}`)
-  }
 
   useEffect(() => {
     let cancelled = false
@@ -169,9 +160,7 @@ export default function ManageInventory() {
                   <button
                     type="button"
                     className={styles.itemRow}
-                    onClick={() => openItem(equipment.id)}
-                    aria-busy={pendingKey === manageItemKey(equipment.id)}
-                    style={pendingKey === manageItemKey(equipment.id) ? PENDING_ROW_STYLE : undefined}
+                    onClick={() => navigate(`/adminHome/inventory/${equipment.id}`)}
                   >
                     {equipment.image_url ? (
                       <img src={equipment.image_url} alt="" className={styles.itemThumb} />

@@ -16,45 +16,14 @@ export const CACHE_KEYS = {
   memberLoans: 'member-loans:',
   equipmentAvailability: 'equipment:availability',
   inventorySummary: 'equipment:summary',
-  /** Every equipment-derived key above, and the stashes below — what an
-      inventory write invalidates. */
+  /** Every equipment-derived key above — what an inventory write
+      invalidates. */
   equipmentAll: 'equipment:',
-  /** Followed by an equipment id: the admin item page's data, stashed by the
-      inventory list just before opening it. */
-  manageItem: 'equipment:manage-item:',
-  /** Followed by an equipment id: that item's units table, likewise. */
-  manageItemUnits: 'equipment:manage-units:',
-  /** Followed by a loan_request_items id: the admin loan detail screen. */
-  loanDetail: 'admin-loans:detail:',
-  /** Followed by a loan_request_items id: the member's loan detail screen. */
-  memberLoanItem: 'member-loans:item:',
   members: 'members:list',
-  /** Followed by a profile id: the admin member detail screen. */
-  memberDetail: 'members:detail:',
-  /** Everything members-derived — what a profile write invalidates. */
-  membersAll: 'members:',
   emailTemplates: 'emails:templates',
-  /** Followed by a template id: the template editor. */
-  emailTemplate: 'emails:template:',
   emailLog: 'emails:log',
-  /** Everything email-derived — what a template write invalidates. */
-  emailsAll: 'emails:',
   auditLog: 'audit-log',
   inventoryAudits: 'inventory-audits:list',
-  /** Followed by an audit id: a past audit's report. */
-  inventoryAuditReport: 'inventory-audits:report:',
-  /** Everything audit-derived — what recording an audit invalidates. */
-  inventoryAuditsAll: 'inventory-audits:',
-  /** The new-audit scan screen's inventory, prefetched from the audit list. */
-  auditableInventory: 'equipment:auditable',
-  /** Followed by an equipment id: the "get labels" product screen. */
-  labelsProduct: 'equipment:labels:',
-  /** Followed by a loan_request_items id: the hand-off agreement screen. */
-  handOff: 'admin-loans:handoff:',
-  /** The member's sign-agreement step: its items and the units they'll get. */
-  signAgreement: 'equipment:sign-agreement',
-  /** Followed by a target key: a request's or item's availability hours. */
-  availability: 'availability:',
   /** Followed by an equipment id: a checkout's add-ons and stock, fetched
       from the catalog before opening the confirm step. */
   checkoutStart: 'equipment:checkout-start:',

@@ -4,15 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { ArrowLeftIcon, ChevronRightIcon } from '../components/admin-dashboard/icons'
-import { listEquipment, peekEquipmentList, fetchLabelsProduct } from '../lib/inventory'
+import { listEquipment, peekEquipmentList } from '../lib/inventory'
 import type { Equipment, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
-import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../lib/usePrefetchNavigate'
-import { labelsProductKey } from '../lib/detailKeys'
 
 export default function GetLabelsBrowsePage() {
   const navigate = useNavigate()
-  const { open, pendingKey } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
@@ -91,11 +88,7 @@ export default function GetLabelsBrowsePage() {
                   key={item.id}
                   type="button"
                   className={`${styles.itemRow} ${styles.browseRow}`}
-                  onClick={() =>
-                    void open(labelsProductKey(item.id), () => fetchLabelsProduct(item.id), `/adminHome/get-labels/browse/${item.id}`)
-                  }
-                  aria-busy={pendingKey === labelsProductKey(item.id)}
-                  style={pendingKey === labelsProductKey(item.id) ? PENDING_ROW_STYLE : undefined}
+                  onClick={() => navigate(`/adminHome/get-labels/browse/${item.id}`)}
                 >
                   {item.image_url && <img src={item.image_url} alt="" className={styles.itemThumb} />}
                   <div className={styles.itemInfo}>

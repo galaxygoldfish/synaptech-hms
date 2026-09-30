@@ -10,9 +10,6 @@ import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import styles from './ViewMembers.module.css'
-import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { memberDetailKey } from '../../lib/detailKeys'
-import { fetchProfileById } from '../../lib/members'
 
 function formatJoinedDate(iso: string): string {
   const date = new Date(iso)
@@ -26,7 +23,6 @@ function matchesQuery(member: Profile, query: string): boolean {
 
 export default function ViewMembers() {
   const navigate = useNavigate()
-  const { open, pendingKey } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
@@ -125,11 +121,7 @@ export default function ViewMembers() {
                   <button
                     type="button"
                     className={styles.memberItem}
-                    onClick={() =>
-                      void open(memberDetailKey(member.id), () => fetchProfileById(member.id), `/adminHome/members/${member.id}`)
-                    }
-                    aria-busy={pendingKey === memberDetailKey(member.id)}
-                    style={pendingKey === memberDetailKey(member.id) ? PENDING_ROW_STYLE : undefined}
+                    onClick={() => navigate(`/adminHome/members/${member.id}`)}
                   >
                     <span
                       className={

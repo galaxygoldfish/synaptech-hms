@@ -256,7 +256,7 @@ export async function updateEmailTemplateContent(
     .select(EMAIL_TEMPLATE_COLUMNS)
     .single()
 
-  invalidate(CACHE_KEYS.emailsAll)
+  invalidate(CACHE_KEYS.emailTemplates)
   if (error) throw error
   return mapRow(data as EmailTemplateRow)
 }
@@ -269,7 +269,7 @@ export async function setEmailTemplateEnabled(key: string, enabled: boolean, upd
     .select(EMAIL_TEMPLATE_COLUMNS)
     .single()
 
-  invalidate(CACHE_KEYS.emailsAll)
+  invalidate(CACHE_KEYS.emailTemplates)
   if (error) throw error
   return mapRow(data as EmailTemplateRow)
 }
@@ -286,7 +286,7 @@ export async function setEmailTemplateArchiveCc(
     .select(EMAIL_TEMPLATE_COLUMNS)
     .single()
 
-  invalidate(CACHE_KEYS.emailsAll)
+  invalidate(CACHE_KEYS.emailTemplates)
   if (error) throw error
   return mapRow(data as EmailTemplateRow)
 }
@@ -354,18 +354,6 @@ export async function setTemplateRecipientCc(
     },
     { onConflict: 'template_key,admin_id' },
   )
-  invalidate(CACHE_KEYS.emailsAll)
+  invalidate(CACHE_KEYS.emailTemplates)
   if (error) throw error
 }
-
-/** The template editor's data: the template and who it goes to. */
-export interface TemplateEditorData {
-  template: EmailTemplate | null
-  recipients: TemplateRecipient[]
-}
-
-export async function fetchTemplateEditorData(key: string): Promise<TemplateEditorData> {
-  const [template, recipients] = await Promise.all([fetchEmailTemplate(key), fetchTemplateRecipients(key)])
-  return { template, recipients }
-}
-

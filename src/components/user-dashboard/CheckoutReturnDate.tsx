@@ -4,12 +4,10 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { CalendarIcon } from './icons'
-import { fetchEquipment, fetchEquipmentByIds, fetchSignAgreementData, peekEquipmentRows } from '../../lib/inventory'
+import { fetchEquipment, fetchEquipmentByIds, peekEquipmentRows } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutReturnDate.module.css'
-import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { CACHE_KEYS } from '../../lib/queryCache'
 
 // The Synaptech Hardware Checkout & Usage Policy Google Doc.
 const POLICY_URL = 'https://docs.google.com/document/d/11RSFuvvg1F4aM9V0znWw7wFn_MZMx95T7EdlblAyPfc/edit?tab=t.0'
@@ -194,20 +192,12 @@ export default function CheckoutReturnDate() {
     signOut()
   }
 
-  // The agreement step needs the unit each item will be (its serial is on
-  // the agreement): fetch that now, with this screen still up, so the
-  // agreement opens drawn — see fetchSignAgreementData.
-  const { open, pendingKey } = usePrefetchNavigate()
   function handleConfirm() {
     if (!canConfirm || !checkoutState) return
-    void open(
-      CACHE_KEYS.signAgreement,
-      () => fetchSignAgreementData(checkoutState.equipmentId, addonIdsOf(checkoutState)),
-      '/home/checkout/sign-agreement',
-      { state: { ...checkoutState, returnDates: selectedDates } },
-    )
+    navigate('/home/checkout/sign-agreement', {
+      state: { ...checkoutState, returnDates: selectedDates },
+    })
   }
-  const isPreparingAgreement = pendingKey === CACHE_KEYS.signAgreement
 
   if (!checkoutState) return null
 
@@ -290,8 +280,7 @@ export default function CheckoutReturnDate() {
             type="button"
             className={styles.confirmButton}
             onClick={handleConfirm}
-            disabled={!canConfirm || isPreparingAgreement}
-            aria-busy={isPreparingAgreement}
+            disabled={!canConfirm}
           >
             confirm
           </button>

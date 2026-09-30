@@ -13,16 +13,12 @@ import {
   type AuditableUnit,
   type InventoryAuditStatus,
   type RecordInventoryAuditEntry,
-  fetchInventoryAudit,
 } from '../../lib/inventoryAudit'
 import { STATUS_LABEL, UnitRow } from './InventoryAuditParts'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade, useVerticalEdgeFade } from '../../lib/useEdgeFade'
 import styles from './InventoryAudit.module.css'
-import { CACHE_KEYS, readStash } from '../../lib/queryCache'
-import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { auditReportKey } from '../../lib/detailKeys'
 
 /**
  * A live inventory audit: point the camera at whatever is on the shelf, in
@@ -142,15 +138,11 @@ function groupByEquipment<T extends { unit: AuditableUnit }>(rows: T[]): T[] {
 
 export default function InventoryAuditScan() {
   const navigate = useNavigate()
-  const { open } = usePrefetchNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  // "New audit" on the audits list fetches this before opening the scan
-  // (usePrefetchNavigate), so the camera screen draws straight away.
-  const [prefetched] = useState(() => readStash<AuditableUnit[]>(CACHE_KEYS.auditableInventory))
-  const [units, setUnits] = useState<AuditableUnit[]>(prefetched ?? [])
-  const [isLoading, setLoading] = useState(prefetched === undefined)
+  const [units, setUnits] = useState<AuditableUnit[]>([])
+  const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Keyed by normalised serial, so scanning the same label twice is a repeat
@@ -178,7 +170,6 @@ export default function InventoryAuditScan() {
   )
 
   useEffect(() => {
-    if (prefetched) return
     let cancelled = false
 
     fetchAuditableInventory()
@@ -197,7 +188,7 @@ export default function InventoryAuditScan() {
     return () => {
       cancelled = true
     }
-  }, [prefetched])
+  }, [])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -378,9 +369,8 @@ export default function InventoryAuditScan() {
 
     try {
       const auditId = await recordInventoryAudit(entries)
-      await open(auditReportKey(auditId), () => fetchInventoryAudit(auditId), `/adminHome/inventory/audit/${auditId}`, {
-        replace: true,
-      })
+      setFinishOpen(false)
+      navigate(`/adminHome/inventory/audit/${auditId}`, { replace: true })
     } catch (recordError) {
       // eslint-disable-next-line no-console
       console.error('Failed to record the inventory audit:', recordError)

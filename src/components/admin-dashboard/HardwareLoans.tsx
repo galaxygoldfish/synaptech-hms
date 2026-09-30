@@ -11,14 +11,11 @@ import {
   type AdminLoanRequestItemSummary,
   type LoanBucket,
   peekAllLoanRequestItems,
-  fetchLoanRequestItemDetail,
 } from '../../lib/loanRequests'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './HardwareLoans.module.css'
-import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { loanDetailKey } from '../../lib/detailKeys'
 
 type LoanFilter = 'all' | 'active' | 'overdue' | 'requests' | 'returned'
 
@@ -106,7 +103,6 @@ function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanBucket | null):
 
 export default function HardwareLoans() {
   const navigate = useNavigate()
-  const { open, pendingKey } = usePrefetchNavigate()
   const [searchParams] = useSearchParams()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
@@ -170,7 +166,7 @@ export default function HardwareLoans() {
   }
 
   function handleRowClick(loan: AdminLoanRequestItemSummary) {
-    void open(loanDetailKey(loan.id), () => fetchLoanRequestItemDetail(loan.id), `/adminHome/loans/${loan.id}`)
+    navigate(`/adminHome/loans/${loan.id}`)
   }
 
   const emptyMessage = query.trim()
@@ -274,8 +270,6 @@ export default function HardwareLoans() {
                     type="button"
                     className={styles.loanItem}
                     onClick={() => handleRowClick(loan)}
-                    aria-busy={pendingKey === loanDetailKey(loan.id)}
-                    style={pendingKey === loanDetailKey(loan.id) ? PENDING_ROW_STYLE : undefined}
                     aria-label={`View loan details for ${loan.itemName}`}
                   >
                     {loan.imageUrl && <img src={loan.imageUrl} alt="" className={styles.loanThumb} />}

@@ -13,8 +13,6 @@ import {
 } from '../../../lib/loanRequests'
 import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
 import styles from '../hardware-flow/HardwareFlow.module.css'
-import { readStash } from '../../../lib/queryCache'
-import { loanDetailKey } from '../../../lib/detailKeys'
 
 /**
  * Step 2 of "Return hardware": check the loan, then record that the hardware
@@ -47,11 +45,8 @@ export default function ReturnConfirm() {
   const location = useLocation()
   const { profile } = useAuth()
 
-  // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
-  // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<AdminLoanRequestDetail>(loanDetailKey(id)) : undefined))
-  const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(prefetched ?? null)
-  const [isLoading, setLoading] = useState(prefetched === undefined)
+  const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(null)
+  const [isLoading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [isSubmitting, setSubmitting] = useState(false)
@@ -71,7 +66,7 @@ export default function ReturnConfirm() {
   }, [isVerified, navigate])
 
   useEffect(() => {
-    if (!id || !isVerified || prefetched) return
+    if (!id || !isVerified) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -92,7 +87,7 @@ export default function ReturnConfirm() {
     return () => {
       cancelled = true
     }
-  }, [id, isVerified, prefetched])
+  }, [id, isVerified])
 
   if (!isVerified || !id) return null
 

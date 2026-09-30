@@ -4,9 +4,14 @@ import {
   fetchEquipmentAvailability,
   type EquipmentAddonOption,
 } from '../../lib/inventory'
-import { checkoutStartKey } from '../../lib/detailKeys'
+import { CACHE_KEYS } from '../../lib/queryCache'
 import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 import type { Equipment } from '../../types'
+
+/** Stash key for a checkout's add-ons and stock, read by the confirm step. */
+export function checkoutStartKey(equipmentId: string): string {
+  return `${CACHE_KEYS.checkoutStart}${equipmentId}`
+}
 
 /** What the confirm step needs, fetched before navigating to it. */
 export interface CheckoutStartData {
