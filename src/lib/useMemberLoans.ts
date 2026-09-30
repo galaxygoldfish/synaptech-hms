@@ -39,7 +39,7 @@ export function useMemberLoans(userId: string | null | undefined): MemberLoansSt
     const cachedGroups = peekMemberLoans(userId)
     setState({ groups: cachedGroups, isFresh: false, failed: false, refreshFailed: false })
 
-    fetchMemberLoans(userId, { fresh: true })
+    fetchMemberLoans(userId)
       .then((groups) => {
         if (!cancelled) setState({ groups, isFresh: true, failed: false, refreshFailed: false })
       })

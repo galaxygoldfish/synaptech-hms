@@ -8,11 +8,12 @@ import { Tooltip } from '../components/Tooltip'
 import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
 import { ArrowLeftIcon, DownloadIconFilled, PrinterIconFilled } from '../components/admin-dashboard/icons'
-import { fetchEquipment, labelsProductKey, listEquipmentUnits, type LabelsProductData } from '../lib/inventory'
+import { fetchEquipment, listEquipmentUnits, type LabelsProductData } from '../lib/inventory'
 import { readStash } from '../lib/queryCache'
 import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../lib/labelPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
+import { labelsProductKey } from '../lib/detailKeys'
 
 function slugify(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'

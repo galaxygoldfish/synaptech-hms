@@ -18,8 +18,9 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HandOffAgreement.module.css'
 import { preloadApprovalPdfLib } from '../../lib/loanAgreementApproval'
-import { handOffKey, type HandOffData } from '../../lib/handOff'
+import { type HandOffData } from '../../lib/handOff'
 import { readStash } from '../../lib/queryCache'
+import { handOffKey } from '../../lib/detailKeys'
 
 /**
  * Signing off a loan agreement and recording the hand-off — the last step of

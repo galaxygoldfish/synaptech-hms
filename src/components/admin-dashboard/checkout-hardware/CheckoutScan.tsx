@@ -12,9 +12,11 @@ import {
   type AdminLoanRequestItemSummary,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
-import styles from '../hardware-flow/HardwareFlow.module.css'
+import styles from '../hardware-flow/HardwareFlow.module.css'
 import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
-import { fetchHandOffData, handOffKey, type HandOffData } from '../../../lib/handOff'
+import { fetchHandOffData, type HandOffData } from '../../../lib/handOff'
+import { handOffKey } from '../../../lib/detailKeys'
+import { refresh } from '../../../lib/queryCache'
 
 /**
  * Step 1 of "Check out hardware", reached from the admin dashboard: work out
@@ -82,20 +84,15 @@ export default function CheckoutScan() {
   // the admin reads the confirm card — so "continue" opens it drawn. One
   // request per loan, shared by the card and the navigation.
   const { open } = usePrefetchNavigate()
-  // Reused only while under a minute old, so an admin who studies the card
-  // for a while still gets a current agreement.
-  const handOffRequests = useRef(new Map<string, { request: Promise<HandOffData>; at: number }>())
+  // Shares the request between the card and "continue", and reuses it only
+  // while under a minute old, so an admin who studies the card for a while
+  // still gets a current agreement.
   function prefetchHandOff(itemId: string): Promise<HandOffData> {
-    const existing = handOffRequests.current.get(itemId)
-    if (existing && Date.now() - existing.at < 60_000) return existing.request
-    const request = fetchHandOffData(itemId)
-    request.catch(() => handOffRequests.current.delete(itemId))
-    handOffRequests.current.set(itemId, { request, at: Date.now() })
-    return request
+    return refresh(handOffKey(itemId), () => fetchHandOffData(itemId), 60_000)
   }
   useEffect(() => {
     if (confirmed) prefetchHandOff(confirmed.id).catch(() => {})
-    // prefetchHandOff is stable in effect: it only reads and writes a ref.
+    // prefetchHandOff has no state of its own; confirmed is the only input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmed])
   useEffect(

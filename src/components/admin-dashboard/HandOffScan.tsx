@@ -19,7 +19,8 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HandOffAgreement.module.css'
 import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
-import { fetchHandOffData, handOffKey } from '../../lib/handOff'
+import { fetchHandOffData } from '../../lib/handOff'
+import { handOffKey } from '../../lib/detailKeys'
 
 // Long enough to register as a result rather than a flicker, short enough
 // not to hold up someone standing there with the hardware in their hands.

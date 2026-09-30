@@ -1,54 +1,29 @@
-import { cached, clearCache, invalidate, peekValue, readStash, refresh, stash } from '../lib/queryCache'
+import { clearCache, invalidate, peekValue, readStash, refresh, stash } from '../lib/queryCache'
 
 afterEach(() => {
   clearCache()
   vi.useRealTimers()
 })
 
-describe('cached', () => {
-  it('shares one fetch between callers while the entry is fresh', async () => {
-    const fetcher = vi.fn().mockResolvedValue(['a'])
-
-    const [first, second] = await Promise.all([cached('k', fetcher), cached('k', fetcher)])
-    const third = await cached('k', fetcher)
-
-    expect(fetcher).toHaveBeenCalledTimes(1)
-    expect(first).toEqual(['a'])
-    expect(second).toBe(first)
-    expect(third).toBe(first)
-  })
-
-  it('refetches once the entry is older than staleMs', async () => {
-    vi.useFakeTimers()
-    const fetcher = vi.fn().mockResolvedValueOnce('old').mockResolvedValueOnce('new')
-
-    expect(await cached('k', fetcher, 1000)).toBe('old')
-    vi.advanceTimersByTime(1001)
-    expect(await cached('k', fetcher, 1000)).toBe('new')
-    expect(fetcher).toHaveBeenCalledTimes(2)
-  })
-
-  // An error must never be served from cache: the next screen to ask should
-  // try again, not inherit the failure for a minute.
+describe('refresh basics', () => {
+  // An error must never be served: the next screen to ask should try again.
   it('evicts a rejected fetch so the next call retries', async () => {
     const fetcher = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce('ok')
 
-    await expect(cached('k', fetcher)).rejects.toThrow('offline')
-    expect(await cached('k', fetcher)).toBe('ok')
+    await expect(refresh('k', fetcher, 60_000)).rejects.toThrow('offline')
+    expect(await refresh('k', fetcher, 60_000)).toBe('ok')
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
-})
 
-describe('invalidate', () => {
-  it('drops only the entries under the given prefix', async () => {
+  it('invalidate drops only the entries under the given prefix', async () => {
     const loans = vi.fn().mockResolvedValue('loans')
     const equipment = vi.fn().mockResolvedValue('equipment')
-    await cached('admin-loans', loans)
-    await cached('equipment:list', equipment)
+    await refresh('admin-loans', loans, 60_000)
+    await refresh('equipment:list', equipment, 60_000)
 
     invalidate('equipment:')
-    await cached('admin-loans', loans)
-    await cached('equipment:list', equipment)
+    await refresh('admin-loans', loans, 60_000)
+    await refresh('equipment:list', equipment, 60_000)
 
     expect(loans).toHaveBeenCalledTimes(1)
     expect(equipment).toHaveBeenCalledTimes(2)
@@ -58,7 +33,7 @@ describe('invalidate', () => {
 describe('peekValue', () => {
   // A refresh keeps the last value on screen until the new one lands.
   it('keeps the last value through a refresh', async () => {
-    await cached('k', () => Promise.resolve('old'))
+    await refresh('k', () => Promise.resolve('old'))
     let finish: (value: string) => void = () => {}
     const pending = refresh('k', () => new Promise<string>((resolve) => (finish = resolve)))
 
@@ -70,11 +45,11 @@ describe('peekValue', () => {
 
   // A write means the old copy is wrong: it must not be painted, even briefly.
   it('drops the last value on invalidate and on clearCache', async () => {
-    await cached('member-loans:1', () => Promise.resolve('before cancel'))
+    await refresh('member-loans:1', () => Promise.resolve('before cancel'))
     invalidate('member-loans:')
     expect(peekValue('member-loans:1')).toBeUndefined()
 
-    await cached('k', () => Promise.resolve('value'))
+    await refresh('k', () => Promise.resolve('value'))
     clearCache()
     expect(peekValue('k')).toBeUndefined()
   })

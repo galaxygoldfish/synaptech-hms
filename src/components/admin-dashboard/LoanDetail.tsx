@@ -21,7 +21,7 @@ import {
 import type { LoanRequestItemRole, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './LoanDetail.module.css'
-import { CACHE_KEYS, readStash } from '../../lib/queryCache'
+import { readStash } from '../../lib/queryCache'
 import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 import { loanDetailKey, memberDetailKey } from '../../lib/detailKeys'
 import { fetchProfileById } from '../../lib/members'
@@ -96,7 +96,7 @@ export default function LoanDetail() {
 
   // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
   // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<AdminLoanRequestDetail>(`${CACHE_KEYS.loanDetail}${id}`) : undefined))
+  const [prefetched] = useState(() => (id ? readStash<AdminLoanRequestDetail>(loanDetailKey(id)) : undefined))
   const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(prefetched ?? null)
   const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)
@@ -110,7 +110,7 @@ export default function LoanDetail() {
     if (!id) return
     // A stash for this loan — on first mount, or when moving between loans
     // without a remount — is drawn as-is rather than fetched again.
-    const stashed = readStash<AdminLoanRequestDetail>(`${CACHE_KEYS.loanDetail}${id}`)
+    const stashed = readStash<AdminLoanRequestDetail>(loanDetailKey(id))
     if (stashed) {
       setDetail(stashed)
       setLoading(false)

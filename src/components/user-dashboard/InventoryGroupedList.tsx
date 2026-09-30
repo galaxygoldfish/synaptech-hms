@@ -3,6 +3,7 @@ import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { InventoryGroup } from '../../lib/useInventoryCatalog'
 import type { Equipment } from '../../types'
 import styles from './InventoryGroupedList.module.css'
+import { PENDING_ROW_STYLE } from '../../lib/usePrefetchNavigate'
 
 interface InventoryGroupedListProps {
   groups: InventoryGroup[]
@@ -75,10 +76,9 @@ export function InventoryGroupedList({
                   <li key={item.id}>
                     <button
                       type="button"
-                      className={
-                        item.id === pendingItemId ? `${styles.itemButton} ${styles.itemButtonPending}` : styles.itemButton
-                      }
+                      className={styles.itemButton}
                       aria-busy={item.id === pendingItemId}
+                      style={item.id === pendingItemId ? PENDING_ROW_STYLE : undefined}
                       onClick={() => onSelectItem(item)}
                     >
                       {content}

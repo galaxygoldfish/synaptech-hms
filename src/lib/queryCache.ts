@@ -1,16 +1,11 @@
-// A small in-memory cache for the handful of reads several screens share —
-// the admin loans dataset above all, which the dashboard counts, the loans
-// list and the check-out/return scan pages each need in full. Without it,
-// every navigation between those screens refetched the same tables.
-//
-// Deliberately minimal rather than a query library: one promise per key,
-// reused while fresh, dropped by the mutation functions in src/lib that
-// change the underlying rows (never by components), and wiped on sign-out or
-// a change of user in AuthContext so one account's data never outlives its
-// session. Staleness is bounded by STALE_MS, so edits made by another admin
-// show up within a minute even without an invalidation here.
-
-const STALE_MS = 60_000
+// A small in-memory read cache — deliberately not a query library. Reads
+// always go to the network (refresh), but share a request already in flight
+// and remember the last value, which screens paint on their first render
+// (peekValue) while the fresh copy loads. Data fetched for one imminent
+// navigation is handed over separately (stash). The mutation functions in
+// src/lib drop what they changed (invalidate); AuthContext wipes it all on
+// sign-out or a change of user. See the "Reads are always fresh" note in
+// AGENTS.md.
 
 /** Keys shared between the fetch that fills an entry and the writes that
     drop it, which live in different modules. */
@@ -60,11 +55,13 @@ export const CACHE_KEYS = {
   signAgreement: 'equipment:sign-agreement',
   /** Followed by a target key: a request's or item's availability hours. */
   availability: 'availability:',
+  /** Followed by an equipment id: a checkout's add-ons and stock, fetched
+      from the catalog before opening the confirm step. */
+  checkoutStart: 'equipment:checkout-start:',
 } as const
 
 interface Entry {
   promise: Promise<unknown>
-  fetchedAt: number
   /** When the fetch resolved; unset while it's still in flight. */
   settledAt?: number
 }
@@ -91,19 +88,19 @@ const stashed = new Map<string, { value: unknown; at: number }>()
 const lastValues = new Map<string, unknown>()
 
 /**
- * Returns the cached promise for `key` while it is younger than `staleMs`,
- * otherwise calls `fetcher` and caches the new promise. Concurrent callers
- * share one in-flight request. A rejected fetch is evicted immediately, so
- * an error is never served from cache.
+ * Fetches `key` from the network. A request already in flight is shared (it's
+ * as fresh as a new one would be); a settled one is reused only while younger
+ * than `maxAgeMs` — 0 for screens that decide from the data. A rejected fetch
+ * is evicted immediately, so an error is never served.
  */
-export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STALE_MS): Promise<T> {
+export function refresh<T>(key: string, fetcher: () => Promise<T>, maxAgeMs = 0): Promise<T> {
   const existing = entries.get(key)
-  if (existing && Date.now() - existing.fetchedAt < staleMs) {
+  if (existing && (existing.settledAt === undefined || Date.now() - existing.settledAt < maxAgeMs)) {
     return existing.promise as Promise<T>
   }
 
   const promise = fetcher()
-  const entry: Entry = { promise, fetchedAt: Date.now() }
+  const entry: Entry = { promise }
   entries.set(key, entry)
   promise.then(
     (value) => {
@@ -119,25 +116,6 @@ export function cached<T>(key: string, fetcher: () => Promise<T>, staleMs = STAL
     },
   )
   return promise
-}
-
-/**
- * Always calls `fetcher`, bypassing whatever is cached, and stores the new
- * promise so the screens that do read from cache see the fresher copy too.
- * For screens that make a decision from the data (the check-out and return
- * flows) rather than just display it: they must never act on a list that
- * predates a request submitted from another browser a moment ago.
- */
-export function refresh<T>(key: string, fetcher: () => Promise<T>, maxAgeMs = 0): Promise<T> {
-  // A request already in flight is as fresh as a new one would be, so share
-  // it; a settled one is reused only while younger than maxAgeMs.
-  const existing = entries.get(key)
-  if (existing && (existing.settledAt === undefined || Date.now() - existing.settledAt < maxAgeMs)) {
-    return existing.promise as Promise<T>
-  }
-  // Only the entry: the last value stays on screen until this one lands.
-  entries.delete(key)
-  return cached(key, fetcher)
 }
 
 /**

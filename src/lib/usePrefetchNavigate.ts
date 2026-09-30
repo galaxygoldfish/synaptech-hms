@@ -28,12 +28,21 @@ export function usePrefetchNavigate() {
     }
   }, [])
 
-  async function open<T>(key: string, fetcher: () => Promise<T>, to: To, options?: NavigateOptions) {
+  // `to` may depend on what was fetched (undefined if the fetch failed) —
+  // starting a checkout picks its next step that way.
+  async function open<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    to: To | ((data: T | undefined) => { to: To; options?: NavigateOptions }),
+    options?: NavigateOptions,
+  ) {
     if (isOpening.current) return
     isOpening.current = true
     setPendingKey(key)
+    let data: T | undefined
     try {
-      stash(key, await fetcher())
+      data = await fetcher()
+      stash(key, data)
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(`Failed to prefetch ${key}:`, error)
@@ -41,7 +50,13 @@ export function usePrefetchNavigate() {
       isOpening.current = false
       if (mounted.current) setPendingKey(null)
     }
-    if (mounted.current) navigate(to, options)
+    if (!mounted.current) return
+    if (typeof to === 'function') {
+      const destination = to(data)
+      navigate(destination.to, destination.options)
+    } else {
+      navigate(to, options)
+    }
   }
 
   return { open, pendingKey }

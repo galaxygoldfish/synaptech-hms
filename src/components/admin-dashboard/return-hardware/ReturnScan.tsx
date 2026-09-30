@@ -16,6 +16,7 @@ import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
 import styles from '../hardware-flow/HardwareFlow.module.css'
 import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
 import { loanDetailKey } from '../../../lib/detailKeys'
+import { refresh } from '../../../lib/queryCache'
 
 /**
  * Step 1 of "Return hardware": work out which loan the hardware being handed
@@ -103,18 +104,11 @@ export default function ReturnScan() {
 
   // The confirm step's data, fetched from the moment a scan matches — the
   // success tick is held for a beat anyway, so by the time it moves on the
-  // confirm screen can open drawn. One request per loan, shared by the
-  // match and the navigation.
+  // confirm screen can open drawn. The match and the navigation share one
+  // request (refresh).
   const { open } = usePrefetchNavigate()
-  const detailRequests = useRef(new Map<string, Promise<AdminLoanRequestDetail>>())
   function prefetchDetail(itemId: string): Promise<AdminLoanRequestDetail> {
-    let request = detailRequests.current.get(itemId)
-    if (!request) {
-      request = fetchLoanRequestItemDetail(itemId)
-      request.catch(() => detailRequests.current.delete(itemId))
-      detailRequests.current.set(itemId, request)
-    }
-    return request
+    return refresh(loanDetailKey(itemId), () => fetchLoanRequestItemDetail(itemId), 10_000)
   }
 
   function goToConfirm(loan: AdminLoanRequestItemSummary, source: SerialSource) {

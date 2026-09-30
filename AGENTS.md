@@ -220,7 +220,7 @@ The member checkout flow picks the first free unit when the agreement is signed,
 
 ### Member home: My hardware
 
-The member home page lists the hardware the member currently has out (`fetchActiveHardwareLoans` in [`src/lib/memberLoans.ts`](src/lib/memberLoans.ts)), one card each: grey normally, yellow when due within 7 days, and red on or after the due date (`homeLoanTone`). Note this is stricter than the loans list, which only calls a loan overdue once the date has passed. Any red card disables the **Check out hardware** button until that hardware is back.
+The member home page lists the hardware the member currently has out (`activeHardwareLoans` in [`src/lib/memberLoans.ts`](src/lib/memberLoans.ts), read through `useMemberLoans`), one card each: grey normally, yellow when due within 7 days, and red on or after the due date (`homeLoanTone`). Note this is stricter than the loans list, which only calls a loan overdue once the date has passed. Any red card disables the **Check out hardware** button until that hardware is back.
 
 ### Member-initiated cancel and return request
 

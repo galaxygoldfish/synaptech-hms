@@ -28,7 +28,7 @@ import { cancelReturnRequest, type AvailabilityTarget, fetchAvailability } from 
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MyLoanDetail.module.css'
-import { CACHE_KEYS, readStash } from '../../lib/queryCache'
+import { readStash } from '../../lib/queryCache'
 import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 import { memberLoanItemKey } from '../../lib/detailKeys'
 
@@ -63,7 +63,7 @@ export default function MyLoanDetail() {
 
   // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
   // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<MemberLoanItem>(`${CACHE_KEYS.memberLoanItem}${id}`) : undefined))
+  const [prefetched] = useState(() => (id ? readStash<MemberLoanItem>(memberLoanItemKey(id)) : undefined))
   const [item, setItem] = useState<MemberLoanItem | null>(prefetched ?? null)
   const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)

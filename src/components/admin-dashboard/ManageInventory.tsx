@@ -8,7 +8,6 @@ import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled, PlusIcon
 import {
   fetchEquipmentInventorySummary,
   peekEquipmentInventorySummary,
-  manageItemKey,
   prefetchManageItem,
   type EquipmentInventoryRow,
 } from '../../lib/inventory'
@@ -16,6 +15,7 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageInventory.module.css'
 import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { manageItemKey } from '../../lib/detailKeys'
 
 function matchesQuery(row: EquipmentInventoryRow, query: string): boolean {
   return row.equipment.name.toLowerCase().includes(query)

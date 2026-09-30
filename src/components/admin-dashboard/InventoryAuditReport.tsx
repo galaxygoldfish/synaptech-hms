@@ -15,7 +15,8 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './InventoryAudit.module.css'
-import { CACHE_KEYS, readStash } from '../../lib/queryCache'
+import { readStash } from '../../lib/queryCache'
+import { auditReportKey } from '../../lib/detailKeys'
 
 /**
  * What one past audit found: the four headline counts, who ran it and when,
@@ -67,7 +68,7 @@ export default function InventoryAuditReport() {
 
   // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
   // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<InventoryAuditDetail>(`${CACHE_KEYS.inventoryAuditReport}${id}`) : undefined))
+  const [prefetched] = useState(() => (id ? readStash<InventoryAuditDetail>(auditReportKey(id)) : undefined))
   const [audit, setAudit] = useState<InventoryAuditDetail | null>(prefetched ?? null)
   const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)

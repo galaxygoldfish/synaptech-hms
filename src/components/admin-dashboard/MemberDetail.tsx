@@ -10,7 +10,8 @@ import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MemberDetail.module.css'
-import { CACHE_KEYS, readStash } from '../../lib/queryCache'
+import { readStash } from '../../lib/queryCache'
+import { memberDetailKey } from '../../lib/detailKeys'
 
 function formatRegistrationDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
@@ -138,7 +139,7 @@ export default function MemberDetail() {
 
   // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
   // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<Profile>(`${CACHE_KEYS.memberDetail}${id}`) : undefined))
+  const [prefetched] = useState(() => (id ? readStash<Profile>(memberDetailKey(id)) : undefined))
   const [member, setMember] = useState<Profile | null>(prefetched ?? null)
   const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)

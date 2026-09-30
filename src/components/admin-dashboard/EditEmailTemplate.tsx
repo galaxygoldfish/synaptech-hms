@@ -20,8 +20,9 @@ import {
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './EditEmailTemplate.module.css'
-import { templateEditorKey, type TemplateEditorData } from '../../lib/emailTemplates'
+import { type TemplateEditorData } from '../../lib/emailTemplates'
 import { readStash } from '../../lib/queryCache'
+import { templateEditorKey } from '../../lib/detailKeys'
 
 const CLOSE_ICON_SVG =
   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +

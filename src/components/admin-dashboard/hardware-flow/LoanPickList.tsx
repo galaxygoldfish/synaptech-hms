@@ -6,7 +6,7 @@ import {
 } from '../icons'
 import type { AdminLoanRequestItemSummary } from '../../../lib/loanRequests'
 import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
-import styles from './HardwareFlow.module.css'
+import styles from './HardwareFlow.module.css'
 import { PENDING_ROW_STYLE } from '../../../lib/usePrefetchNavigate'
 
 /**

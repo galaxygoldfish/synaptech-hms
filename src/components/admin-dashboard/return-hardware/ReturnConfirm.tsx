@@ -12,8 +12,9 @@ import {
   type AdminLoanRequestDetail,
 } from '../../../lib/loanRequests'
 import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
-import styles from '../hardware-flow/HardwareFlow.module.css'
-import { CACHE_KEYS, readStash } from '../../../lib/queryCache'
+import styles from '../hardware-flow/HardwareFlow.module.css'
+import { readStash } from '../../../lib/queryCache'
+import { loanDetailKey } from '../../../lib/detailKeys'
 
 /**
  * Step 2 of "Return hardware": check the loan, then record that the hardware
@@ -48,7 +49,7 @@ export default function ReturnConfirm() {
 
   // Opened from a list that fetched this a moment ago (usePrefetchNavigate):
   // draw from that on the first render instead of behind a skeleton.
-  const [prefetched] = useState(() => (id ? readStash<AdminLoanRequestDetail>(`${CACHE_KEYS.loanDetail}${id}`) : undefined))
+  const [prefetched] = useState(() => (id ? readStash<AdminLoanRequestDetail>(loanDetailKey(id)) : undefined))
   const [detail, setDetail] = useState<AdminLoanRequestDetail | null>(prefetched ?? null)
   const [isLoading, setLoading] = useState(prefetched === undefined)
   const [error, setError] = useState<string | null>(null)

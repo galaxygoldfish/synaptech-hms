@@ -11,12 +11,12 @@ import {
   type EmailTemplateCategory,
   peekEmailTemplates,
   fetchTemplateEditorData,
-  templateEditorKey,
 } from '../../lib/emailTemplates'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageEmails.module.css'
 import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
+import { templateEditorKey } from '../../lib/detailKeys'
 
 interface ManageEmailsProps {
   heading: string

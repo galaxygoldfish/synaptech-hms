@@ -30,7 +30,7 @@ describe('useMemberLoans', () => {
 
     await waitFor(() => expect(result.current.isFresh).toBe(true))
     expect(result.current.groups).toBe(freshGroups)
-    expect(fetchMemberLoans).toHaveBeenCalledWith('member-1', { fresh: true })
+    expect(fetchMemberLoans).toHaveBeenCalledWith('member-1')
   })
 
   // The point of the hook: instant from cache, but never *only* the cache,

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { LoanAgreementSignOff } from './LoanAgreementSignOff'
+import { LoanAgreementSignOff } from './LoanAgreementSignOff'
 import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 import { loanDetailKey } from '../../lib/detailKeys'
 import { fetchLoanRequestItemDetail } from '../../lib/loanRequests'

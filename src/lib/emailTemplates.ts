@@ -369,6 +369,3 @@ export async function fetchTemplateEditorData(key: string): Promise<TemplateEdit
   return { template, recipients }
 }
 
-export function templateEditorKey(key: string): string {
-  return `${CACHE_KEYS.emailTemplate}${key}`
-}

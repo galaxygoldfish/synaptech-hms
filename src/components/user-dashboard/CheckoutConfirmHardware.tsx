@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
@@ -12,7 +12,9 @@ import {
   type EquipmentAddonOption,
   peekEquipmentRows,
 } from '../../lib/inventory'
-import type { PrefetchedCheckout } from './useStartCheckout'
+import type { CheckoutStartData } from './useStartCheckout'
+import { checkoutStartKey } from '../../lib/detailKeys'
+import { readStash } from '../../lib/queryCache'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutConfirmHardware.module.css'
@@ -85,28 +87,23 @@ export default function CheckoutConfirmHardware() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const routeState = location.state as { equipmentId?: string; prefetched?: PrefetchedCheckout } | null
-  const equipmentId = routeState?.equipmentId ?? null
+  const equipmentId = (location.state as { equipmentId?: string } | null)?.equipmentId ?? null
 
   // Arriving from the item list (useStartCheckout), the add-ons and fresh
-  // stock are already in hand and the product row is in the cached catalog,
-  // so the screen draws on its first render instead of a skeleton. Reached
-  // any other way (a reload, a deep link), it loads as it always did.
-  // Only on the way in: coming back to this step with the browser's Back
-  // button restores the same route state, whose stock numbers are from the
-  // first visit — load fresh then instead.
-  const navigationType = useNavigationType()
+  // stock are stashed and the product row is in the cached catalog, so the
+  // screen draws on its first render instead of a skeleton. Reached any
+  // other way (a reload, a deep link, Back after a while), it loads as usual.
   const [initial] = useState(() => {
-    const prefetched = navigationType === 'POP' ? undefined : routeState?.prefetched
+    const started = equipmentId ? readStash<CheckoutStartData>(checkoutStartKey(equipmentId)) : undefined
     const row = equipmentId ? peekEquipmentRows([equipmentId])?.[0] : undefined
-    if (!prefetched || !row) return null
+    if (!started || !row) return null
     return {
-      equipment: { ...row, quantity_total: availableQuantity(row, prefetched.availability) },
-      addonOptions: prefetched.addonOptions.map((option) => ({
+      equipment: { ...row, quantity_total: availableQuantity(row, started.availability) },
+      addonOptions: started.addonOptions.map((option) => ({
         ...option,
         equipment: {
           ...option.equipment,
-          quantity_total: availableQuantity(option.equipment, prefetched.availability),
+          quantity_total: availableQuantity(option.equipment, started.availability),
         },
       })),
     }

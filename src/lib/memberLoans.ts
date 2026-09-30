@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { CACHE_KEYS, cached, invalidate, peekValue, refresh } from './queryCache'
+import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 import type { LoanRequestItemRole, LoanRequestStatus } from '../types'
 
 /**
@@ -311,19 +311,13 @@ function memberLoansKey(userId: string): string {
 }
 
 /**
- * A member's loans (see loadMemberLoans). Cached per member so moving
- * between Home, "My hardware loans" and back doesn't refetch; `fresh: true`
- * bypasses the cache and refreshes it. Screens read this through
- * useMemberLoans, which shows the cached copy at once but always refetches,
- * because an admin's hand-off or return happens in another browser and
- * nothing here would otherwise hear about it.
+ * A member's loans (see loadMemberLoans), always fresh — an admin's hand-off
+ * or return happens in another browser, and Home decides its overdue block
+ * from this. Screens read it through useMemberLoans, which paints the last
+ * copy (peekMemberLoans) while this runs.
  */
-export async function fetchMemberLoans(
-  userId: string,
-  { fresh = false }: { fresh?: boolean } = {},
-): Promise<MemberLoanGroup[]> {
-  const load = fresh ? refresh : cached
-  return [...(await load(memberLoansKey(userId), () => loadMemberLoans(userId)))]
+export async function fetchMemberLoans(userId: string): Promise<MemberLoanGroup[]> {
+  return [...(await refresh(memberLoansKey(userId), () => loadMemberLoans(userId)))]
 }
 
 /** The last loans loaded for this member, however old, or null — synchronously,
@@ -346,10 +340,6 @@ export function activeHardwareLoans(groups: MemberLoanGroup[]): MemberLoanItem[]
     .flatMap((group) => [group.primary, ...group.addOns])
     .filter((item) => !item.isConsumable && isOutWithMember(memberLoanState(item)))
     .sort((a, b) => (a.returnDate ?? '9999-12-31').localeCompare(b.returnDate ?? '9999-12-31'))
-}
-
-export async function fetchActiveHardwareLoans(userId: string): Promise<MemberLoanItem[]> {
-  return activeHardwareLoans(await fetchMemberLoans(userId))
 }
 
 /**

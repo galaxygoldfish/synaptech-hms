@@ -9,7 +9,7 @@ import { requestReturn, type AvailabilitySlot } from '../../lib/availability'
 import { fetchMemberLoanItem, isOutWithMember, memberLoanState, type MemberLoanItem } from '../../lib/memberLoans'
 import type { UserProfile } from '../../types'
 import styles from './ReturnAvailability.module.css'
-import { CACHE_KEYS, readStash } from '../../lib/queryCache'
+import { readStash } from '../../lib/queryCache'
 import { usePrefetchNavigate } from '../../lib/usePrefetchNavigate'
 import { memberLoanItemKey } from '../../lib/detailKeys'
 
@@ -40,7 +40,7 @@ export default function ReturnAvailability() {
   // Opened from the loan's detail screen, which hands over the loan it just
   // showed (usePrefetchNavigate): judge and draw it on the first render.
   const [initial] = useState(() => {
-    const loan = id ? readStash<MemberLoanItem>(`${CACHE_KEYS.memberLoanItem}${id}`) : undefined
+    const loan = id ? readStash<MemberLoanItem>(memberLoanItemKey(id)) : undefined
     return loan ? { item: returnBlocker(loan) ? null : loan, error: returnBlocker(loan) } : null
   })
   const [item, setItem] = useState<MemberLoanItem | null>(initial?.item ?? null)

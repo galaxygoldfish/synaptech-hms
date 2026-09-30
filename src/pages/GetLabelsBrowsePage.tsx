@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { ArrowLeftIcon, ChevronRightIcon } from '../components/admin-dashboard/icons'
-import { listEquipment, peekEquipmentList, fetchLabelsProduct, labelsProductKey } from '../lib/inventory'
+import { listEquipment, peekEquipmentList, fetchLabelsProduct } from '../lib/inventory'
 import type { Equipment, UserProfile } from '../types'
-import styles from './GetReplacementLabelPage.module.css'
+import styles from './GetReplacementLabelPage.module.css'
 import { PENDING_ROW_STYLE, usePrefetchNavigate } from '../lib/usePrefetchNavigate'
+import { labelsProductKey } from '../lib/detailKeys'
 
 export default function GetLabelsBrowsePage() {
   const navigate = useNavigate()

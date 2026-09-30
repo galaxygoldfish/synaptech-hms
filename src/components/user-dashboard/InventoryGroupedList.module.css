@@ -53,12 +53,6 @@
   background: #ececec;
 }
 
-/* The row just clicked, while the next step is being prepared. */
-.itemButtonPending {
-  opacity: 0.6;
-  cursor: progress;
-}
-
 .itemThumb {
   flex-shrink: 0;
   width: 6.5rem;

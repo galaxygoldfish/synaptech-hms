@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { manageItemKey, manageItemUnitsKey } from './detailKeys'
 import { CACHE_KEYS, invalidate, peekValue, readStash, refresh, stash, DISPLAY_REUSE_MS } from './queryCache'
 import { generateSerialNumbers } from './serialNumber'
 import type { Equipment, EquipmentAddon, EquipmentCategory, EquipmentProductType, EquipmentUnit } from '../types'
@@ -556,13 +557,10 @@ export async function prefetchManageItem(equipmentId: string): Promise<ManageIte
   ])
   // The page's own data is stashed by the caller (usePrefetchNavigate, under
   // manageItemKey); the units table's goes in alongside.
-  stash(`${CACHE_KEYS.manageItemUnits}${equipmentId}`, units)
+  stash(manageItemUnitsKey(equipmentId), units)
   return { equipment, checkedOutCount, addonOptions }
 }
 
-export function manageItemKey(equipmentId: string): string {
-  return `${CACHE_KEYS.manageItem}${equipmentId}`
-}
 
 /** The item page's data if the list just prefetched it, else undefined. */
 export function readManageItemPrefetch(equipmentId: string): ManageItemData | undefined {
@@ -571,7 +569,7 @@ export function readManageItemPrefetch(equipmentId: string): ManageItemData | un
 
 /** The units table's rows if the list just prefetched them, else undefined. */
 export function readManageItemUnitsPrefetch(equipmentId: string): EquipmentUnitWithStatus[] | undefined {
-  return readStash<EquipmentUnitWithStatus[]>(`${CACHE_KEYS.manageItemUnits}${equipmentId}`)
+  return readStash<EquipmentUnitWithStatus[]>(manageItemUnitsKey(equipmentId))
 }
 
 /** The "get labels" product screen: a product and every one of its units. */
@@ -585,9 +583,6 @@ export async function fetchLabelsProduct(equipmentId: string): Promise<LabelsPro
   return { equipment, units }
 }
 
-export function labelsProductKey(equipmentId: string): string {
-  return `${CACHE_KEYS.labelsProduct}${equipmentId}`
-}
 
 /**
  * The member's sign-agreement step: the products being checked out and, for

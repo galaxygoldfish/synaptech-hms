@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import type { Session } from '@supabase/supabase-js'
 import { AuthProvider, useAuth } from '../context/AuthContext'
-import { cached } from '../lib/queryCache'
+import { refresh } from '../lib/queryCache'
 import { supabase } from '../lib/supabase'
 
 type AuthCallback = (event: string, session: Session | null) => void
@@ -95,11 +95,11 @@ describe('AuthProvider', () => {
     })
 
     const fetcher = vi.fn().mockResolvedValue('admin data')
-    await cached('admin-loans', fetcher)
+    await refresh('admin-loans', fetcher, 60_000)
     await act(async () => {
       emit('SIGNED_OUT', null)
     })
-    await cached('admin-loans', fetcher)
+    await refresh('admin-loans', fetcher, 60_000)
 
     expect(fetcher).toHaveBeenCalledTimes(2)
   })

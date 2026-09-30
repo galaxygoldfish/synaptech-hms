@@ -1,7 +1,6 @@
 import { fetchEquipment } from './inventory'
 import { fetchLoanRequestItemDetail, type AdminLoanRequestDetail } from './loanRequests'
 import { fetchProfileById } from './members'
-import { CACHE_KEYS } from './queryCache'
 import type { Equipment } from '../types'
 import type { Profile } from '../types/index'
 
@@ -25,6 +24,3 @@ export async function fetchHandOffData(itemId: string): Promise<HandOffData> {
   return { detail, member, equipment }
 }
 
-export function handOffKey(itemId: string): string {
-  return `${CACHE_KEYS.handOff}${itemId}`
-}

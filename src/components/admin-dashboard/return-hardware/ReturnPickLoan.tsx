@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlowPage } from '../hardware-flow/FlowPage'
-import { LoanPickList } from '../hardware-flow/LoanPickList'
+import { LoanPickList } from '../hardware-flow/LoanPickList'
 import { usePrefetchNavigate } from '../../../lib/usePrefetchNavigate'
 import { loanDetailKey } from '../../../lib/detailKeys'
 import {

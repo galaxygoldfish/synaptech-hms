@@ -69,12 +69,13 @@ describe('fetchMemberLoans', () => {
     expect(groups[0].primary).toMatchObject({ id: 'item-1', itemName: 'Muse 2', serialNumber: 'SYN-HJXPP41T5' })
   })
 
-  it('serves a repeat call from cache, and `fresh` refetches', async () => {
-    await fetchMemberLoans('member-1')
-    await fetchMemberLoans('member-1')
+  // Always fresh (Home decides its overdue block from it), but two callers
+  // at once share one request.
+  it('shares a request in flight, and fetches again once it has settled', async () => {
+    await Promise.all([fetchMemberLoans('member-1'), fetchMemberLoans('member-1')])
     expect(requestsByTable.loan_requests).toBe(1)
 
-    await fetchMemberLoans('member-1', { fresh: true })
+    await fetchMemberLoans('member-1')
     expect(requestsByTable.loan_requests).toBe(2)
   })
 })
