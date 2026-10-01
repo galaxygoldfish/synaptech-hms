@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { CalendarIcon } from './icons'
-import { fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
+import { fetchEquipment, fetchEquipmentByIds, peekEquipmentRows } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutReturnDate.module.css'
@@ -104,6 +104,10 @@ function DateSelectButton({ value, onChange, min, max }: DateSelectButtonProps) 
   )
 }
 
+function addonIdsOf(state: CheckoutState): string[] {
+  return [...state.optionalAddonIds, ...(state.requiredAddonId ? [state.requiredAddonId] : [])]
+}
+
 export default function CheckoutReturnDate() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -112,21 +116,24 @@ export default function CheckoutReturnDate() {
 
   const checkoutState = readCheckoutState(location.state)
 
-  const [items, setItems] = useState<Equipment[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The items were just picked from the catalog, so their rows are almost
+  // always cached: draw them on the first render and refresh underneath,
+  // rather than showing a skeleton between steps.
+  const [seededItems] = useState(() =>
+    checkoutState ? peekEquipmentRows([checkoutState.equipmentId, ...addonIdsOf(checkoutState)]) : null,
+  )
+  const [items, setItems] = useState<Equipment[]>(seededItems ?? [])
+  const [isLoading, setLoading] = useState(seededItems === null)
   const [error, setError] = useState<string | null>(null)
   const [selectedDates, setSelectedDates] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!checkoutState) return
     let cancelled = false
-    setLoading(true)
+    setLoading(seededItems === null)
     setError(null)
 
-    const addonIds = [
-      ...checkoutState.optionalAddonIds,
-      ...(checkoutState.requiredAddonId ? [checkoutState.requiredAddonId] : []),
-    ]
+    const addonIds = addonIdsOf(checkoutState)
 
     Promise.all([fetchEquipment(checkoutState.equipmentId), fetchEquipmentByIds(addonIds)])
       .then(([mainItem, addonItems]) => {
@@ -135,7 +142,8 @@ export default function CheckoutReturnDate() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load checkout items:', fetchError)
-        if (!cancelled) setError('Could not load your checkout items. Please try again.')
+        // Keep the drawn items rather than swapping them for an error.
+        if (!cancelled && seededItems === null) setError('Could not load your checkout items. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -195,7 +203,7 @@ export default function CheckoutReturnDate() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <h1 className={styles.heading}>Choose your return date</h1>
@@ -268,7 +276,12 @@ export default function CheckoutReturnDate() {
           <button type="button" className={styles.backButton} onClick={() => navigate(-1)}>
             back
           </button>
-          <button type="button" className={styles.confirmButton} onClick={handleConfirm} disabled={!canConfirm}>
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+          >
             confirm
           </button>
         </div>

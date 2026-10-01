@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon } from './icons'
-import { fetchAllProfiles } from '../../lib/members'
+import { fetchAllProfiles, peekAllProfiles } from '../../lib/members'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
@@ -26,8 +26,10 @@ export default function ViewMembers() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [members, setMembers] = useState<Profile[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialMembers] = useState(peekAllProfiles)
+  const [members, setMembers] = useState<Profile[]>(initialMembers ?? [])
+  const [isLoading, setLoading] = useState(initialMembers === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -41,7 +43,7 @@ export default function ViewMembers() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load members:', fetchError)
-        if (!cancelled) setError('Could not load members. Please try again.')
+        if (!cancelled && initialMembers === null) setError('Could not load members. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -76,7 +78,7 @@ export default function ViewMembers() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.toolbar}>

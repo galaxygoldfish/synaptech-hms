@@ -1,4 +1,25 @@
-import jsPDF from 'jspdf'
+import type jsPDF from 'jspdf'
+
+// Loaded on first use rather than imported statically: jsPDF is only needed
+// when an agreement is actually signed, and keeping it out of the main bundle
+// keeps every other page light. The signing screen calls
+// preloadAgreementPdfLib() when it opens, so the download happens while the
+// member reads rather than when they press sign.
+let jsPdfLib: Promise<typeof import('jspdf')> | null = null
+
+function loadJsPdf() {
+  jsPdfLib ??= import('jspdf').catch((error) => {
+    jsPdfLib = null
+    throw error
+  })
+  return jsPdfLib
+}
+
+export function preloadAgreementPdfLib(): void {
+  loadJsPdf().catch(() => {
+    // Retried on use; the failure is reported there.
+  })
+}
 import brainLogo from '../assets/synaptech-brain.png'
 import bungeeRegularFont from '../assets/fonts/Bungee-Regular.ttf?url'
 import rubikRegularFont from '../assets/fonts/Rubik-Regular.ttf?url'
@@ -315,7 +336,8 @@ export async function buildLoanAgreementPdf(fields: LoanAgreementFields): Promis
     logo = null
   }
 
-  const doc = new jsPDF({ unit: 'in', format: [PAGE_WIDTH, PAGE_HEIGHT] })
+  const { default: JsPDF } = await loadJsPdf()
+  const doc = new JsPDF({ unit: 'in', format: [PAGE_WIDTH, PAGE_HEIGHT] })
   await registerFonts(doc)
   const w = new AgreementWriter(doc, logo)
 

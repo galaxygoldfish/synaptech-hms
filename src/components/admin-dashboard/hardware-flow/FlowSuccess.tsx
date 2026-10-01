@@ -42,7 +42,7 @@ export function FlowSuccess({ heading, detail, doneLabel = 'done', onDone }: Flo
 
   return (
     <div className={styles.successPage}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.successMain}>
         <CheckmarkCircleIconFilled className={styles.successCheckmark} />

@@ -12,7 +12,6 @@ import {
   type AdminLoanRequestItemSummary,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
-import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
 import styles from '../hardware-flow/HardwareFlow.module.css'
 
 /**
@@ -21,8 +20,8 @@ import styles from '../hardware-flow/HardwareFlow.module.css'
  *
  * Unlike the hand-off scan — which starts from a loan and only has to check
  * that the serial matches it — this starts from the barcode and has to find
- * the loan. So every loan item is loaded up front and the lookup happens
- * locally: a scan is answered instantly, and scanning a shelf of the wrong
+ * the loan. So every loan item is loaded as the screen opens (without holding
+ * up the camera) and the lookup happens locally: a scan is answered instantly, and scanning a shelf of the wrong
  * things costs nothing. Inventory is only asked about a serial that matched
  * no loan at all, to tell "nobody requested this" apart from "this isn't our
  * hardware".
@@ -55,8 +54,11 @@ export type SerialSource = 'scan' | 'manual'
 export default function CheckoutScan() {
   const navigate = useNavigate()
 
-  const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The loans are fetched in the background as soon as the screen opens, but
+  // the camera doesn't wait for them: a scan awaits this promise instead, so
+  // on a warm cache (see queryCache.ts) it's already settled and on a cold
+  // one the admin is still lining up the barcode while it lands.
+  const loansRef = useRef<Promise<AdminLoanRequestItemSummary[]> | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null)
@@ -83,18 +85,15 @@ export default function CheckoutScan() {
   useEffect(() => {
     let cancelled = false
 
-    fetchAllLoanRequestItems()
-      .then((items) => {
-        if (!cancelled) setLoans(items)
-      })
-      .catch((fetchError) => {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load hardware loans:', fetchError)
-        if (!cancelled) setError('Could not load hardware loans. Please try again.')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    // Fresh, never cached: this screen decides from the list. See
+    // fetchAllLoanRequestItems.
+    const loans = fetchAllLoanRequestItems({ fresh: true })
+    loansRef.current = loans
+    loans.catch((fetchError) => {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load hardware loans:', fetchError)
+      if (!cancelled) setError('Could not load hardware loans. Please try again.')
+    })
 
     return () => {
       cancelled = true
@@ -131,6 +130,17 @@ export default function CheckoutScan() {
 
     const serial = normalizeSerialNumber(rawValue)
     if (!serial || serial === SERIAL_PREFIX) return
+
+    let loans: AdminLoanRequestItemSummary[]
+    setResolving(true)
+    try {
+      loans = await (loansRef.current ?? fetchAllLoanRequestItems({ fresh: true }))
+    } catch {
+      // The effect above has already put the load error on screen.
+      return
+    } finally {
+      setResolving(false)
+    }
 
     const match = matchCheckoutSerial(loans, serial)
 
@@ -184,7 +194,7 @@ export default function CheckoutScan() {
 
   const { videoRef, isSupported, permissionError } = useBarcodeScanner(
     (value) => void resolveSerial(value, 'scan'),
-    !isLoading && !error && confirmed === null,
+    !error && confirmed === null,
     scanAttempt,
   )
 
@@ -200,19 +210,9 @@ export default function CheckoutScan() {
 
   return (
     <FlowPage heading="Check out hardware" onBack={handleBack}>
-      {isLoading && (
-        <SkeletonScreen label="Loading hardware loans…" className={styles.skeletonStack}>
-          <div className={styles.scanColumn}>
-            <Skeleton height="20rem" radius="1.25rem" />
-            <Skeleton width="70%" height="1rem" shape="pill" style={{ margin: '0 auto' }} />
-            <Skeleton height="3.5rem" radius="0.9375rem" />
-          </div>
-        </SkeletonScreen>
-      )}
+      {error && <p className={styles.status}>{error}</p>}
 
-      {!isLoading && error && <p className={styles.status}>{error}</p>}
-
-      {!isLoading && !error && confirmed === null && (
+      {!error && confirmed === null && (
         <div className={styles.scanTopPad}>
           <ScanColumn
             videoRef={videoRef}
@@ -230,7 +230,7 @@ export default function CheckoutScan() {
         </div>
       )}
 
-      {!isLoading && !error && confirmed && (
+      {!error && confirmed && (
         <LoanConfirmCard
           itemName={confirmed.itemName}
           serialNumber={confirmed.serialNumber}

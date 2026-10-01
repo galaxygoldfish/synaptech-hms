@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { availableQuantity, fetchEquipmentAvailability, listEquipment } from './inventory'
+import { availableQuantity, fetchEquipmentAvailability, listEquipment, peekEquipmentCatalog } from './inventory'
 import { CATEGORY_OPTIONS, type CategoryFilter } from './equipmentCategories'
 import type { Equipment } from '../types'
 
@@ -12,9 +12,14 @@ export interface InventoryGroup {
 // Shared data/filter logic behind every "browse the equipment catalog"
 // screen (member browse page, checkout hardware picker, …): fetches the
 // catalog, and groups+filters it by category/search term.
+//
+// Stale-while-revalidate: the catalog as last seen is on the first render
+// (no skeleton when coming back to it or moving between these screens), and
+// a fresh fetch always follows and replaces it.
 export function useInventoryCatalog() {
-  const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [isLoading, setLoading] = useState(true)
+  const [initialCatalog] = useState(peekEquipmentCatalog)
+  const [equipment, setEquipment] = useState<Equipment[]>(initialCatalog ?? [])
+  const [isLoading, setLoading] = useState(initialCatalog === null)
   const [error, setError] = useState<string | null>(null)
 
   const [query, setQuery] = useState('')
@@ -34,7 +39,9 @@ export function useInventoryCatalog() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load inventory:', fetchError)
-        if (!cancelled) setError('Could not load inventory. Please try again.')
+        // Keep the last-seen catalog on screen rather than swapping it for
+        // an error.
+        if (!cancelled && initialCatalog === null) setError('Could not load inventory. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -42,7 +49,7 @@ export function useInventoryCatalog() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initialCatalog])
 
   function toggleFilter(value: CategoryFilter) {
     setSelectedFilters((current) => {

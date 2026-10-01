@@ -5,7 +5,11 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
 import { ArrowLeftIcon, ChevronRightFilled, ImagePlaceholderIconFilled, PlusIconSmallFilled } from './icons'
-import { fetchEquipmentInventorySummary, type EquipmentInventoryRow } from '../../lib/inventory'
+import {
+  fetchEquipmentInventorySummary,
+  peekEquipmentInventorySummary,
+  type EquipmentInventoryRow,
+} from '../../lib/inventory'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './ManageInventory.module.css'
@@ -33,8 +37,10 @@ export default function ManageInventory() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [rows, setRows] = useState<EquipmentInventoryRow[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The list as last loaded is on the first render, then refreshed.
+  const [initialRows] = useState(peekEquipmentInventorySummary)
+  const [rows, setRows] = useState<EquipmentInventoryRow[]>(initialRows ?? [])
+  const [isLoading, setLoading] = useState(initialRows === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -48,7 +54,8 @@ export default function ManageInventory() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load inventory:', fetchError)
-        if (!cancelled) setError('Could not load inventory. Please try again.')
+        // Keep the last-seen list on screen rather than swapping it for an error.
+        if (!cancelled && initialRows === null) setError('Could not load inventory. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -57,7 +64,7 @@ export default function ManageInventory() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initialRows])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -83,7 +90,7 @@ export default function ManageInventory() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

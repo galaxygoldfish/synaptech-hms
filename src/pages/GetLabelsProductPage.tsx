@@ -9,7 +9,7 @@ import { QrDocLabel } from '../components/admin-dashboard/labels/QrDocLabel'
 import { SerialBarcodeLabel } from '../components/admin-dashboard/labels/SerialBarcodeLabel'
 import { ArrowLeftIcon, DownloadIconFilled, PrinterIconFilled } from '../components/admin-dashboard/icons'
 import { fetchEquipment, listEquipmentUnits } from '../lib/inventory'
-import { buildItemLabelsPdf, downloadItemLabelsAsPngs, printLabelsPdf } from '../lib/labelPdf'
+import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../lib/labelPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
 
@@ -18,6 +18,9 @@ function slugify(value: string): string {
 }
 
 export default function GetLabelsProductPage() {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadLabelPdfLibs, [])
+
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()

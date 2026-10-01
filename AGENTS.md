@@ -5,7 +5,12 @@ Working notes for anyone (human or AI agent) changing this codebase: how it is l
 ## Conventions
 
 - **No server of our own.** The app is a Vite + React SPA that talks straight to Supabase (PostgREST, Auth, Storage) from the browser. Anything needing a secret runs in a Supabase Edge Function or a Postgres trigger, never in the client.
-- **Data access lives in `src/lib/`** (`inventory.ts`, `loanRequests.ts`, `memberLoans.ts`, `inventoryAudit.ts`, …). Components call these rather than querying Supabase directly. Queries are plain selects zipped client-side rather than PostgREST embedded selects, to sidestep schema-cache fragility.
+- **Data access lives in `src/lib/`** (`inventory.ts`, `loanRequests.ts`, `memberLoans.ts`, `inventoryAudit.ts`, …). Components call these rather than querying Supabase directly. Queries are plain selects zipped client-side rather than PostgREST embedded selects, to sidestep schema-cache fragility — run independent ones with `Promise.all` rather than awaiting each in turn, since every sequential query is a full network round trip.
+- **Reads are always fresh; screens never show a skeleton for data they've already seen.** [`src/lib/queryCache.ts`](src/lib/queryCache.ts) does three jobs, and components never touch it directly:
+  - *Last value.* List fetches (`fetchAllLoanRequestItems`, `listEquipment`, `fetchAllProfiles`, `fetchEmailTemplates`, `fetchEmailLog`, `fetchAuditLog`, `fetchInventoryAudits`, `fetchEquipmentAvailability`, `fetchAvailability`, `fetchMemberLoans`, …) always hit the network, but remember what they returned. Each has a `peek…` partner that returns that copy synchronously, which the screen uses as its initial state — so coming back to a list paints it on the first render, and the fresh fetch replaces it a moment later. Display only: anything that *decides* on the data (Home's overdue block on checkout — see `useMemberLoans`'s `isFresh`; the checkout confirm step's "out of stock") waits for the fresh copy. A request already in flight is shared rather than repeated (React runs effects twice in development), and display screens reuse a copy fetched in the last few seconds (`DISPLAY_REUSE_MS`) so bouncing between screens doesn't re-read whole tables; screens that decide from the data pass `{ fresh: true }` (`fetchAllLoanRequestItems` on the check-out/return screens, `fetchEquipmentAvailability` when starting a checkout) and never reuse one.
+  - *Stash.* Starting a checkout from the catalog (`useStartCheckout`) fetches the item's add-ons and fresh stock before leaving the list, then either skips the add-on step or opens it already drawn — the confirm step reads that data with `readStash` (readable for 10 seconds). It goes through `usePrefetchNavigate` ([`src/lib/usePrefetchNavigate.ts`](src/lib/usePrefetchNavigate.ts)), which also ignores a second tap and won't navigate if the member has left meanwhile. Other detail screens simply load on open.
+  - *Invalidation.* The lib function that *writes* rows calls `invalidate(CACHE_KEYS.…)` for the area it changed, which drops the last value and any stash under that prefix — a write means the old copy is wrong, so it must not be painted even briefly. `AuthContext` clears everything on sign-out or a change of user. If you add a write, invalidate its area; if you add a list screen, follow the same peek pattern rather than showing a skeleton on every visit.
+- **The database write is the last word on conflicts.** `handOffLoanRequestItem` and `markLoanRequestItemReturned` make their updates conditional (compare-and-set on the item's agreement path; `returned_at is null`) and throw `LoanConflictError` with an admin-readable message when another admin got there first. Don't rely on a screen's copy of the data to prevent a double hand-off or return.
 - **Security is enforced in the database.** Row-level security decides who can read or write what; the UI only hides things. When adding a table, add its RLS policies *and* its table-level grants (see the equipment grants migration for why a policy alone is not enough). Admin policies should use `public.is_admin()`, not an inline subquery on `profiles`.
 - **Migrations are applied by hand** in the Supabase SQL editor, in filename order. Keep them idempotent, and keep every migration's version prefix unique.
 - **Types:** `src/types.ts` and `src/types/` both exist — Supabase row types alongside dashboard/API-shaped ones.
@@ -45,6 +50,25 @@ resolves it. **Do not add a `public/_redirects`** with the usual `/* /index.html
 rule — Workers Assets rejects it as an infinite loop, because it already rewrites
 `/index.html` to `/` and the rule would match its own output. That failure happens at
 deploy time, after a successful build.
+
+[`public/_headers`](public/_headers) marks everything under `/assets/` as
+`immutable` for a year — Vite content-hashes those filenames, so a URL never changes
+meaning. Workers Assets honours `_headers` (it's only `_redirects` that's a problem,
+above). `index.html` is left out so a deploy is picked up on the next load.
+
+Bundle size: `jspdf`, `html2canvas` and `pdf-lib` are `import()`ed inside the functions
+that use them (`src/lib/labelPdf.ts`, `loanAgreementPdf.ts`, `loanAgreementApproval.ts`),
+and the label, agreement, audit-log, inventory-audit and email-template pages are
+`React.lazy` routes in `src/router.tsx`. Keep new heavy dependencies behind a dynamic
+import the same way rather than importing them at module top level, and have the
+screen that needs one preload it on mount (see `preloadLabelPdfLibs` and friends) so
+the download isn't waiting behind a button press.
+
+Split chunks have a deploy-time consequence: a deploy removes the previous build's
+chunks, so a tab opened before it can ask for a file that no longer exists (the SPA
+fallback answers with `index.html`, which fails to import). `src/main.tsx` handles
+Vite's `vite:preloadError` by reloading once, which keeps the URL and route state; a
+second failure within 10s falls through to `ErrorBoundary` rather than looping.
 
 [`.nvmrc`](.nvmrc) pins the build image's Node. The toolchain (Vite 8, TypeScript 6)
 needs a recent version, and the error from an old one doesn't obviously point at Node.
@@ -196,7 +220,7 @@ The member checkout flow picks the first free unit when the agreement is signed,
 
 ### Member home: My hardware
 
-The member home page lists the hardware the member currently has out (`fetchActiveHardwareLoans` in [`src/lib/memberLoans.ts`](src/lib/memberLoans.ts)), one card each: grey normally, yellow when due within 7 days, and red on or after the due date (`homeLoanTone`). Note this is stricter than the loans list, which only calls a loan overdue once the date has passed. Any red card disables the **Check out hardware** button until that hardware is back.
+The member home page lists the hardware the member currently has out (`activeHardwareLoans` in [`src/lib/memberLoans.ts`](src/lib/memberLoans.ts), read through `useMemberLoans`), one card each: grey normally, yellow when due within 7 days, and red on or after the due date (`homeLoanTone`). Note this is stricter than the loans list, which only calls a loan overdue once the date has passed. Any red card disables the **Check out hardware** button until that hardware is back.
 
 ### Member-initiated cancel and return request
 

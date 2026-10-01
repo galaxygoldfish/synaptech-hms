@@ -7,6 +7,7 @@ import { ArrowLeftIcon, ImagePlaceholderIconFilled } from './icons'
 import {
   fetchLoanRequestItemDetail,
   handOffLoanRequestItem,
+  LoanConflictError,
   type AdminLoanRequestDetail,
 } from '../../lib/loanRequests'
 import { fetchEquipment } from '../../lib/inventory'
@@ -16,6 +17,7 @@ import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './HandOffAgreement.module.css'
+import { preloadApprovalPdfLib } from '../../lib/loanAgreementApproval'
 
 /**
  * Signing off a loan agreement and recording the hand-off — the last step of
@@ -83,6 +85,9 @@ export function LoanAgreementSignOff({
   onBack,
   onRecorded,
 }: LoanAgreementSignOffProps) {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadApprovalPdfLib, [])
+
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
@@ -172,14 +177,18 @@ export function LoanAgreementSignOff({
     } catch (handOffError) {
       // eslint-disable-next-line no-console
       console.error('Failed to record the hand-off:', handOffError)
-      setSubmitError('Could not record the hand-off. Please try again.')
+      setSubmitError(
+        handOffError instanceof LoanConflictError
+          ? handOffError.message
+          : 'Could not record the hand-off. Please try again.',
+      )
       setSubmitting(false)
     }
   }
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

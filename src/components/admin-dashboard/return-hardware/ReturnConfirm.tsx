@@ -8,6 +8,7 @@ import {
   bucketForLoanItem,
   fetchLoanRequestItemDetail,
   markLoanRequestItemReturned,
+  LoanConflictError,
   type AdminLoanRequestDetail,
 } from '../../../lib/loanRequests'
 import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
@@ -101,7 +102,11 @@ export default function ReturnConfirm() {
     } catch (returnError) {
       // eslint-disable-next-line no-console
       console.error('Failed to record the return:', returnError)
-      setSubmitError('Could not record the return. Please try again.')
+      setSubmitError(
+        returnError instanceof LoanConflictError
+          ? returnError.message
+          : 'Could not record the return. Please try again.',
+      )
       setSubmitting(false)
     }
   }

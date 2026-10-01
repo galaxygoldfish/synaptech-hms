@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
@@ -7,13 +7,13 @@ import { LoanStatusBadge } from './LoanStatusBadge'
 import { SearchField } from './SearchField'
 import { AddOnArrowIcon, ArrowLeftIcon, ChevronRightIcon, CognitiveBrainIconFilled } from './icons'
 import {
-  fetchMemberLoans,
   memberLoanState,
   type MemberLoanGroup,
   type MemberLoanItem,
   type MemberLoanState,
 } from '../../lib/memberLoans'
 import { useEdgeFade } from '../../lib/useEdgeFade'
+import { useMemberLoans } from '../../lib/useMemberLoans'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './MyHardwareLoans.module.css'
@@ -116,35 +116,16 @@ export default function MyHardwareLoans() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [groups, setGroups] = useState<MemberLoanGroup[]>([])
-  const [isLoading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Shown from cache at once when there is one, then refreshed — see
+  // useMemberLoans.
+  const { groups: loadedGroups, failed } = useMemberLoans(profile?.id)
+  const groups = useMemo<MemberLoanGroup[]>(() => loadedGroups ?? [], [loadedGroups])
+  const isLoading = loadedGroups === null && !failed
+  const error = failed ? 'Could not load your hardware loans. Please try again.' : null
   const [filter, setFilter] = useState<LoanFilter>('all')
   const [query, setQuery] = useState('')
 
   const { ref: chipRowRef, maskImage: chipRowMaskImage } = useEdgeFade<HTMLDivElement>()
-
-  useEffect(() => {
-    if (!profile) return
-    let cancelled = false
-
-    fetchMemberLoans(profile.id)
-      .then((items) => {
-        if (!cancelled) setGroups(items)
-      })
-      .catch((fetchError) => {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load hardware loans:', fetchError)
-        if (!cancelled) setError('Could not load your hardware loans. Please try again.')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [profile])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null
@@ -254,7 +235,7 @@ export default function MyHardwareLoans() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

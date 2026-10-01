@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
 import {
   fetchLoanRequestItemDetail,
+  LoanConflictError,
   markLoanRequestItemReturned,
   type AdminLoanRequestDetail,
 } from '../lib/loanRequests'
@@ -133,6 +134,22 @@ describe('ReturnConfirm', () => {
     expect(screen.queryByText('Hardware returned')).not.toBeInTheDocument()
     // Still offering the action, so it can be retried.
     expect(screen.getByRole('button', { name: 'mark as returned' })).toBeEnabled()
+    consoleError.mockRestore()
+  })
+
+  // A colleague checked it in first: say who, rather than a generic failure
+  // or (as before) a success screen for a write that never happened.
+  it('tells the admin when a colleague already recorded the return', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(markLoanRequestItemReturned).mockRejectedValue(
+      new LoanConflictError('This hardware was already checked in by Ada Admin.'),
+    )
+
+    renderConfirm()
+    await userEvent.click(await screen.findByRole('button', { name: 'mark as returned' }))
+
+    expect(await screen.findByText('This hardware was already checked in by Ada Admin.')).toBeInTheDocument()
+    expect(screen.queryByText('Hardware returned')).not.toBeInTheDocument()
     consoleError.mockRestore()
   })
 

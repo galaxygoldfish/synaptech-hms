@@ -11,13 +11,13 @@ import {
   type AdminLoanRequestItemSummary,
 } from '../../../lib/loanRequests'
 import { normalizeSerialNumber, SERIAL_PREFIX } from '../../../lib/serialNumber'
-import { Skeleton, SkeletonScreen } from '../../skeleton/Skeleton'
 import styles from '../hardware-flow/HardwareFlow.module.css'
 
 /**
  * Step 1 of "Return hardware": work out which loan the hardware being handed
  * back belongs to. The mirror of CheckoutScan, and built the same way — every
- * loan loaded up front so a scan is answered locally and instantly, with
+ * loan loaded as the screen opens, without holding up the camera, so a scan
+ * is answered locally and instantly, with
  * inventory asked only about a serial that matched no loan at all.
  *
  * What differs is what counts as an answer. Here the loan has to be out:
@@ -37,8 +37,11 @@ export type SerialSource = 'scan' | 'manual'
 export default function ReturnScan() {
   const navigate = useNavigate()
 
-  const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The loans are fetched in the background as soon as the screen opens, but
+  // the camera doesn't wait for them: a scan awaits this promise instead, so
+  // on a warm cache (see queryCache.ts) it's already settled and on a cold
+  // one the admin is still lining up the barcode while it lands.
+  const loansRef = useRef<Promise<AdminLoanRequestItemSummary[]> | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null)
@@ -64,18 +67,15 @@ export default function ReturnScan() {
   useEffect(() => {
     let cancelled = false
 
-    fetchAllLoanRequestItems()
-      .then((items) => {
-        if (!cancelled) setLoans(items)
-      })
-      .catch((fetchError) => {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load hardware loans:', fetchError)
-        if (!cancelled) setError('Could not load hardware loans. Please try again.')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    // Fresh, never cached: this screen decides from the list. See
+    // fetchAllLoanRequestItems.
+    const loans = fetchAllLoanRequestItems({ fresh: true })
+    loansRef.current = loans
+    loans.catch((fetchError) => {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load hardware loans:', fetchError)
+      if (!cancelled) setError('Could not load hardware loans. Please try again.')
+    })
 
     return () => {
       cancelled = true
@@ -115,6 +115,17 @@ export default function ReturnScan() {
 
     const serial = normalizeSerialNumber(rawValue)
     if (!serial || serial === SERIAL_PREFIX) return
+
+    let loans: AdminLoanRequestItemSummary[]
+    setResolving(true)
+    try {
+      loans = await (loansRef.current ?? fetchAllLoanRequestItems({ fresh: true }))
+    } catch {
+      // The effect above has already put the load error on screen.
+      return
+    } finally {
+      setResolving(false)
+    }
 
     const match = matchReturnSerial(loans, serial)
 
@@ -169,25 +180,15 @@ export default function ReturnScan() {
 
   const { videoRef, isSupported, permissionError } = useBarcodeScanner(
     (value) => void resolveSerial(value, 'scan'),
-    !isLoading && !error && !isResolved,
+    !error && !isResolved,
     scanAttempt,
   )
 
   return (
     <FlowPage heading="Return hardware" onBack={() => navigate('/adminHome')}>
-      {isLoading && (
-        <SkeletonScreen label="Loading hardware loans…" className={styles.skeletonStack}>
-          <div className={styles.scanColumn}>
-            <Skeleton height="20rem" radius="1.25rem" />
-            <Skeleton width="70%" height="1rem" shape="pill" style={{ margin: '0 auto' }} />
-            <Skeleton height="3.5rem" radius="0.9375rem" />
-          </div>
-        </SkeletonScreen>
-      )}
+      {error && <p className={styles.status}>{error}</p>}
 
-      {!isLoading && error && <p className={styles.status}>{error}</p>}
-
-      {!isLoading && !error && (
+      {!error && (
         <div className={styles.scanTopPad}>
           <ScanColumn
             videoRef={videoRef}

@@ -2,7 +2,12 @@ import '../styles.css'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { bucketForLoanItem, fetchAllLoanRequestItems } from '../lib/loanRequests'
+import {
+  bucketForLoanItem,
+  fetchAllLoanRequestItems,
+  peekAllLoanRequestItems,
+  type AdminLoanRequestItemSummary,
+} from '../lib/loanRequests'
 import { actionGroups } from '../data/actions'
 import { ActionList } from '../components/admin-dashboard/ActionList'
 import { Header } from '../components/admin-dashboard/Header'
@@ -12,13 +17,31 @@ import { StatCards } from '../components/admin-dashboard/StatCards'
 import type { DashboardStats, UserProfile } from '../types'
 import styles from '../components/admin-dashboard/AdminHome.module.css'
 
+function countStats(items: AdminLoanRequestItemSummary[]): DashboardStats {
+  const counts = { activeLoans: 0, overdueLoans: 0, pendingRequests: 0, pendingReturns: 0 }
+  for (const item of items) {
+    const bucket = bucketForLoanItem(item)
+    if (bucket === 'active') counts.activeLoans += 1
+    else if (bucket === 'overdue') counts.overdueLoans += 1
+    else if (bucket === 'requests') counts.pendingRequests += 1
+    else if (bucket === 'returns') counts.pendingReturns += 1
+  }
+  return counts
+}
+
 export default function AdminHomePage() {
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  // The counts from the last-loaded loans are on the first render; the fetch
+  // below refreshes them.
+  const [initialStats] = useState(() => {
+    const items = peekAllLoanRequestItems()
+    return items ? countStats(items) : null
+  })
+  const [stats, setStats] = useState<DashboardStats | null>(initialStats)
   const [query, setQuery] = useState('')
   const [isProfileOpen, setProfileOpen] = useState(false)
-  const [isLoading, setLoading] = useState(true)
+  const [isLoading, setLoading] = useState(initialStats === null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -26,26 +49,19 @@ export default function AdminHomePage() {
 
     fetchAllLoanRequestItems()
       .then((items) => {
-        if (cancelled) return
-        const counts = { activeLoans: 0, overdueLoans: 0, pendingRequests: 0, pendingReturns: 0 }
-        for (const item of items) {
-          const bucket = bucketForLoanItem(item)
-          if (bucket === 'active') counts.activeLoans += 1
-          else if (bucket === 'overdue') counts.overdueLoans += 1
-          else if (bucket === 'requests') counts.pendingRequests += 1
-          else if (bucket === 'returns') counts.pendingReturns += 1
-        }
-        setStats(counts)
+        if (!cancelled) setStats(countStats(items))
       })
       .catch(() => {
-        if (!cancelled) setError("Couldn't load the dashboard.")
+        // Keep the last counts on screen rather than swapping the dashboard
+        // for an error.
+        if (!cancelled && initialStats === null) setError("Couldn't load the dashboard.")
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
 
     return () => { cancelled = true }
-  }, [])
+  }, [initialStats])
 
   const user = useMemo<UserProfile | null>(() => {
     if (!profile) return null

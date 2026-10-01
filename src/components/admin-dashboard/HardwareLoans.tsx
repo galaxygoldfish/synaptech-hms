@@ -10,6 +10,7 @@ import {
   fetchAllLoanRequestItems,
   type AdminLoanRequestItemSummary,
   type LoanBucket,
+  peekAllLoanRequestItems,
 } from '../../lib/loanRequests'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -106,8 +107,10 @@ export default function HardwareLoans() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialLoans] = useState(peekAllLoanRequestItems)
+  const [loans, setLoans] = useState<AdminLoanRequestItemSummary[]>(initialLoans ?? [])
+  const [isLoading, setLoading] = useState(initialLoans === null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<LoanFilter>(() => parseFilter(searchParams.get('filter')))
   const { ref: chipRowRef, maskImage: chipRowMask } = useEdgeFade<HTMLDivElement>()
@@ -123,7 +126,7 @@ export default function HardwareLoans() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load hardware loans:', fetchError)
-        if (!cancelled) setError('Could not load hardware loans. Please try again.')
+        if (!cancelled && initialLoans === null) setError('Could not load hardware loans. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -172,7 +175,7 @@ export default function HardwareLoans() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

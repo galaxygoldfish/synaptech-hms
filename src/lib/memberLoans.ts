@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 import type { LoanRequestItemRole, LoanRequestStatus } from '../types'
 
 /**
@@ -168,6 +169,22 @@ interface RequestRow {
   reviewed_at: string | null
 }
 
+interface EquipmentRow {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+  product_type: string
+  documentation_url: string | null
+}
+
+interface UnitRow {
+  id: string
+  serial_number: string
+}
+
+const EQUIPMENT_COLUMNS = 'id, name, description, image_url, product_type, documentation_url'
+
 /**
  * Zips the four tables a member's list needs into MemberLoanItems.
  *
@@ -176,29 +193,14 @@ interface RequestRow {
  * these relationships would probably embed fine, but doing it this way
  * sidesteps schema-cache fragility entirely.
  */
-async function hydrateItems(requests: RequestRow[], items: ItemRow[]): Promise<MemberLoanItem[]> {
-  if (items.length === 0) return []
-
-  const equipmentIds = [...new Set(items.map((item) => item.equipment_id))]
-  const { data: equipmentRows, error: equipmentError } = await supabase
-    .from('equipment')
-    .select('id, name, description, image_url, product_type, documentation_url')
-    .in('id', equipmentIds)
-  if (equipmentError) throw equipmentError
-
-  const unitIds = items.map((item) => item.equipment_unit_id).filter((id): id is string => Boolean(id))
-  let unitRows: { id: string; serial_number: string }[] = []
-  if (unitIds.length > 0) {
-    const { data, error } = await supabase
-      .from('equipment_units')
-      .select('id, serial_number')
-      .in('id', [...new Set(unitIds)])
-    if (error) throw error
-    unitRows = data ?? []
-  }
-
+function zipItems(
+  requests: RequestRow[],
+  items: ItemRow[],
+  equipmentRows: EquipmentRow[],
+  unitRows: UnitRow[],
+): MemberLoanItem[] {
   const requestById = new Map(requests.map((request) => [request.id, request]))
-  const equipmentById = new Map((equipmentRows ?? []).map((equipment) => [equipment.id, equipment]))
+  const equipmentById = new Map(equipmentRows.map((equipment) => [equipment.id, equipment]))
   const unitById = new Map(unitRows.map((unit) => [unit.id, unit]))
 
   return items.flatMap((item) => {
@@ -243,29 +245,42 @@ const ITEM_COLUMNS =
  * every submission has one by construction (see submitLoanRequest), so a
  * group without one is a broken row, and showing add-ons floating with
  * nothing to indent under would be worse than showing nothing.
+ *
+ * One round trip: all four tables are read side by side rather than each
+ * query waiting on the ids the previous one returned. Members can read the
+ * whole catalog and every unit (they're the public inventory), and RLS
+ * limits loan_request_items to the member's own; the items are also
+ * filtered to this member's requests below, so the result is right even for
+ * a caller who can see more.
  */
-export async function fetchMemberLoans(userId: string): Promise<MemberLoanGroup[]> {
-  const { data: requests, error: requestsError } = await supabase
-    .from('loan_requests')
-    .select('id, status, requested_at, reviewed_at')
-    .eq('user_id', userId)
-    .order('requested_at', { ascending: false })
+async function loadMemberLoans(userId: string): Promise<MemberLoanGroup[]> {
+  const [requestsResult, itemsResult, equipmentResult, unitsResult] = await Promise.all([
+    supabase
+      .from('loan_requests')
+      .select('id, status, requested_at, reviewed_at')
+      .eq('user_id', userId)
+      .order('requested_at', { ascending: false }),
+    supabase.from('loan_request_items').select(ITEM_COLUMNS).order('created_at'),
+    // Archived products included: old loans still need their names.
+    supabase.from('equipment').select(EQUIPMENT_COLUMNS),
+    supabase.from('equipment_units').select('id, serial_number'),
+  ])
+  for (const result of [requestsResult, itemsResult, equipmentResult, unitsResult]) {
+    if (result.error) throw result.error
+  }
 
-  if (requestsError) throw requestsError
-  if (!requests || requests.length === 0) return []
+  const requests = (requestsResult.data ?? []) as RequestRow[]
+  if (requests.length === 0) return []
 
-  const { data: items, error: itemsError } = await supabase
-    .from('loan_request_items')
-    .select(ITEM_COLUMNS)
-    .in(
-      'loan_request_id',
-      requests.map((request) => request.id),
-    )
-    .order('created_at')
+  const requestIds = new Set(requests.map((request) => request.id))
+  const items = ((itemsResult.data ?? []) as ItemRow[]).filter((item) => requestIds.has(item.loan_request_id))
 
-  if (itemsError) throw itemsError
-
-  const hydrated = await hydrateItems(requests as RequestRow[], (items ?? []) as ItemRow[])
+  const hydrated = zipItems(
+    requests,
+    items,
+    (equipmentResult.data ?? []) as EquipmentRow[],
+    (unitsResult.data ?? []) as UnitRow[],
+  )
   const byRequest = new Map<string, MemberLoanItem[]>()
   for (const item of hydrated) {
     const bucket = byRequest.get(item.loanRequestId)
@@ -291,6 +306,27 @@ export async function fetchMemberLoans(userId: string): Promise<MemberLoanGroup[
   })
 }
 
+function memberLoansKey(userId: string): string {
+  return `${CACHE_KEYS.memberLoans}${userId}`
+}
+
+/**
+ * A member's loans (see loadMemberLoans), always fresh — an admin's hand-off
+ * or return happens in another browser, and Home decides its overdue block
+ * from this. Screens read it through useMemberLoans, which paints the last
+ * copy (peekMemberLoans) while this runs.
+ */
+export async function fetchMemberLoans(userId: string): Promise<MemberLoanGroup[]> {
+  return [...(await refresh(memberLoansKey(userId), () => loadMemberLoans(userId)))]
+}
+
+/** The last loans loaded for this member, however old, or null — synchronously,
+    for a first paint. Display only. */
+export function peekMemberLoans(userId: string): MemberLoanGroup[] | null {
+  const groups = peekValue<MemberLoanGroup[]>(memberLoansKey(userId))
+  return groups ? [...groups] : null
+}
+
 /**
  * The hardware a member currently has out — what "My hardware" on the home
  * screen lists. Every item, add-ons included, that has been handed over and
@@ -299,15 +335,18 @@ export async function fetchMemberLoans(userId: string): Promise<MemberLoanGroup[
  *
  * Soonest due first, which puts anything overdue at the front.
  */
-export async function fetchActiveHardwareLoans(userId: string): Promise<MemberLoanItem[]> {
-  const groups = await fetchMemberLoans(userId)
+export function activeHardwareLoans(groups: MemberLoanGroup[]): MemberLoanItem[] {
   return groups
     .flatMap((group) => [group.primary, ...group.addOns])
     .filter((item) => !item.isConsumable && isOutWithMember(memberLoanState(item)))
     .sort((a, b) => (a.returnDate ?? '9999-12-31').localeCompare(b.returnDate ?? '9999-12-31'))
 }
 
-/** One item, for the detail screen behind a row. */
+/**
+ * One item, for the detail screen behind a row. Always fresh — the screen
+ * offers cancel and return, so it must not act on a cached copy. Two round
+ * trips: the item, then its request, product and unit side by side.
+ */
 export async function fetchMemberLoanItem(itemId: string): Promise<MemberLoanItem> {
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
@@ -315,15 +354,25 @@ export async function fetchMemberLoanItem(itemId: string): Promise<MemberLoanIte
     .eq('id', itemId)
     .single()
   if (itemError) throw itemError
+  const row = item as ItemRow
 
-  const { data: request, error: requestError } = await supabase
-    .from('loan_requests')
-    .select('id, status, requested_at, reviewed_at')
-    .eq('id', (item as ItemRow).loan_request_id)
-    .single()
-  if (requestError) throw requestError
+  const [requestResult, equipmentResult, unitResult] = await Promise.all([
+    supabase.from('loan_requests').select('id, status, requested_at, reviewed_at').eq('id', row.loan_request_id).single(),
+    supabase.from('equipment').select(EQUIPMENT_COLUMNS).eq('id', row.equipment_id),
+    row.equipment_unit_id
+      ? supabase.from('equipment_units').select('id, serial_number').eq('id', row.equipment_unit_id)
+      : null,
+  ])
+  if (requestResult.error) throw requestResult.error
+  if (equipmentResult.error) throw equipmentResult.error
+  if (unitResult?.error) throw unitResult.error
 
-  const [hydrated] = await hydrateItems([request as RequestRow], [item as ItemRow])
+  const [hydrated] = zipItems(
+    [requestResult.data as RequestRow],
+    [row],
+    (equipmentResult.data ?? []) as EquipmentRow[],
+    (unitResult?.data ?? []) as UnitRow[],
+  )
   if (!hydrated) throw new Error('This loan could not be loaded.')
   return hydrated
 }
@@ -347,5 +396,8 @@ export async function cancelLoanRequest(loanRequestId: string): Promise<void> {
     .eq('id', loanRequestId)
     .eq('status', 'pending')
 
+  // Cancelling also releases the request's units.
+  invalidate(CACHE_KEYS.memberLoans)
+  invalidate(CACHE_KEYS.equipmentAvailability)
   if (error) throw error
 }

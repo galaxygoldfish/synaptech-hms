@@ -6,7 +6,7 @@ import { ProfileModal } from './ProfileModal'
 import { AgreementPreview } from './AgreementPreview'
 import { CheckmarkIcon } from './icons'
 import { fetchAvailableEquipmentUnit, fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
-import { buildLoanAgreementPdf } from '../../lib/loanAgreementPdf'
+import { buildLoanAgreementPdf, preloadAgreementPdfLib } from '../../lib/loanAgreementPdf'
 import type { Equipment, EquipmentUnit, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutSignAgreement.module.css'
@@ -56,6 +56,9 @@ interface SignatureEntry {
 }
 
 export default function CheckoutSignAgreement() {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadAgreementPdfLib, [])
+
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, signOut } = useAuth()
@@ -237,7 +240,7 @@ export default function CheckoutSignAgreement() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <h1 className={styles.heading}>Sign the Hardware Loan Agreement</h1>

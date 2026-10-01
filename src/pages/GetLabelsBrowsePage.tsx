@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Header } from '../components/admin-dashboard/Header'
 import { ProfileModal } from '../components/admin-dashboard/ProfileModal'
 import { ArrowLeftIcon, ChevronRightIcon } from '../components/admin-dashboard/icons'
-import { listEquipment } from '../lib/inventory'
+import { listEquipment, peekEquipmentList } from '../lib/inventory'
 import type { Equipment, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
 
@@ -13,8 +13,10 @@ export default function GetLabelsBrowsePage() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialEquipment] = useState(() => peekEquipmentList()?.filter((item) => item.product_type === 'hardware') ?? null)
+  const [equipment, setEquipment] = useState<Equipment[]>(initialEquipment ?? [])
+  const [isLoading, setLoading] = useState(initialEquipment === null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function GetLabelsBrowsePage() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load inventory:', fetchError)
-        if (!cancelled) setError('Could not load inventory. Please try again.')
+        if (!cancelled && initialEquipment === null) setError('Could not load inventory. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

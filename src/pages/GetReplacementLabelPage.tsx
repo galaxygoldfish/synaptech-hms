@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type jsPDF from 'jspdf'
 import { useAuth } from '../context/AuthContext'
@@ -15,7 +15,7 @@ import {
   ServerIconFilled,
 } from '../components/admin-dashboard/icons'
 import { fetchEquipmentUnitBySerial } from '../lib/inventory'
-import { buildItemLabelsPdf, downloadItemLabelsAsPngs, printLabelsPdf } from '../lib/labelPdf'
+import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../lib/labelPdf'
 import type { Equipment, UserProfile } from '../types'
 import styles from './GetReplacementLabelPage.module.css'
 
@@ -31,6 +31,9 @@ function slugify(value: string): string {
 }
 
 export default function GetReplacementLabelPage() {
+  // Fetch the PDF library now, not when the button is pressed.
+  useEffect(preloadLabelPdfLibs, [])
+
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)

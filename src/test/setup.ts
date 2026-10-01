@@ -1,4 +1,11 @@
 import '@testing-library/jest-dom'
+import { clearCache } from '../lib/queryCache'
+
+// The read cache and its stashes are module-level, so one test's data would
+// otherwise show up on the next test's first render.
+afterEach(() => {
+  clearCache()
+})
 
 // jsdom has no ResizeObserver, and useEdgeFade constructs one on mount — so
 // without this any screen with a scrolling chip row throws on render rather

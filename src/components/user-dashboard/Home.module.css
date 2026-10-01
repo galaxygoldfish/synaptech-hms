@@ -76,7 +76,11 @@
      .loanCard's `cqh` permanently stuck at 0 (see .loanGrid below). Basis 0
      skips straight to filling the available space. */
   flex: 1 0 0;
-  min-height: 8rem;
+  /* No fixed floor (this used to be 8rem): the flex item's automatic minimum
+     is its content, so the section grows around its loans instead of taking
+     a share of the page too small for them and letting a card spill over
+     its border — which is what happened on tablet widths. The empty state
+     is always taller than the old 8rem anyway, so it looks the same. */
   display: flex;
   flex-direction: column;
 }
@@ -486,7 +490,12 @@
     flex-wrap: wrap;
     align-content: flex-start;
     flex: 1;
-    min-height: 0;
+    /* The square card is min(100cqw, 100cqh), so a short section made a
+       small square — too small for its photo, name, date and link, which
+       collapsed the photo to nothing and pushed "More details" onto the
+       card's bottom edge. This floor keeps the square big enough for all of
+       it; the section (content-sized minimum, above) grows to match. */
+    min-height: 17rem;
     container-type: size;
   }
 

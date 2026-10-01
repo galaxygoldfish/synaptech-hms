@@ -16,6 +16,7 @@ vi.mock('../lib/inventory', () => ({
   fetchEquipment: vi.fn(),
   listEquipmentUnits: vi.fn(),
   fetchEquipmentUnitBySerial: vi.fn(),
+  peekEquipmentList: vi.fn(() => null),
 }))
 
 // Rasterizing labels needs a real canvas; this screen only needs the markup.
@@ -23,6 +24,7 @@ vi.mock('../lib/labelPdf', () => ({
   buildItemLabelsPdf: vi.fn(),
   downloadItemLabelsAsPngs: vi.fn(),
   printLabelsPdf: vi.fn(),
+  preloadLabelPdfLibs: vi.fn(),
 }))
 
 vi.mock('../components/admin-dashboard/labels/QrDocLabel', () => ({ QrDocLabel: () => null }))

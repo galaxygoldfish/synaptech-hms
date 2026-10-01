@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import { generateSerialNumbers } from './serialNumber'
 import type { Equipment, EquipmentAddon, EquipmentCategory, EquipmentProductType, EquipmentUnit } from '../types'
 
@@ -44,6 +45,7 @@ export async function createEquipment(input: CreateEquipmentInput): Promise<Equi
     .select()
     .single()
 
+  invalidate(CACHE_KEYS.equipmentAll)
   if (error) throw error
   return data as Equipment
 }
@@ -67,6 +69,7 @@ export async function updateEquipment(equipmentId: string, input: UpdateEquipmen
     .select()
     .single()
 
+  invalidate(CACHE_KEYS.equipmentAll)
   if (error) throw error
   return data as Equipment
 }
@@ -85,6 +88,14 @@ function isForeignKeyViolation(error: unknown): boolean {
 // history keeps resolving its name), but archived_at pulls it out of
 // listEquipment and every screen built on it.
 export async function deleteEquipment(equipmentId: string): Promise<void> {
+  try {
+    await deleteOrArchiveEquipment(equipmentId)
+  } finally {
+    invalidate(CACHE_KEYS.equipmentAll)
+  }
+}
+
+async function deleteOrArchiveEquipment(equipmentId: string): Promise<void> {
   const { error } = await supabase.from('equipment').delete().eq('id', equipmentId)
   if (!error) return
   if (!isForeignKeyViolation(error)) throw error
@@ -101,6 +112,7 @@ export async function deleteEquipment(equipmentId: string): Promise<void> {
 // whole equipment record (as updateEquipment does) would be overkill.
 export async function setEquipmentQuantityTotal(equipmentId: string, quantityTotal: number): Promise<void> {
   const { error } = await supabase.from('equipment').update({ quantity_total: quantityTotal }).eq('id', equipmentId)
+  invalidate(CACHE_KEYS.equipmentAll)
   if (error) throw error
 }
 
@@ -218,10 +230,25 @@ export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promis
 // Excludes archived products (see deleteEquipment) — every catalog and
 // management screen is built on this, and an archived product should be
 // invisible to all of them while its row (and loan history) lives on.
+//
+// Always fetched fresh, but remembered so the inventory, add-item, labels and
+// member browse screens can paint the last copy on their first render
+// (peekEquipmentList). Each caller gets its own copy of the array so an
+// in-place sort in one screen can't reorder another's.
 export async function listEquipment(): Promise<Equipment[]> {
-  const { data, error } = await supabase.from('equipment').select().is('archived_at', null).order('name')
-  if (error) throw error
-  return data as Equipment[]
+  const rows = await refresh(CACHE_KEYS.equipmentList, async () => {
+    const { data, error } = await supabase.from('equipment').select().is('archived_at', null).order('name')
+    if (error) throw error
+    return data as Equipment[]
+  }, DISPLAY_REUSE_MS)
+  return [...rows]
+}
+
+/** The catalog as last loaded (archived excluded), synchronously, or null.
+    Display only. */
+export function peekEquipmentList(): Equipment[] | null {
+  const rows = peekValue<Equipment[]>(CACHE_KEYS.equipmentList)
+  return rows ? [...rows] : null
 }
 
 export async function fetchEquipment(equipmentId: string): Promise<Equipment> {
@@ -253,15 +280,52 @@ export async function fetchAvailableEquipmentUnit(equipmentId: string): Promise<
 
 // Free units per hardware product, keyed by equipment id. Consumables have
 // no units and are absent — see availableQuantity.
-export async function fetchEquipmentAvailability(): Promise<Record<string, number>> {
-  const { data, error } = await supabase.rpc('equipment_availability')
-  if (error) throw error
+//
+// Always fetched fresh — the checkout confirm step decides "out of stock"
+// from it — but the result is remembered so the browse screens can paint the
+// last-seen counts on their first render (see peekEquipmentCatalog).
+//
+// `fresh: true` for a screen deciding "out of stock" (starting a checkout, the
+// confirm step); otherwise a copy from the last few seconds is reused.
+export function fetchEquipmentAvailability({ fresh = false }: { fresh?: boolean } = {}): Promise<Record<string, number>> {
+  return refresh(CACHE_KEYS.equipmentAvailability, async () => {
+    const { data, error } = await supabase.rpc('equipment_availability')
+    if (error) throw error
 
-  const availability: Record<string, number> = {}
-  for (const row of (data ?? []) as { equipment_id: string; available: number }[]) {
-    availability[row.equipment_id] = row.available
-  }
-  return availability
+    const availability: Record<string, number> = {}
+    for (const row of (data ?? []) as { equipment_id: string; available: number }[]) {
+      availability[row.equipment_id] = row.available
+    }
+    return availability
+  }, fresh ? 0 : DISPLAY_REUSE_MS)
+}
+
+/**
+ * The product rows for `ids` from the last catalog load, synchronously, or
+ * null unless every one of them is there. Lets the checkout steps draw the
+ * items the member picked on their first render; each still refetches.
+ * Display only — quantity_total here is the stored count, not free units.
+ */
+export function peekEquipmentRows(ids: string[]): Equipment[] | null {
+  const catalog = peekValue<Equipment[]>(CACHE_KEYS.equipmentList)
+  if (!catalog) return null
+  const byId = new Map(catalog.map((item) => [item.id, item]))
+  const rows = ids.map((id) => byId.get(id))
+  return rows.every((row): row is Equipment => row !== undefined) ? rows : null
+}
+
+/**
+ * The catalog as members last saw it — each item's quantity_total already
+ * replaced with its free units, as useInventoryCatalog shows it — or null if
+ * it hasn't been loaded yet. Synchronous, for a first paint without a
+ * skeleton; the screens that use it always refetch straight after. Display
+ * only: nothing should decide availability from this.
+ */
+export function peekEquipmentCatalog(): Equipment[] | null {
+  const items = peekValue<Equipment[]>(CACHE_KEYS.equipmentList)
+  const availability = peekValue<Record<string, number>>(CACHE_KEYS.equipmentAvailability)
+  if (!items || !availability) return null
+  return items.map((item) => ({ ...item, quantity_total: availableQuantity(item, availability) }))
 }
 
 // What a member is told is available: free units for hardware, the stocked
@@ -285,14 +349,23 @@ export interface EquipmentInventoryRow {
 // from the moment its request is approved until an admin records its return
 // (loan_request_items.returned_at — see the 20260922000000 migration), so
 // checkedOut counts approved, not-yet-returned items per equipment_id.
-export async function fetchEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
-  const equipment = await listEquipment()
-  if (equipment.length === 0) return []
+export function fetchEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
+  // Always fresh, but remembered so the list can paint it straight away next
+  // time (peekEquipmentInventorySummary).
+  return refresh(CACHE_KEYS.inventorySummary, loadEquipmentInventorySummary, DISPLAY_REUSE_MS)
+}
 
-  const { data: approvedRequests, error: requestsError } = await supabase
-    .from('loan_requests')
-    .select('id')
-    .eq('status', 'approved')
+/** The inventory list as last loaded, synchronously, or null. Display only. */
+export function peekEquipmentInventorySummary(): EquipmentInventoryRow[] | null {
+  return peekValue<EquipmentInventoryRow[]>(CACHE_KEYS.inventorySummary) ?? null
+}
+
+async function loadEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
+  const [equipment, { data: approvedRequests, error: requestsError }] = await Promise.all([
+    listEquipment(),
+    supabase.from('loan_requests').select('id').eq('status', 'approved'),
+  ])
+  if (equipment.length === 0) return []
 
   if (requestsError) throw requestsError
   const approvedRequestIds = (approvedRequests ?? []).map((request) => request.id)

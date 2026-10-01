@@ -1,0 +1,143 @@
+// A small in-memory read cache — deliberately not a query library. Reads
+// always go to the network (refresh), but share a request already in flight
+// and remember the last value, which screens paint on their first render
+// (peekValue) while the fresh copy loads. Data fetched for one imminent
+// navigation is handed over separately (stash). The mutation functions in
+// src/lib drop what they changed (invalidate); AuthContext wipes it all on
+// sign-out or a change of user. See the "Reads are always fresh" note in
+// AGENTS.md.
+
+/** Keys shared between the fetch that fills an entry and the writes that
+    drop it, which live in different modules. */
+export const CACHE_KEYS = {
+  adminLoans: 'admin-loans',
+  equipmentList: 'equipment:list',
+  /** Followed by the member's user id — one entry per member. */
+  memberLoans: 'member-loans:',
+  equipmentAvailability: 'equipment:availability',
+  inventorySummary: 'equipment:summary',
+  /** Every equipment-derived key above — what an inventory write
+      invalidates. */
+  equipmentAll: 'equipment:',
+  members: 'members:list',
+  emailTemplates: 'emails:templates',
+  emailLog: 'emails:log',
+  auditLog: 'audit-log',
+  inventoryAudits: 'inventory-audits:list',
+  /** Followed by an equipment id: a checkout's add-ons and stock, fetched
+      from the catalog before opening the confirm step. */
+  checkoutStart: 'equipment:checkout-start:',
+} as const
+
+interface Entry {
+  promise: Promise<unknown>
+  /** When the fetch resolved; unset while it's still in flight. */
+  settledAt?: number
+}
+
+/**
+ * How long a display screen reuses a just-fetched copy instead of fetching
+ * again. Short: it exists so bouncing between screens (dashboard → list →
+ * dashboard) and React's doubled effects in development don't re-read whole
+ * tables every time, not to let data go stale. Screens that decide something
+ * from the data pass `fresh: true` to their fetch and skip it.
+ */
+export const DISPLAY_REUSE_MS = 5_000
+
+const entries = new Map<string, Entry>()
+
+// Data fetched for one imminent navigation (see stash). Separate from the
+// cache proper: only ever read while very fresh, so an edit form can start
+// from it.
+const stashed = new Map<string, { value: unknown; at: number }>()
+
+// The last value each key resolved to, kept through invalidations and
+// refreshes (unlike `entries`) so a screen can paint it on its very first
+// render while the fresh copy loads. Display only; cleared with clearCache.
+const lastValues = new Map<string, unknown>()
+
+/**
+ * Fetches `key` from the network. A request already in flight is shared (it's
+ * as fresh as a new one would be); a settled one is reused only while younger
+ * than `maxAgeMs` — 0 for screens that decide from the data. A rejected fetch
+ * is evicted immediately, so an error is never served.
+ */
+export function refresh<T>(key: string, fetcher: () => Promise<T>, maxAgeMs = 0): Promise<T> {
+  const existing = entries.get(key)
+  if (existing && (existing.settledAt === undefined || Date.now() - existing.settledAt < maxAgeMs)) {
+    return existing.promise as Promise<T>
+  }
+
+  const promise = fetcher()
+  const entry: Entry = { promise }
+  entries.set(key, entry)
+  promise.then(
+    (value) => {
+      // Only if this is still the current request for the key. A fetch
+      // started before a write and landing after it (the write invalidated
+      // it) must not repaint the old data.
+      if (entries.get(key) !== entry) return
+      entry.settledAt = Date.now()
+      lastValues.set(key, value)
+    },
+    () => {
+      if (entries.get(key) === entry) entries.delete(key)
+    },
+  )
+  return promise
+}
+
+/**
+ * The last value `key` resolved to, however old, synchronously — or
+ * undefined if it never has. Synchronous so a screen can render it on its
+ * first paint instead of flashing a skeleton for a frame. For showing
+ * something while a fresh fetch is under way, never for deciding anything
+ * (see useMemberLoans and useInventoryCatalog).
+ */
+export function peekValue<T>(key: string): T | undefined {
+  return lastValues.get(key) as T | undefined
+}
+
+/**
+ * Drops every entry whose key starts with `prefix`, and its last value: the
+ * write that calls this changed the data, so the old copy shouldn't be
+ * painted even for a moment (a member who just cancelled a request must not
+ * see it listed as pending on the way back to their loans).
+ */
+export function invalidate(prefix: string): void {
+  for (const key of entries.keys()) {
+    if (key.startsWith(prefix)) entries.delete(key)
+  }
+  for (const key of lastValues.keys()) {
+    if (key.startsWith(prefix)) lastValues.delete(key)
+  }
+  for (const key of stashed.keys()) {
+    if (key.startsWith(prefix)) stashed.delete(key)
+  }
+}
+
+/**
+ * Hands data fetched just before a navigation to the screen it opens, so
+ * that screen can draw on its first render instead of fetching again behind
+ * a skeleton — the admin inventory list does this for the item page.
+ */
+export function stash(key: string, value: unknown): void {
+  stashed.set(key, { value, at: Date.now() })
+}
+
+/**
+ * The stashed value for `key` if it was stashed within `maxAgeMs`, else
+ * undefined. Only that fresh, because a form may be built from it; a write
+ * to the data (invalidate) removes it outright.
+ */
+export function readStash<T>(key: string, maxAgeMs = 10_000): T | undefined {
+  const entry = stashed.get(key)
+  if (!entry || Date.now() - entry.at > maxAgeMs) return undefined
+  return entry.value as T
+}
+
+export function clearCache(): void {
+  entries.clear()
+  lastValues.clear()
+  stashed.clear()
+}

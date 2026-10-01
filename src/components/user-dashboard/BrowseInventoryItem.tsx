@@ -4,10 +4,11 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { ArrowLeftIcon, ArrowUpLeftFilled, ChevronRightFilled, DocumentationIcon, HelpIconFilled } from './icons'
-import { availableQuantity, fetchEquipment, fetchEquipmentAvailability } from '../../lib/inventory'
+import { availableQuantity, fetchEquipment, fetchEquipmentAvailability, peekEquipmentCatalog } from '../../lib/inventory'
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './BrowseInventoryItem.module.css'
+import { useStartCheckout } from './useStartCheckout'
 
 // Help & support always points at the club's Discord — same link used on
 // the checkout confirm screen (CheckoutConfirmHardware.tsx).
@@ -19,20 +20,28 @@ function isOutOfStock(item: Equipment): boolean {
 
 export default function BrowseInventoryItem() {
   const navigate = useNavigate()
+  const { startCheckout, pendingId } = useStartCheckout()
   const location = useLocation()
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
   const equipmentId = (location.state as { equipmentId?: string } | null)?.equipmentId ?? null
 
-  const [equipment, setEquipment] = useState<Equipment | null>(null)
-  const [isLoading, setLoading] = useState(true)
+  // Opened from the browse list, so the item is almost always in the
+  // catalog it just showed: paint that at once, then refresh it below.
+  const seeded = useMemo(
+    () => (equipmentId ? (peekEquipmentCatalog()?.find((item) => item.id === equipmentId) ?? null) : null),
+    [equipmentId],
+  )
+  const [equipment, setEquipment] = useState<Equipment | null>(seeded)
+  const [isLoading, setLoading] = useState(seeded === null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!equipmentId) return
     let cancelled = false
-    setLoading(true)
+    setEquipment(seeded)
+    setLoading(seeded === null)
     setError(null)
 
     Promise.all([fetchEquipment(equipmentId), fetchEquipmentAvailability()])
@@ -43,7 +52,8 @@ export default function BrowseInventoryItem() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load item:', fetchError)
-        if (!cancelled) setError('Could not load this item. Please try again.')
+        // Keep the seeded item on screen rather than swapping it for an error.
+        if (!cancelled && seeded === null) setError('Could not load this item. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -52,7 +62,7 @@ export default function BrowseInventoryItem() {
     return () => {
       cancelled = true
     }
-  }, [equipmentId])
+  }, [equipmentId, seeded])
 
   useEffect(() => {
     if (!equipmentId) navigate('/home/browse', { replace: true })
@@ -78,7 +88,7 @@ export default function BrowseInventoryItem() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <button type="button" className={styles.backButton} onClick={() => navigate('/home/browse')} aria-label="Back">
@@ -116,7 +126,8 @@ export default function BrowseInventoryItem() {
               <button
                 type="button"
                 className={`${styles.linkRow} ${styles.linkRowTop} ${styles.linkRowPrimary}`}
-                onClick={() => navigate('/home/checkout/confirm', { state: { equipmentId: equipment.id } })}
+                onClick={() => void startCheckout(equipment)}
+                aria-busy={pendingId === equipment.id}
               >
                 <span className={styles.linkRowLeft}>
                   <span className={styles.linkRowIcon}>

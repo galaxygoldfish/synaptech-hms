@@ -9,6 +9,7 @@ import {
   fetchInventoryAudits,
   INVENTORY_AUDIT_LIMIT,
   type InventoryAuditSummary,
+  peekInventoryAudits,
 } from '../../lib/inventoryAudit'
 import { formatAuditTimestamp } from './InventoryAuditParts'
 import type { UserProfile } from '../../types'
@@ -85,9 +86,11 @@ export default function InventoryAudit() {
   const { profile, signOut } = useAuth()
   const [isProfileOpen, setProfileOpen] = useState(false)
 
-  const [audits, setAudits] = useState<InventoryAuditSummary[]>([])
-  const [isCapped, setCapped] = useState(false)
-  const [isLoading, setLoading] = useState(true)
+  // As last loaded, on the first render; the fetch below refreshes it.
+  const [initialPage] = useState(peekInventoryAudits)
+  const [audits, setAudits] = useState<InventoryAuditSummary[]>(initialPage?.audits ?? [])
+  const [isCapped, setCapped] = useState(initialPage?.hasMore ?? false)
+  const [isLoading, setLoading] = useState(initialPage === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -103,7 +106,7 @@ export default function InventoryAudit() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load inventory audits:', fetchError)
-        if (!cancelled) setError('Could not load past audits. Please try again.')
+        if (!cancelled && initialPage === null) setError('Could not load past audits. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -138,7 +141,7 @@ export default function InventoryAudit() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <div className={styles.topRow}>

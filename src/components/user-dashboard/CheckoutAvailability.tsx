@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
-import { fetchEquipment, fetchEquipmentByIds } from '../../lib/inventory'
+import { fetchEquipment, fetchEquipmentByIds, peekEquipmentRows } from '../../lib/inventory'
 import { submitLoanRequest, UnitUnavailableError, type SubmitLoanRequestItemInput } from '../../lib/loanRequests'
 import type { Equipment, LoanRequestItemRole, UserProfile } from '../../types'
 import { AvailabilityGrid, AvailabilityGridSkeleton, parseSlotKey } from './AvailabilityGrid'
@@ -50,8 +50,19 @@ export default function CheckoutAvailability() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const [items, setItems] = useState<Equipment[]>([])
-  const [isLoading, setLoading] = useState(true)
+  // The items were picked from the catalog a few steps ago, so their rows are
+  // almost always cached: draw them on the first render and refresh below.
+  const [seededItems] = useState(() =>
+    checkoutState
+      ? peekEquipmentRows([
+          checkoutState.equipmentId,
+          ...checkoutState.optionalAddonIds,
+          ...(checkoutState.requiredAddonId ? [checkoutState.requiredAddonId] : []),
+        ])
+      : null,
+  )
+  const [items, setItems] = useState<Equipment[]>(seededItems ?? [])
+  const [isLoading, setLoading] = useState(seededItems === null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isSubmitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -59,7 +70,7 @@ export default function CheckoutAvailability() {
   useEffect(() => {
     if (!checkoutState) return
     let cancelled = false
-    setLoading(true)
+    setLoading(seededItems === null)
     setLoadError(null)
 
     const addonIds = [
@@ -74,7 +85,8 @@ export default function CheckoutAvailability() {
       .catch((fetchError) => {
         // eslint-disable-next-line no-console
         console.error('Failed to load checkout items:', fetchError)
-        if (!cancelled) setLoadError('Could not load your checkout items. Please try again.')
+        // Keep the drawn items rather than swapping them for an error.
+        if (!cancelled && seededItems === null) setLoadError('Could not load your checkout items. Please try again.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -147,7 +159,7 @@ export default function CheckoutAvailability() {
 
   return (
     <div className={styles.page}>
-      <Header userName={user?.name.split(' ')[0] ?? ''} onProfileClick={() => setProfileOpen(true)} />
+      <Header userName={user?.name ?? ''} onProfileClick={() => setProfileOpen(true)} />
 
       <main className={styles.main}>
         <h1 className={styles.heading}>Add your pickup availability</h1>
