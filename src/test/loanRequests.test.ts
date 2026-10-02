@@ -50,6 +50,7 @@ function item(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     returnDate: null,
     returnRequestedAt: null,
     returnedAt: null,
+    cancelledAt: null,
     memberName: 'Bob Reyes',
     ...overrides,
   }

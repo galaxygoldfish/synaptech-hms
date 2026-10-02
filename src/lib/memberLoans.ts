@@ -64,6 +64,9 @@ export interface MemberLoanItem {
   returnedAt: string | null
   /** Whatever copy exists: the member's signed PDF, or the countersigned one. */
   signedAgreementPath: string | null
+  /** What the admin wrote when they cancelled the request. Null when the
+      member cancelled it themselves, or it wasn't cancelled. */
+  cancellationReason: string | null
 }
 
 /**
@@ -167,6 +170,7 @@ interface RequestRow {
   status: string
   requested_at: string
   reviewed_at: string | null
+  cancellation_reason: string | null
 }
 
 interface EquipmentRow {
@@ -229,10 +233,13 @@ function zipItems(
         returnRequestedAt: item.return_requested_at,
         returnedAt: item.returned_at,
         signedAgreementPath: item.signed_agreement_path,
+        cancellationReason: request.cancellation_reason,
       },
     ]
   })
 }
+
+const REQUEST_COLUMNS = 'id, status, requested_at, reviewed_at, cancellation_reason'
 
 const ITEM_COLUMNS =
   'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, returned_at, return_requested_at, signed_agreement_path'
@@ -257,7 +264,7 @@ async function loadMemberLoans(userId: string): Promise<MemberLoanGroup[]> {
   const [requestsResult, itemsResult, equipmentResult, unitsResult] = await Promise.all([
     supabase
       .from('loan_requests')
-      .select('id, status, requested_at, reviewed_at')
+      .select(REQUEST_COLUMNS)
       .eq('user_id', userId)
       .order('requested_at', { ascending: false }),
     supabase.from('loan_request_items').select(ITEM_COLUMNS).order('created_at'),
@@ -357,7 +364,7 @@ export async function fetchMemberLoanItem(itemId: string): Promise<MemberLoanIte
   const row = item as ItemRow
 
   const [requestResult, equipmentResult, unitResult] = await Promise.all([
-    supabase.from('loan_requests').select('id, status, requested_at, reviewed_at').eq('id', row.loan_request_id).single(),
+    supabase.from('loan_requests').select(REQUEST_COLUMNS).eq('id', row.loan_request_id).single(),
     supabase.from('equipment').select(EQUIPMENT_COLUMNS).eq('id', row.equipment_id),
     row.equipment_unit_id
       ? supabase.from('equipment_units').select('id, serial_number').eq('id', row.equipment_unit_id)

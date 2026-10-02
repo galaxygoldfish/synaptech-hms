@@ -150,6 +150,41 @@
   }
 }
 
+/* Sits where the dates would on a live loan, tinted the same muted red as
+   the Cancel request row — it's the answer to the question that button
+   raises, from the other side. */
+.cancelReason {
+  margin-top: 1.5rem;
+  max-width: 34rem;
+  padding: 0.875rem 1.125rem;
+  background: #ecdedd;
+  border-radius: 0.75rem;
+}
+
+.cancelReasonLabel {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 0.25rem;
+}
+
+.cancelReasonText {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.8);
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .cancelReason {
+    margin-top: 0.75rem;
+  }
+}
+
 @media (max-width: 48rem) {
   .itemRow {
     flex-direction: column;

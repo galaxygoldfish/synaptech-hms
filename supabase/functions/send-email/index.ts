@@ -340,6 +340,74 @@ async function resolveEvent(
       return dispatch;
     }
 
+    // An admin called off a checkout request before it was handed over —
+    // the trigger in 20261002000000_admin_loan_cancellation.sql fires only
+    // when the canceller isn't the member themselves. One email per request,
+    // not per item: the request is what was cancelled, add-ons and all, and
+    // the member should read the reason once rather than once per add-on.
+    // hardware_name lists every item for the same reason (primary first),
+    // so nothing that was cancelled goes unmentioned.
+    case "loan_request.cancelled": {
+      const request = unwrap(
+        await admin
+          .from("loan_requests")
+          .select("user_id, requested_at, cancelled_by, cancellation_reason")
+          .eq("id", recordId)
+          .maybeSingle(),
+        "loan_request.cancelled: fetching loan_requests row",
+      );
+      if (!request) return [];
+
+      const items = unwrap(
+        await admin
+          .from("loan_request_items")
+          .select("equipment_id, equipment_unit_id, item_role, created_at")
+          .eq("loan_request_id", recordId)
+          .order("created_at"),
+        "loan_request.cancelled: fetching loan_request_items rows",
+      ) ?? [];
+      if (items.length === 0) return [];
+      items.sort((a, b) => Number(b.item_role === "primary") - Number(a.item_role === "primary"));
+
+      const unitIds = items.map((item) => item.equipment_unit_id).filter((id): id is string => Boolean(id));
+      const [profileResult, equipmentResult, unitsResult] = await Promise.all([
+        admin.from("profiles").select("uw_email, first_name, last_name").eq("id", request.user_id).maybeSingle(),
+        admin.from("equipment").select("id, name").in("id", items.map((item) => item.equipment_id)),
+        unitIds.length > 0
+          ? admin.from("equipment_units").select("id, serial_number").in("id", unitIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      const profile = unwrap(profileResult, "loan_request.cancelled: fetching profile");
+      const equipment = unwrap(equipmentResult, "loan_request.cancelled: fetching equipment") ?? [];
+      const units = unwrap(unitsResult, "loan_request.cancelled: fetching equipment_units rows") ?? [];
+      if (!profile) return [];
+
+      const nameById = new Map(equipment.map((row) => [row.id, row.name]));
+      const serialById = new Map(units.map((row) => [row.id, row.serial_number]));
+      const names = items.map((item) => nameById.get(item.equipment_id)).filter(Boolean);
+      const serials = items
+        .map((item) => (item.equipment_unit_id ? serialById.get(item.equipment_unit_id) : undefined))
+        .filter(Boolean);
+
+      const fields = {
+        user_name: `${profile.first_name} ${profile.last_name}`,
+        hardware_name: names.join(", "),
+        hardware_serial: serials.join(", "),
+        loan_start_date: formatDate(request.requested_at),
+        cancellation_reason: request.cancellation_reason ?? "",
+        admin_name: await fetchActorName(admin, request.cancelled_by),
+      };
+
+      return [
+        {
+          templateKey: "checkout-request-cancellation",
+          to: profile.uw_email,
+          fields,
+          extraCc: await resolveExtraCc(admin, "checkout-request-cancellation"),
+        },
+      ];
+    }
+
     case "equipment.created":
     case "equipment.updated": {
       const equipment = unwrap(

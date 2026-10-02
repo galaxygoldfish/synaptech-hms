@@ -51,6 +51,7 @@ const requested: AdminLoanRequestItemSummary = {
   returnDate: '2026-10-12',
   returnRequestedAt: null,
   returnedAt: null,
+  cancelledAt: null,
   memberName: 'Bob Reyes',
 }
 
@@ -66,6 +67,7 @@ const alreadyOut: AdminLoanRequestItemSummary = {
   returnDate: '2026-10-01',
   returnRequestedAt: null,
   returnedAt: null,
+  cancelledAt: null,
   memberName: 'Cleo Park',
 }
 
@@ -81,6 +83,7 @@ const backOnTheShelf: AdminLoanRequestItemSummary = {
   returnDate: '2026-09-01',
   returnRequestedAt: null,
   returnedAt: '2026-08-30T12:00:00Z',
+  cancelledAt: null,
   memberName: 'Dara Singh',
 }
 
@@ -243,7 +246,7 @@ describe('CheckoutScan', () => {
   // "nobody asked for this", not "this was Dara's".
   it('treats a returned loan as no request at all', async () => {
     vi.mocked(fetchEquipmentUnitBySerial).mockResolvedValue({
-      unit: { id: 'unit-3', equipment_id: 'eq-3', serial_number: 'SYN-5OHTYJ2GX', created_at: '' },
+      unit: { id: 'unit-3', equipment_id: 'eq-3', serial_number: 'SYN-5OHTYJ2GX', created_at: '', on_hold_at: null, on_hold_by: null },
       equipment: { id: 'eq-3', name: 'Oculus Quest 2' } as never,
     })
 

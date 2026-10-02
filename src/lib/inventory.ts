@@ -171,7 +171,42 @@ export async function deleteEquipmentUnit(unitId: string): Promise<void> {
   if (error) throw error
 }
 
-export type EquipmentUnitStatus = 'available' | 'requested' | 'checked_out'
+export type EquipmentUnitStatus = 'available' | 'on_hold' | 'requested' | 'checked_out'
+
+/**
+ * Raised when an admin tries to put a unit on hold that a member requested
+ * in the meantime. The message is written for the admin to read as-is.
+ */
+export class UnitInUseError extends Error {
+  constructor(message = 'Someone just requested this unit, so it can\u2019t be put on hold.') {
+    super(message)
+    this.name = 'UnitInUseError'
+  }
+}
+
+/**
+ * Puts a unit on hold, or takes it off. Who and when are stamped by the
+ * database (guard_equipment_unit_hold), which also refuses to hold a unit
+ * that's on a live request — so this sends only whether it's held.
+ *
+ * Returns the unit as stored, for the caller to show.
+ */
+export async function setEquipmentUnitOnHold(unitId: string, onHold: boolean): Promise<EquipmentUnit> {
+  const { data, error } = await supabase
+    .from('equipment_units')
+    .update({ on_hold_at: onHold ? new Date().toISOString() : null })
+    .eq('id', unitId)
+    .select()
+    .single()
+
+  // The members' "N available" counts move with it.
+  invalidate(CACHE_KEYS.equipmentAll)
+  if (error) {
+    if (String(error.message).includes('unit_in_use')) throw new UnitInUseError()
+    throw error
+  }
+  return data as EquipmentUnit
+}
 
 export interface EquipmentUnitWithStatus {
   unit: EquipmentUnit
@@ -179,8 +214,10 @@ export interface EquipmentUnitWithStatus {
 }
 
 // Every physical unit of a hardware product, labeled available, requested or
-// checked out based on the status of whichever live loan holds it — same
-// rule the DB trigger enforces (equipment_unit_is_held in
+// checked out based on the status of whichever live loan holds it, or on
+// hold if an admin is keeping it back. A loan wins over a hold: hardware out
+// with a member is out, whatever its unit row says. The loan rule is the
+// same one the DB trigger enforces (equipment_unit_is_held in
 // 20260926010000_unit_reservation.sql): pending and approved requests both
 // hold the unit, pending just hasn't been reviewed yet. Resolved down to the
 // individual unit via loan_request_items.equipment_unit_id.
@@ -221,7 +258,7 @@ export async function fetchEquipmentUnitsWithStatus(equipmentId: string): Promis
 
   return (units as EquipmentUnit[]).map((unit) => ({
     unit,
-    status: heldUnitStatus.get(unit.id) ?? ('available' as const),
+    status: heldUnitStatus.get(unit.id) ?? (unit.on_hold_at ? ('on_hold' as const) : ('available' as const)),
   }))
 }
 
@@ -342,6 +379,8 @@ export async function fetchAvailableSerialNumber(equipmentId: string): Promise<s
 export interface EquipmentInventoryRow {
   equipment: Equipment
   checkedOut: number
+  /** Units an admin is keeping out of circulation — see setEquipmentUnitOnHold. */
+  onHold: number
 }
 
 // Every catalog item plus how many of its units are currently out on an
@@ -349,6 +388,8 @@ export interface EquipmentInventoryRow {
 // from the moment its request is approved until an admin records its return
 // (loan_request_items.returned_at — see the 20260922000000 migration), so
 // checkedOut counts approved, not-yet-returned items per equipment_id.
+// onHold counts units an admin has put on hold; a unit can't be both (the
+// 20261002010000 migration refuses a hold on a unit that's on a loan).
 export function fetchEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
   // Always fresh, but remembered so the list can paint it straight away next
   // time (peekEquipmentInventorySummary).
@@ -361,13 +402,21 @@ export function peekEquipmentInventorySummary(): EquipmentInventoryRow[] | null 
 }
 
 async function loadEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]> {
-  const [equipment, { data: approvedRequests, error: requestsError }] = await Promise.all([
-    listEquipment(),
-    supabase.from('loan_requests').select('id').eq('status', 'approved'),
-  ])
+  const [equipment, { data: approvedRequests, error: requestsError }, { data: heldUnits, error: heldError }] =
+    await Promise.all([
+      listEquipment(),
+      supabase.from('loan_requests').select('id').eq('status', 'approved'),
+      supabase.from('equipment_units').select('equipment_id').not('on_hold_at', 'is', null),
+    ])
   if (equipment.length === 0) return []
 
   if (requestsError) throw requestsError
+  if (heldError) throw heldError
+
+  const onHoldByEquipment = new Map<string, number>()
+  for (const unit of heldUnits ?? []) {
+    onHoldByEquipment.set(unit.equipment_id, (onHoldByEquipment.get(unit.equipment_id) ?? 0) + 1)
+  }
   const approvedRequestIds = (approvedRequests ?? []).map((request) => request.id)
 
   const checkedOutByEquipment = new Map<string, number>()
@@ -387,6 +436,7 @@ async function loadEquipmentInventorySummary(): Promise<EquipmentInventoryRow[]>
   return equipment.map((item) => ({
     equipment: item,
     checkedOut: checkedOutByEquipment.get(item.id) ?? 0,
+    onHold: onHoldByEquipment.get(item.id) ?? 0,
   }))
 }
 

@@ -4,8 +4,8 @@
    full-height tinted columns, which was the one screen in the admin app that
    didn't look like the others.
 
-   What the table did well is kept: the three counts still hold fixed columns
-   so a reader can run down them, and they keep their blue / red / green
+   What the table did well is kept: the counts still hold fixed columns so a
+   reader can run down them, and they keep their blue / red / yellow / green
    coding. What changed is that each count carries its own label, so a row
    explains itself without a header line above the list — which is what lets
    the same markup work when it stacks on a phone. */
@@ -143,10 +143,10 @@
 .skeletonRow {
   width: 100%;
   display: grid;
-  /* The three counts hold fixed columns so they line up down the list, the
+  /* The four counts hold fixed columns so they line up down the list, the
      way the loans list pins its status badge to a fixed slot. */
-  grid-template-columns: 4.5rem minmax(0, 1fr) 6rem 6rem 6rem auto;
-  grid-template-areas: 'thumb info total out in chevron';
+  grid-template-columns: 4.5rem minmax(0, 1fr) 6rem 6rem 6rem 6rem auto;
+  grid-template-areas: 'thumb info total out hold in chevron';
   align-items: center;
   gap: 1.25rem;
   background: #f4f4f4;
@@ -208,8 +208,8 @@
 
 /* ── Counts ───────────────────────────────────────────────── */
 /* The same tinted rectangle as every other badge in the admin app, at the
-   badge palette's 0.44 — blue for the whole stock, red for what's out, green
-   for what should be on the shelf. */
+   badge palette's 0.44 — blue for the whole stock, red for what's out,
+   yellow for what's kept back on hold, green for what's free to lend. */
 
 .count {
   display: flex;
@@ -235,6 +235,10 @@
   white-space: nowrap;
 }
 
+.countLabelShort {
+  display: none;
+}
+
 .countTotal {
   grid-area: total;
   background: rgba(131, 156, 197, 0.44);
@@ -243,6 +247,12 @@
 .countOut {
   grid-area: out;
   background: rgba(208, 161, 161, 0.44);
+}
+
+/* The loans list's "Checkout requested" yellow: spoken for, but not out. */
+.countHold {
+  grid-area: hold;
+  background: rgba(208, 206, 161, 0.44);
 }
 
 .countIn {
@@ -259,15 +269,17 @@
 }
 
 /* Tablet: still the one-line desktop row — photo, then the name beside it,
-   then the three counts — but without the chevron. The whole row is the
+   then the four counts — but without the chevron. The whole row is the
    target anyway, and dropping its track is what lets the counts finish flush
    with the card's end edge instead of a gap short of it. */
 @media (max-width: 900px) {
   .itemRow,
   .skeletonRow {
-    grid-template-columns: 4.5rem minmax(0, 1fr) 6rem 6rem 6rem;
-    grid-template-areas: 'thumb info total out in';
-    gap: 1rem;
+    /* Narrower counts than desktop: a fourth one has to fit beside the name
+       at tablet width without squeezing it to nothing. */
+    grid-template-columns: 4.5rem minmax(0, 1fr) repeat(4, 5.25rem);
+    grid-template-areas: 'thumb info total out hold in';
+    gap: 0.75rem;
   }
 
   .chevron {
@@ -287,20 +299,43 @@
   }
 }
 
-/* Phone: photo and name keep the top line; the three counts drop to their own
+/* Phone: photo and name keep the top line; the four counts drop to their own
    row beneath, still in step with each other. */
 @media (max-width: 640px) {
   .itemRow,
   .skeletonRow {
-    /* Three equal columns so the counts come out the same width as each
+    /* Four equal columns so the counts come out the same width as each
        other. The photo sits in the first of them rather than a track of its
        own — it has a fixed width and left-aligns, so a wider cell costs
-       nothing, and a fourth track would leave one count wider than the
-       other two. */
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+       nothing, and a fifth track would leave one count wider than the
+       others. */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-template-areas:
-      'thumb info info'
-      'total out in';
-    gap: 0.75rem 0.625rem;
+      'thumb info info info'
+      'total out hold in';
+    gap: 0.75rem 0.5rem;
+  }
+
+  .count {
+    padding: 0.4375rem 0.25rem;
+  }
+
+  /* "checked out" doesn't fit a quarter of a phone's width; "out" does, and
+     beside "total" and "available" it reads the same. */
+  .countLabelFull {
+    display: none;
+  }
+
+  .countLabelShort {
+    display: inline;
+  }
+
+  /* The photo's cell is now a quarter of the row, narrower than the photo's
+     own 4.5rem, so it shrinks to its cell instead of running under the
+     name. */
+  .itemThumb,
+  .itemThumbEmpty {
+    width: 100%;
+    max-width: 4.5rem;
   }
 }

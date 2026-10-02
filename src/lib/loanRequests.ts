@@ -259,6 +259,11 @@ export interface AdminLoanRequestDetail {
   /** For the "reach out on Discord or email" step of the checkout process. */
   memberDiscord: string | null
   reviewerName: string | null
+  /** Set when the request was cancelled — by the member or by an admin. */
+  cancelledAt: string | null
+  cancelledByName: string | null
+  /** Only an admin's cancellation carries one; see cancelLoanRequestAsAdmin. */
+  cancellationReason: string | null
   otherItems: AdminLoanRequestOtherItem[]
 }
 
@@ -288,12 +293,12 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
   const requestChain = (async () => {
     const { data: request, error: requestError } = await supabase
       .from('loan_requests')
-      .select('id, user_id, status, requested_at, reviewed_at, reviewed_by, review_note')
+      .select('id, user_id, status, requested_at, reviewed_at, reviewed_by, review_note, cancelled_at, cancelled_by, cancellation_reason')
       .eq('id', item.loan_request_id)
       .single()
     if (requestError) throw requestError
 
-    const [memberResult, reviewerResult] = await Promise.all([
+    const [memberResult, reviewerResult, cancellerResult] = await Promise.all([
       supabase
         .from('profiles')
         .select('id, first_name, last_name, uw_email, discord')
@@ -302,11 +307,20 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
       request.reviewed_by
         ? supabase.from('profiles').select('first_name, last_name').eq('id', request.reviewed_by).maybeSingle()
         : null,
+      request.cancelled_by
+        ? supabase.from('profiles').select('first_name, last_name').eq('id', request.cancelled_by).maybeSingle()
+        : null,
     ])
     if (memberResult.error) throw memberResult.error
     if (reviewerResult?.error) throw reviewerResult.error
+    if (cancellerResult?.error) throw cancellerResult.error
 
-    return { request, member: memberResult.data, reviewerName: fullName(reviewerResult?.data ?? null) }
+    return {
+      request,
+      member: memberResult.data,
+      reviewerName: fullName(reviewerResult?.data ?? null),
+      cancelledByName: fullName(cancellerResult?.data ?? null),
+    }
   })()
 
   const siblingsChain = (async (): Promise<AdminLoanRequestOtherItem[]> => {
@@ -342,7 +356,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
   })()
 
   const [
-    { request, member, reviewerName },
+    { request, member, reviewerName, cancelledByName },
     otherItems,
     equipmentResult,
     unitResult,
@@ -391,6 +405,9 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     memberEmail: member.uw_email,
     memberDiscord: member.discord,
     reviewerName,
+    cancelledAt: request.cancelled_at,
+    cancelledByName,
+    cancellationReason: request.cancellation_reason,
     otherItems,
   }
 }
@@ -448,6 +465,8 @@ export interface AdminLoanRequestItemSummary {
   /** Set when the member asked to give it back; cleared only by checking in. */
   returnRequestedAt: string | null
   returnedAt: string | null
+  /** Set once the request is cancelled, by the member or an admin. */
+  cancelledAt: string | null
   memberName: string
 }
 
@@ -621,6 +640,46 @@ export async function markLoanRequestItemReturned(itemId: string, adminId: strin
   }
 }
 
+/**
+ * An admin calling off a checkout request before it's handed over, with the
+ * reason the member is emailed (checkout-request-cancellation).
+ *
+ * Per request, not per item, exactly like the member's own cancel
+ * (cancelLoanRequest in memberLoans.ts): the status lives on the request,
+ * and there is no way to hand over half a submission. Who cancelled and
+ * when are stamped by the database, and the email is sent by its trigger —
+ * see the 20261002000000 migration — so the reason is all this writes.
+ *
+ * Compare-and-set on 'pending', like the hand-off: if a colleague handed it
+ * over, or the member cancelled it themselves, while this admin was typing
+ * the reason, nothing matches and they're told which.
+ */
+export async function cancelLoanRequestAsAdmin(loanRequestId: string, reason: string): Promise<void> {
+  const { data: cancelled, error } = await supabase
+    .from('loan_requests')
+    .update({ status: 'cancelled', cancellation_reason: reason.trim(), updated_at: new Date().toISOString() })
+    .eq('id', loanRequestId)
+    .eq('status', 'pending')
+    .select('id')
+
+  invalidate(CACHE_KEYS.adminLoans)
+  // Cancelling releases the request's units.
+  invalidate(CACHE_KEYS.equipmentAll)
+  if (error) throw error
+
+  if (!cancelled || cancelled.length === 0) {
+    const { data: request } = await supabase
+      .from('loan_requests')
+      .select('status')
+      .eq('id', loanRequestId)
+      .maybeSingle()
+    if (request?.status === 'approved') throw await alreadyHandedOff(loanRequestId)
+    if (request?.status === 'cancelled') throw new LoanConflictError('This request has already been cancelled.')
+    if (request?.status === 'denied') throw new LoanConflictError('This request was already denied.')
+    throw new LoanConflictError('This request can no longer be cancelled.')
+  }
+}
+
 export type LoanBucket = 'active' | 'overdue' | 'requests' | 'returns' | 'returned'
 
 // Shared by the admin "Hardware loans" list, the loan detail screen and the
@@ -693,7 +752,7 @@ export function peekAllLoanRequestItems(): AdminLoanRequestItemSummary[] | null 
 
 async function loadAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]> {
   const [requestsResult, itemsResult, equipmentResult, unitsResult, profilesResult] = await Promise.all([
-    supabase.from('loan_requests').select('id, user_id, status, requested_at'),
+    supabase.from('loan_requests').select('id, user_id, status, requested_at, cancelled_at'),
     supabase
       .from('loan_request_items')
       .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at, return_requested_at'),
@@ -733,6 +792,7 @@ async function loadAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]>
         returnDate: item.return_date,
         returnRequestedAt: item.return_requested_at,
         returnedAt: item.returned_at,
+        cancelledAt: request.cancelled_at,
         memberName: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown member',
       },
     ]
