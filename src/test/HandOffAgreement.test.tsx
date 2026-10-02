@@ -76,6 +76,9 @@ const loan: AdminLoanRequestDetail = {
   memberEmail: 'bob@uw.edu',
   memberDiscord: 'bobreyes',
   reviewerName: null,
+  cancelledAt: null,
+  cancelledByName: null,
+  cancellationReason: null,
   otherItems: [],
 }
 

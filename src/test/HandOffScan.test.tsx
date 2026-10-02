@@ -64,6 +64,9 @@ const loan = {
   memberEmail: 'bob@uw.edu',
   memberDiscord: 'bobreyes',
   reviewerName: null,
+  cancelledAt: null,
+  cancelledByName: null,
+  cancellationReason: null,
   otherItems: [],
 } satisfies AdminLoanRequestDetail
 
@@ -146,7 +149,7 @@ describe('HandOffScan', () => {
   it("calls a label from another unit the wrong serial, not an unknown one", async () => {
     // The scanned serial is a real unit, just not this loan's.
     vi.mocked(fetchEquipmentUnitBySerial).mockResolvedValue({
-      unit: { id: 'unit-2', equipment_id: 'eq-1', serial_number: 'SYN-WRONG123', created_at: '' },
+      unit: { id: 'unit-2', equipment_id: 'eq-1', serial_number: 'SYN-WRONG123', created_at: '', on_hold_at: null, on_hold_by: null },
       equipment: { id: 'eq-1', name: 'Muse 2' } as never,
     })
 

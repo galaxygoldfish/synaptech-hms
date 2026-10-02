@@ -230,6 +230,14 @@ export default function MyLoanDetail() {
                 <div>
                   <LoanStatusBadge state={state} item={item} />
                 </div>
+                {/* Only an admin's cancellation carries a reason — a member
+                    who called off their own request already knows why. */}
+                {state === 'cancelled' && item.cancellationReason && (
+                  <div className={styles.cancelReason}>
+                    <p className={styles.cancelReasonLabel}>Reason for cancellation</p>
+                    <p className={styles.cancelReasonText}>{item.cancellationReason}</p>
+                  </div>
+                )}
                 {dateLines.length > 0 && (
                   <div className={styles.itemDates}>
                     {dateLines.map((line) => (

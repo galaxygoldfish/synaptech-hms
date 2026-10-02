@@ -20,6 +20,19 @@ import styles from './HardwareLoans.module.css'
 type LoanFilter = 'all' | 'active' | 'overdue' | 'requests' | 'returned'
 
 /**
+ * What a row shows. A cancelled request never became a loan, so
+ * bucketForLoanItem leaves it out — the stat cards and the desk flows must
+ * not count it — but it's still part of the record, so this list shows it
+ * under All. Denied requests stay hidden: nothing in the app denies one any
+ * more.
+ */
+type LoanRowState = LoanBucket | 'cancelled'
+
+function rowStateFor(loan: AdminLoanRequestItemSummary): LoanRowState | null {
+  return bucketForLoanItem(loan) ?? (loan.status === 'cancelled' ? 'cancelled' : null)
+}
+
+/**
  * The chips, and the buckets each one covers.
  *
  * Checkout requests and return requests share the "Requests" chip: they are
@@ -27,11 +40,13 @@ type LoanFilter = 'all' | 'active' | 'overdue' | 'requests' | 'returned'
  * to do something — and which of the two it is, is already on the row's own
  * badge. Two chips made an admin check both to find everything waiting.
  */
-const FILTERS: { value: LoanFilter; label: string; buckets: LoanBucket[]; emptyLabel: string }[] = [
+const FILTERS: { value: LoanFilter; label: string; buckets: LoanRowState[]; emptyLabel: string }[] = [
   {
     value: 'all',
     label: 'All',
-    buckets: ['active', 'overdue', 'requests', 'returns', 'returned'],
+    // Cancelled only here: it isn't something to act on or count, so it gets
+    // no chip of its own — just a place in the full history.
+    buckets: ['active', 'overdue', 'requests', 'returns', 'returned', 'cancelled'],
     emptyLabel: 'hardware loans yet',
   },
   { value: 'active', label: 'Active', buckets: ['active'], emptyLabel: 'active hardware loans' },
@@ -66,20 +81,23 @@ function matchesQuery(loan: AdminLoanRequestItemSummary, query: string): boolean
   return haystack.includes(query)
 }
 
-const BADGE_CLASS: Record<LoanBucket, string> = {
+const BADGE_CLASS: Record<LoanRowState, string> = {
   active: styles.badgeActive,
   overdue: styles.badgeOverdue,
   requests: styles.badgeRequests,
   returns: styles.badgeReturns,
   returned: styles.badgeReturned,
+  // An end state like Returned, so the same neutral grey.
+  cancelled: styles.badgeReturned,
 }
 
-const BADGE_LABEL: Record<LoanBucket, string> = {
+const BADGE_LABEL: Record<LoanRowState, string> = {
   active: 'Active',
   overdue: 'Overdue',
   requests: 'Checkout requested',
   returns: 'Return requested',
   returned: 'Returned',
+  cancelled: 'Cancelled',
 }
 
 function formatTimestampDate(iso: string): string {
@@ -92,8 +110,15 @@ function formatCalendarDate(iso: string): string {
   return `${date.toLocaleDateString(undefined, { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 
-function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanBucket | null): string {
+function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanRowState): string {
   if (bucket === 'requests') return `Requested on ${formatTimestampDate(loan.requestedAt)}`
+  // Never handed over, so no loan period — when it was called off is the date
+  // that matters.
+  if (bucket === 'cancelled') {
+    return loan.cancelledAt
+      ? `Cancelled on ${formatTimestampDate(loan.cancelledAt)}`
+      : `Requested on ${formatTimestampDate(loan.requestedAt)}`
+  }
   // A closed loan's due date stopped mattering the moment it came back, so
   // the row shows when that was instead.
   if (bucket === 'returned' && loan.returnedAt) return `Returned on ${formatTimestampDate(loan.returnedAt)}`
@@ -152,8 +177,8 @@ export default function HardwareLoans() {
     const trimmed = query.trim().toLowerCase()
     const buckets = FILTER_BY_VALUE.get(filter)?.buckets ?? []
     return loans
-      .map((loan) => ({ loan, bucket: bucketForLoanItem(loan) }))
-      .filter((entry): entry is { loan: AdminLoanRequestItemSummary; bucket: LoanBucket } => {
+      .map((loan) => ({ loan, bucket: rowStateFor(loan) }))
+      .filter((entry): entry is { loan: AdminLoanRequestItemSummary; bucket: LoanRowState } => {
         if (entry.bucket === null) return false
         if (!buckets.includes(entry.bucket)) return false
         return !trimmed || matchesQuery(entry.loan, trimmed)

@@ -61,7 +61,7 @@ function equipment(overrides: Partial<Equipment>): Equipment {
 }
 
 function unit(id: string, serial: string, equipmentId = 'eq-1'): EquipmentUnit {
-  return { id, equipment_id: equipmentId, serial_number: serial, created_at: '2026-01-01T00:00:00Z' }
+  return { id, equipment_id: equipmentId, serial_number: serial, created_at: '2026-01-01T00:00:00Z', on_hold_at: null, on_hold_by: null }
 }
 
 const muse = equipment({ id: 'eq-1', name: 'Muse 2' })

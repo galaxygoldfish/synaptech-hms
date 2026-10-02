@@ -30,6 +30,8 @@ export const EMAIL_FIELD_LABELS: Record<string, string> = {
   loan_due_date: 'LOAN DUE DATE',
   return_date: 'RETURN DATE',
   new_role: 'NEW ROLE',
+  // What the admin typed when cancelling a checkout request.
+  cancellation_reason: 'REASON',
   // Unlike every field above, these aren't tied to a specific business
   // event — they're the date/time the email itself went out, computed at
   // send time (see sendTemplatedEmail.ts) rather than pulled from a row.
@@ -98,6 +100,13 @@ export const EMAIL_TEMPLATE_DESCRIPTIONS: Record<string, EmailTemplateDescriptio
     blurb:
       'Acknowledges that a checkout request was received, so the member knows it is waiting on a Hardware Manager.',
     timing: 'Immediately after a member submits a hardware checkout request.',
+    recipient: 'The member who made the request.',
+  },
+  'checkout-request-cancellation': {
+    blurb:
+      'Tells a member a Hardware Manager cancelled their checkout request, and passes on the reason they gave.',
+    timing:
+      'When an admin cancels a checkout request from the loan details screen. Not sent when members cancel their own.',
     recipient: 'The member who made the request.',
   },
   'return-reminder-one-week': {

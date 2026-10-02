@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import type jsPDF from 'jspdf'
 import ConfirmActionModal from '../ConfirmActionModal'
 import { Tooltip } from '../Tooltip'
-import { DownloadIconFilled, PlusIconSmallFilled, PrinterIconFilled, StepperSubtractIconFilled } from './icons'
+import {
+  DownloadIconFilled,
+  PauseIconFilled,
+  PlayIconFilled,
+  PlusIconSmallFilled,
+  PrinterIconFilled,
+  StepperSubtractIconFilled,
+} from './icons'
 import { QrDocLabel } from './labels/QrDocLabel'
 import { SerialBarcodeLabel } from './labels/SerialBarcodeLabel'
 import {
@@ -10,12 +17,29 @@ import {
   deleteEquipmentUnit,
   fetchEquipmentUnitsWithStatus,
   setEquipmentQuantityTotal,
+  setEquipmentUnitOnHold,
+  UnitInUseError,
+  type EquipmentUnitStatus,
   type EquipmentUnitWithStatus,
 } from '../../lib/inventory'
 import { buildItemLabelsPdf, downloadItemLabelsAsPngs, preloadLabelPdfLibs, printLabelsPdf } from '../../lib/labelPdf'
 import type { EquipmentUnit } from '../../types'
 import { Skeleton, SkeletonLabel } from '../skeleton/Skeleton'
 import styles from './EquipmentUnitsTable.module.css'
+
+const STATUS_CHIP_CLASS: Record<EquipmentUnitStatus, string> = {
+  available: styles.chipAvailable,
+  on_hold: styles.chipOnHold,
+  requested: styles.chipRequested,
+  checked_out: styles.chipCheckedOut,
+}
+
+const STATUS_LABEL: Record<EquipmentUnitStatus, string> = {
+  available: 'available',
+  on_hold: 'on hold',
+  requested: 'requested',
+  checked_out: 'checked out',
+}
 
 function slugify(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
@@ -43,6 +67,9 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+
+  const [holdingUnitId, setHoldingUnitId] = useState<string | null>(null)
+  const [holdError, setHoldError] = useState<string | null>(null)
 
   const docLabelRefs = useRef(new Map<string, HTMLDivElement>())
   const barcodeLabelRefs = useRef(new Map<string, HTMLDivElement>())
@@ -87,6 +114,38 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
       setAddError('Could not add a new item. Please try again.')
     } finally {
       setAdding(false)
+    }
+  }
+
+  // No confirmation step: a hold is undone with the same button, and nothing
+  // about the unit is lost either way.
+  async function handleToggleHold(unit: EquipmentUnit, onHold: boolean) {
+    if (holdingUnitId) return
+    setHoldingUnitId(unit.id)
+    setHoldError(null)
+
+    try {
+      const updated = await setEquipmentUnitOnHold(unit.id, onHold)
+      setRows((current) =>
+        current.map((row) =>
+          row.unit.id === unit.id ? { unit: updated, status: onHold ? 'on_hold' : 'available' } : row,
+        ),
+      )
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to change unit hold:', error)
+      if (error instanceof UnitInUseError) {
+        // The table is out of date, not just this one action — show what
+        // the unit is actually doing now.
+        setHoldError(`${error.message} (${unit.serial_number})`)
+        fetchEquipmentUnitsWithStatus(equipmentId).then(setRows).catch(() => {})
+      } else {
+        setHoldError(
+          onHold ? 'Could not put this unit on hold. Please try again.' : 'Could not take this unit off hold. Please try again.',
+        )
+      }
+    } finally {
+      setHoldingUnitId(null)
     }
   }
 
@@ -176,7 +235,10 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                       <Skeleton width="10rem" height="1.125rem" shape="pill" />
                     </td>
                     <td className={styles.tdStatus}>
-                      <Skeleton width="6rem" height="1.75rem" shape="pill" />
+                      <div className={styles.statusCell}>
+                        <Skeleton width="1.75rem" height="1.75rem" radius="0.5rem" />
+                        <Skeleton width="6rem" height="1.75rem" shape="pill" />
+                      </div>
                     </td>
                     <td className={styles.tdLabels}>
                       <Skeleton width="2rem" height="2rem" radius="0.5rem" />
@@ -212,17 +274,37 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                     <tr key={unit.id} className={styles.row}>
                       <td className={styles.tdSerial}>{unit.serial_number}</td>
                       <td className={styles.tdStatus}>
-                        <span
-                          className={
-                            status === 'available'
-                              ? `${styles.chip} ${styles.chipAvailable}`
-                              : status === 'requested'
-                                ? `${styles.chip} ${styles.chipRequested}`
-                                : `${styles.chip} ${styles.chipCheckedOut}`
-                          }
-                        >
-                          {status === 'available' ? 'available' : status === 'requested' ? 'requested' : 'checked out'}
-                        </span>
+                        <div className={styles.statusCell}>
+                          {/* Only a free unit can be held, and only a held one
+                              released. A unit on a request belongs to that
+                              request — cancel it from the loan instead. Kept as
+                              a disabled button rather than hidden so every
+                              row's chip starts at the same place. */}
+                          <Tooltip
+                            text={
+                              status === 'on_hold'
+                                ? 'Take off hold'
+                                : status === 'available'
+                                  ? 'Put on hold'
+                                  : 'Only available units can be put on hold'
+                            }
+                          >
+                            <button
+                              type="button"
+                              className={styles.actionButton}
+                              aria-label={
+                                status === 'on_hold'
+                                  ? `Take ${unit.serial_number} off hold`
+                                  : `Put ${unit.serial_number} on hold`
+                              }
+                              onClick={() => void handleToggleHold(unit, status !== 'on_hold')}
+                              disabled={(status !== 'available' && status !== 'on_hold') || holdingUnitId !== null}
+                            >
+                              {status === 'on_hold' ? <PlayIconFilled size={16} /> : <PauseIconFilled size={16} />}
+                            </button>
+                          </Tooltip>
+                          <span className={`${styles.chip} ${STATUS_CHIP_CLASS[status]}`}>{STATUS_LABEL[status]}</span>
+                        </div>
                       </td>
                       <td className={styles.tdLabels}>
                         <Tooltip text="Print labels on PDF">
@@ -265,6 +347,11 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
               </table>
             )}
 
+            {holdError && (
+              <p className={styles.inlineError} role="alert">
+                {holdError}
+              </p>
+            )}
             {addError && <p className={styles.inlineError}>{addError}</p>}
 
             <div className={styles.footer}>

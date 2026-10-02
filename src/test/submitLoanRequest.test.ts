@@ -72,6 +72,8 @@ describe('submitLoanRequest — one unit, one borrower', () => {
       equipment_id: 'eq-muse',
       serial_number: 'SYN-BBB222',
       created_at: '2026-01-01T00:00:00Z',
+      on_hold_at: null,
+      on_hold_by: null,
     })
 
     await submitLoanRequest(input())

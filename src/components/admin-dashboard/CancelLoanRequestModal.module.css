@@ -1,0 +1,82 @@
+/* The field follows the app's other text inputs — white, ruled, and blue on
+   focus — the same treatment as SerialEntryModal's serial field. Left-aligned
+   where the modal's own copy is centred: it belongs to the input, not the
+   dialog. */
+
+.fieldGroup {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+  text-align: left;
+}
+
+.label {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--black);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+  background: var(--white);
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1.25rem;
+  padding: 0.9375rem 1.25rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--black);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.textarea:focus {
+  border-color: var(--welcome-blue);
+}
+
+.textarea::placeholder {
+  color: var(--gray-400);
+}
+
+.textarea:disabled {
+  opacity: 0.6;
+}
+
+.fieldFooter {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.error {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--red-fg);
+  margin: 0;
+}
+
+.counter {
+  flex-shrink: 0;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* Red rather than the modal's usual black: this one undoes something a
+   member asked for, and the colour says so before the label is read.
+   Qualified with the element so it outranks Modal.module.css's .button
+   whichever stylesheet the bundler happens to emit last. */
+button.confirmButton {
+  background: var(--red-fg);
+}
+
+button.confirmButton:hover:not(:disabled) {
+  background: #a13a34;
+}

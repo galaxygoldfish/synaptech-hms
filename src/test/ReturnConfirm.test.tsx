@@ -59,6 +59,9 @@ const detail: AdminLoanRequestDetail = {
   memberEmail: 'bob@uw.edu',
   memberDiscord: 'bobreyes',
   reviewerName: 'Ada Admin',
+  cancelledAt: null,
+  cancelledByName: null,
+  cancellationReason: null,
   otherItems: [],
 }
 

@@ -56,6 +56,7 @@ function item(overrides: Partial<MemberLoanItem> = {}): MemberLoanItem {
     returnRequestedAt: null,
     returnedAt: null,
     signedAgreementPath: 'member/req-1/eq-1.pdf',
+    cancellationReason: null,
     ...overrides,
   }
 }
@@ -118,6 +119,24 @@ describe('MyLoanDetail', () => {
     expect(await screen.findByRole('button', { name: /cancel request/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /edit checkout availability/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /start return/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the reason when an admin cancelled the request', async () => {
+    vi.mocked(fetchMemberLoanItem).mockResolvedValue(
+      item({ requestStatus: 'cancelled', cancellationReason: 'This unit failed inspection.' }),
+    )
+    renderDetail()
+
+    expect(await screen.findByText('Reason for cancellation')).toBeInTheDocument()
+    expect(screen.getByText('This unit failed inspection.')).toBeInTheDocument()
+  })
+
+  it('shows no reason when the member cancelled it themselves', async () => {
+    vi.mocked(fetchMemberLoanItem).mockResolvedValue(item({ requestStatus: 'cancelled' }))
+    renderDetail()
+
+    expect(await screen.findByText('Cancelled')).toBeInTheDocument()
+    expect(screen.queryByText('Reason for cancellation')).not.toBeInTheDocument()
   })
 
   it('offers neither on a loan that is over', async () => {

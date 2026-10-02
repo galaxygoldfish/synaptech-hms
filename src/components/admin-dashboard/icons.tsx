@@ -513,3 +513,22 @@ export function CheckmarkCircleIconFilled({ size = 124, className }: IconProps) 
     </svg>
   );
 }
+
+// currentColor by default, unlike the filled icons above: these sit in the
+// units table's icon buttons, whose hover darkens the glyph through `color`.
+export function PauseIconFilled({ size = 16, color = "currentColor", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="5" y="4" width="5" height="16" rx="1.5" fill={color} />
+      <rect x="14" y="4" width="5" height="16" rx="1.5" fill={color} />
+    </svg>
+  );
+}
+
+export function PlayIconFilled({ size = 16, color = "currentColor", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M7 4.8v14.4a1.2 1.2 0 0 0 1.84 1.02l11.4-7.2a1.2 1.2 0 0 0 0-2.04L8.84 3.78A1.2 1.2 0 0 0 7 4.8z" fill={color} />
+    </svg>
+  );
+}

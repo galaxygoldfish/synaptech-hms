@@ -37,6 +37,7 @@ function loan(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     returnDate: '2099-10-12',
     returnRequestedAt: null,
     returnedAt: null,
+    cancelledAt: null,
     memberName: 'Bob Reyes',
     ...overrides,
   }
@@ -153,6 +154,31 @@ describe('HardwareLoans filters', () => {
     expect(screen.getByText('Jetson Nano')).toBeInTheDocument()
     expect(screen.getByText('Oculus Quest 2')).toBeInTheDocument()
     expect(screen.getByText('OpenBCI Mark IV')).toBeInTheDocument()
+  })
+
+  // A cancelled request is history, not something to act on: it's listed in
+  // full under All and nowhere else, and gets no chip of its own.
+  it('lists a cancelled request under All only', async () => {
+    const cancelled = loan({
+      id: 'item-5',
+      itemName: 'Muse S',
+      status: 'cancelled',
+      cancelledAt: '2026-09-03T18:00:00Z',
+      memberName: 'Fay Lin',
+    })
+    vi.mocked(fetchAllLoanRequestItems).mockResolvedValue([checkoutRequest, active, returned, cancelled])
+
+    renderLoans()
+
+    expect(await screen.findByText('Muse S')).toBeInTheDocument()
+    expect(screen.getAllByText('Cancelled')).not.toHaveLength(0)
+    expect(screen.getByText(/Cancelled on Sep 3 2026/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cancelled' })).not.toBeInTheDocument()
+
+    for (const chip of ['Active', 'Overdue', 'Requests', 'Returned']) {
+      await userEvent.click(screen.getByRole('button', { name: chip }))
+      expect(screen.queryByText('Muse S')).not.toBeInTheDocument()
+    }
   })
 
   // The dashboard's "Pending returns" card still links with the old value,
