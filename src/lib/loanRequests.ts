@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { fetchAvailableEquipmentUnit } from './inventory'
-import { isApprovedAgreementPath, stampApprovedAgreement } from './loanAgreementApproval'
+import { isApprovedAgreementPath, restampAgreementSerial, stampApprovedAgreement } from './loanAgreementApproval'
 import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import { normalizeSerialNumber } from './serialNumber'
 import type { LoanRequest, LoanRequestItemRole, LoanRequestStatus } from '../types'
@@ -237,6 +237,8 @@ export interface AdminLoanRequestDetail {
   itemName: string
   itemDescription: string | null
   imageUrl: string | null
+  /** Which unit the item is for — the switch-unit dialog marks it as current. */
+  equipmentUnitId: string | null
   serialNumber: string | null
   itemRole: LoanRequestItemRole
   status: LoanRequestStatus
@@ -387,6 +389,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     itemName: equipment.name,
     itemDescription: equipment.description,
     imageUrl: equipment.image_url,
+    equipmentUnitId: item.equipment_unit_id,
     serialNumber,
     itemRole: item.item_role as LoanRequestItemRole,
     status: request.status as LoanRequestStatus,
@@ -677,6 +680,97 @@ export async function cancelLoanRequestAsAdmin(loanRequestId: string, reason: st
     if (request?.status === 'cancelled') throw new LoanConflictError('This request has already been cancelled.')
     if (request?.status === 'denied') throw new LoanConflictError('This request was already denied.')
     throw new LoanConflictError('This request can no longer be cancelled.')
+  }
+}
+
+/**
+ * Points a requested item at a different unit of the same product — the one
+ * the member was given failed inspection, or the admin would rather lend the
+ * unit that's on the desk — and writes the new serial into the member's
+ * signed agreement so the paperwork matches the hardware that goes out.
+ *
+ * Only while the request is still pending: once hardware has been handed
+ * over, the unit in the member's hands is the one on the loan. The database
+ * enforces that, and that the new unit is of the same product, in
+ * guard_loan_item_unit_switch (20261005000000); whether the unit is free is
+ * guard_loan_item_unit's job, as it is at submission. Both are answered there
+ * rather than here so a second admin, or a member taking the unit at the
+ * same moment, can't slip between a check and the write.
+ *
+ * The agreement copy is uploaded first and the item repointed second, in one
+ * update with the unit — so a failure leaves the request on its old unit
+ * with its old agreement, never one without the other. The update is a
+ * compare-and-set on both, so of two admins switching at once only one wins.
+ */
+export async function switchLoanItemUnit(itemId: string, unitId: string): Promise<void> {
+  try {
+    await switchUnit(itemId, unitId)
+  } finally {
+    invalidate(CACHE_KEYS.adminLoans)
+    // Which unit reads as requested on the inventory screens.
+    invalidate(CACHE_KEYS.equipmentAll)
+  }
+}
+
+async function switchUnit(itemId: string, unitId: string): Promise<void> {
+  const { data: item, error: itemError } = await supabase
+    .from('loan_request_items')
+    .select('loan_request_id, equipment_id, equipment_unit_id, signed_agreement_path')
+    .eq('id', itemId)
+    .single()
+  if (itemError) throw itemError
+  if (item.equipment_unit_id === unitId) return
+
+  const [requestResult, unitResult] = await Promise.all([
+    supabase.from('loan_requests').select('status').eq('id', item.loan_request_id).single(),
+    supabase
+      .from('equipment_units')
+      .select('serial_number')
+      .eq('id', unitId)
+      .eq('equipment_id', item.equipment_id)
+      .maybeSingle(),
+  ])
+  if (requestResult.error) throw requestResult.error
+  if (unitResult.error) throw unitResult.error
+
+  // Checked before the agreement is rewritten, not just left to the
+  // database: a copy for a loan that can no longer change would only be
+  // clutter in the member's folder.
+  const status = requestResult.data.status
+  if (status === 'approved') throw await alreadyHandedOff(item.loan_request_id)
+  if (status === 'cancelled') throw new LoanConflictError('This request was cancelled, so its unit can no longer be changed.')
+  if (status === 'denied') throw new LoanConflictError('This request was denied, so its unit can no longer be changed.')
+  if (!unitResult.data) throw new LoanConflictError('That unit is no longer in the inventory.')
+
+  let agreementPath = item.signed_agreement_path
+  if (agreementPath) {
+    if (isApprovedAgreementPath(agreementPath)) throw await alreadyHandedOff(item.loan_request_id)
+    agreementPath = await restampAgreementSerial({
+      agreementUrl: await fetchSignedAgreementUrl(agreementPath),
+      agreementPath,
+      serialNumber: unitResult.data.serial_number,
+    })
+  }
+
+  let update = supabase
+    .from('loan_request_items')
+    .update({ equipment_unit_id: unitId, signed_agreement_path: agreementPath })
+    .eq('id', itemId)
+  update = item.equipment_unit_id ? update.eq('equipment_unit_id', item.equipment_unit_id) : update.is('equipment_unit_id', null)
+  update = item.signed_agreement_path
+    ? update.eq('signed_agreement_path', item.signed_agreement_path)
+    : update.is('signed_agreement_path', null)
+
+  const { data: switched, error: updateError } = await update.select('id')
+  if (updateError) {
+    if (isUnitUnavailable(updateError)) {
+      throw new UnitUnavailableError('That unit was just taken by another request or put on hold.')
+    }
+    if (String(updateError.message).includes('unit_switch_closed')) throw await alreadyHandedOff(item.loan_request_id)
+    throw updateError
+  }
+  if (!switched || switched.length === 0) {
+    throw new LoanConflictError('Someone else changed this request a moment ago. Reload to see its current unit.')
   }
 }
 

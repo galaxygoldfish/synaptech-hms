@@ -238,11 +238,18 @@ class AgreementWriter {
     this.y += gapAfter
   }
 
-  keyValueTable(rows: [string, string][], labelWidth = 2.1) {
+  // Returns where each row landed (page index and top edge, in inches), so
+  // a caller can find one of its value cells again on the rendered PDF —
+  // see locateSerialNumberCell.
+  keyValueTable(rows: [string, string][], labelWidth = 2.1): { pageIndex: number; rowTops: number[] } {
     const rowHeight = TABLE_ROW_HEIGHT
     const valueWidth = CONTENT_WIDTH - labelWidth
     this.ensureSpace(rows.length * rowHeight)
+    // ensureSpace() keeps the whole table on one page, so one index covers it.
+    const pageIndex = this.doc.getNumberOfPages() - 1
+    const rowTops: number[] = []
     for (const [label, value] of rows) {
+      rowTops.push(this.y)
       this.doc.setFillColor(...TABLE_HEADER_FILL)
       this.doc.setDrawColor(...BORDER)
       this.doc.rect(MARGIN_X, this.y, labelWidth, rowHeight, 'FD')
@@ -256,6 +263,7 @@ class AgreementWriter {
       this.y += rowHeight
     }
     this.y += 0.4
+    return { pageIndex, rowTops }
   }
 
   gridTable(header: string[], rows: string[][], colWidths: number[], rowHeight = 0.34) {
@@ -324,11 +332,31 @@ export interface LoanAgreementFields {
   signatureDate: string
 }
 
+const SECTION_2_LABEL_WIDTH = 3.1
+const SERIAL_ROW_INDEX = 1
+
+/** Where section 2's "Hardware product serial number" value cell is. */
+export interface SerialNumberCellLayout {
+  pageIndex: number
+  rowTopIn: number
+  pageHeightIn: number
+  valueXIn: number
+  valueWidthIn: number
+  rowHeightIn: number
+  fontSize: number
+}
+
 // Builds the Hardware Loan Agreement, pre-filled with the borrower's info
 // (section 1), this specific loan's details (section 2), and the
 // borrower's typed signature/date (section 9, from the in-app signing
 // step) — section 10 is left blank for Hardware Managers to fill in.
 export async function buildLoanAgreementPdf(fields: LoanAgreementFields): Promise<jsPDF> {
+  return (await renderLoanAgreement(fields)).doc
+}
+
+async function renderLoanAgreement(
+  fields: LoanAgreementFields,
+): Promise<{ doc: jsPDF; serialCell: { pageIndex: number; rowTopIn: number } }> {
   let logo: string | null = null
   try {
     logo = await fetchAsDataUrl(brainLogo)
@@ -354,7 +382,7 @@ export async function buildLoanAgreementPdf(fields: LoanAgreementFields): Promis
   ])
 
   w.heading('2. Hardware checked out')
-  w.keyValueTable(
+  const section2 = w.keyValueTable(
     [
       ['Hardware product', fields.productName],
       ['Hardware product serial number', fields.serialNumber],
@@ -362,7 +390,7 @@ export async function buildLoanAgreementPdf(fields: LoanAgreementFields): Promis
       ['Return date', fields.returnDate],
       ['Hardware product replacement value', fields.replacementValue],
     ],
-    3.1,
+    SECTION_2_LABEL_WIDTH,
   )
 
   for (const staticSection of AGREEMENT_STATIC_SECTIONS) w.section(staticSection)
@@ -390,7 +418,56 @@ export async function buildLoanAgreementPdf(fields: LoanAgreementFields): Promis
     SECTION_10_LABEL_WIDTH,
   )
 
-  return doc
+  return {
+    doc,
+    serialCell: { pageIndex: section2.pageIndex, rowTopIn: section2.rowTops[SERIAL_ROW_INDEX] },
+  }
+}
+
+let serialCellLayout: Promise<SerialNumberCellLayout> | null = null
+
+/**
+ * Where the serial number sits on a signed agreement, for
+ * restampAgreementSerial (loanAgreementApproval.ts) to paint a new one over
+ * it when an admin switches the unit on a request.
+ *
+ * Found by laying the agreement out again rather than by a constant like
+ * SECTION_10_FIELD_LAYOUT: section 2 comes after the title, the intro and
+ * section 1, and a hand-computed y for it would silently drift the next time
+ * that copy is edited. Nothing above it depends on the borrower — section 1's
+ * values are single-line table cells that never wrap — so blank fields land
+ * the row exactly where the member's own copy has it. Agreements signed
+ * before the intro copy last changed would differ, but those loans are long
+ * past the requested stage this is offered at.
+ */
+export function locateSerialNumberCell(): Promise<SerialNumberCellLayout> {
+  serialCellLayout ??= renderLoanAgreement({
+    fullName: '',
+    studentId: '',
+    studentEmail: '',
+    phone: '',
+    address: '',
+    productName: '',
+    serialNumber: '',
+    loanDate: '',
+    returnDate: '',
+    replacementValue: '',
+    signatureName: '',
+    signatureDate: '',
+  })
+    .then(({ serialCell }) => ({
+      ...serialCell,
+      pageHeightIn: PAGE_HEIGHT,
+      valueXIn: MARGIN_X + SECTION_2_LABEL_WIDTH + 0.1,
+      valueWidthIn: CONTENT_WIDTH - SECTION_2_LABEL_WIDTH,
+      rowHeightIn: TABLE_ROW_HEIGHT,
+      fontSize: 10,
+    }))
+    .catch((error) => {
+      serialCellLayout = null
+      throw error
+    })
+  return serialCellLayout
 }
 
 export function downloadLoanAgreementPdf(pdf: jsPDF, filename: string): void {

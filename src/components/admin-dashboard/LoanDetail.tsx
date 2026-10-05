@@ -5,6 +5,8 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AvailabilityModal } from './AvailabilityModal'
 import { CancelLoanRequestModal } from './CancelLoanRequestModal'
+import { SwitchUnitModal } from './SwitchUnitModal'
+import { Tooltip } from '../Tooltip'
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -12,6 +14,7 @@ import {
   CloseIcon,
   DownloadIconFilled,
   ImagePlaceholderIconFilled,
+  SwapIcon,
 } from './icons'
 import {
   bucketForLoanItem,
@@ -19,6 +22,8 @@ import {
   fetchLoanRequestItemDetail,
   fetchSignedAgreementUrl,
   LoanConflictError,
+  switchLoanItemUnit,
+  UnitUnavailableError,
   type AdminLoanRequestDetail,
   type LoanBucket,
 } from '../../lib/loanRequests'
@@ -108,6 +113,10 @@ export default function LoanDetail() {
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [isCancelling, setCancelling] = useState(false)
 
+  const [isSwitchOpen, setSwitchOpen] = useState(false)
+  const [switchError, setSwitchError] = useState<string | null>(null)
+  const [isSwitching, setSwitching] = useState(false)
+
   useEffect(() => {
     if (!id) return
     let cancelled = false
@@ -185,6 +194,35 @@ export default function LoanDetail() {
     }
   }
 
+  function openSwitch() {
+    setSwitchError(null)
+    setSwitchOpen(true)
+  }
+
+  async function handleSwitchUnit(unitId: string) {
+    if (!detail || isSwitching) return
+    setSwitching(true)
+    setSwitchError(null)
+
+    try {
+      await switchLoanItemUnit(detail.id, unitId)
+      setSwitchOpen(false)
+      // Re-read rather than patch, as with a cancellation: the serial and the
+      // agreement path shown are then the ones the database ended up with.
+      setDetail(await fetchLoanRequestItemDetail(detail.id))
+    } catch (switchFailure) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to switch unit:', switchFailure)
+      setSwitchError(
+        switchFailure instanceof LoanConflictError || switchFailure instanceof UnitUnavailableError
+          ? switchFailure.message
+          : 'Could not switch the unit. Please try again.',
+      )
+    } finally {
+      setSwitching(false)
+    }
+  }
+
   async function handleDownloadAgreement() {
     if (!detail?.signedAgreementPath || isDownloading) return
     setDownloading(true)
@@ -255,7 +293,27 @@ export default function LoanDetail() {
               <div className={styles.itemInfo}>
                 <p className={styles.itemName}>{detail.itemName}</p>
                 <p className={styles.itemMeta}>
-                  {detail.serialNumber && <span>{detail.serialNumber}</span>}
+                  {/* Only before hand-off, like cancelling: once the hardware
+                      is with the member, the unit they have is the one on the
+                      loan. The serial itself is the button, not just the icon
+                      beside it — it's the thing being changed, and the bigger
+                      target. Wrapped in a span so the "·" still follows it. */}
+                  {detail.serialNumber && state === 'requests' && (
+                    <span>
+                      <Tooltip text="Switch to a different unit">
+                        <button
+                          type="button"
+                          className={styles.switchUnitButton}
+                          onClick={openSwitch}
+                          aria-label={`Switch unit (${detail.serialNumber})`}
+                        >
+                          {detail.serialNumber}
+                          <SwapIcon size={16} />
+                        </button>
+                      </Tooltip>
+                    </span>
+                  )}
+                  {detail.serialNumber && state !== 'requests' && <span>{detail.serialNumber}</span>}
                   <span>{ROLE_LABEL[detail.itemRole]}</span>
                 </p>
               </div>
@@ -389,6 +447,19 @@ export default function LoanDetail() {
           onChange={setCancelReason}
           onConfirm={() => void handleCancelRequest()}
           onCancel={() => setCancelOpen(false)}
+        />
+      )}
+
+      {isSwitchOpen && detail && (
+        <SwitchUnitModal
+          equipmentId={detail.equipmentId}
+          itemName={detail.itemName}
+          memberName={detail.memberName}
+          currentUnitId={detail.equipmentUnitId}
+          error={switchError}
+          isSubmitting={isSwitching}
+          onConfirm={(unitId) => void handleSwitchUnit(unitId)}
+          onCancel={() => setSwitchOpen(false)}
         />
       )}
 

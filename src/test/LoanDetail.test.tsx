@@ -8,8 +8,11 @@ import {
   fetchAllLoanRequestItems,
   fetchLoanRequestItemDetail,
   LoanConflictError,
+  switchLoanItemUnit,
+  UnitUnavailableError,
   type AdminLoanRequestDetail,
 } from '../lib/loanRequests'
+import { fetchEquipmentUnitsWithStatus, type EquipmentUnitWithStatus } from '../lib/inventory'
 import LoanDetail from '../components/admin-dashboard/LoanDetail'
 import HardwareLoans from '../components/admin-dashboard/HardwareLoans'
 
@@ -26,7 +29,13 @@ vi.mock('../lib/loanRequests', async () => {
     fetchLoanRequestAvailability: vi.fn().mockResolvedValue([]),
     fetchSignedAgreementUrl: vi.fn(),
     cancelLoanRequestAsAdmin: vi.fn(),
+    switchLoanItemUnit: vi.fn(),
   }
+})
+
+vi.mock('../lib/inventory', async () => {
+  const actual = await vi.importActual<typeof import('../lib/inventory')>('../lib/inventory')
+  return { ...actual, fetchEquipmentUnitsWithStatus: vi.fn() }
 })
 
 const mockSession = { user: { id: 'admin-1', email: 'admin@uw.edu' } } as unknown as Session
@@ -49,6 +58,7 @@ function detail(overrides: Partial<AdminLoanRequestDetail> = {}): AdminLoanReque
     itemName: 'Muse 2',
     itemDescription: null,
     imageUrl: null,
+    equipmentUnitId: 'unit-1',
     serialNumber: 'SYN-ABC123XYZ',
     itemRole: 'primary',
     status: 'pending',
@@ -465,5 +475,85 @@ describe('LoanDetail — cancelling a checkout request', () => {
 
     expect(await screen.findByText('Cancelled')).toBeInTheDocument()
     expect(screen.queryByText('Denied')).not.toBeInTheDocument()
+  })
+})
+
+describe('LoanDetail — switching the unit', () => {
+  function unitRow(id: string, serial: string, status: EquipmentUnitWithStatus['status']): EquipmentUnitWithStatus {
+    return {
+      unit: {
+        id,
+        equipment_id: 'eq-1',
+        serial_number: serial,
+        on_hold_at: status === 'on_hold' ? '2026-10-01T00:00:00Z' : null,
+        on_hold_by: null,
+        created_at: '2026-08-01T00:00:00Z',
+      } as unknown as EquipmentUnitWithStatus['unit'],
+      status,
+    }
+  }
+
+  beforeEach(() => {
+    vi.mocked(switchLoanItemUnit).mockReset()
+    vi.mocked(fetchEquipmentUnitsWithStatus).mockResolvedValue([
+      // This request's own unit reads "requested" in the inventory.
+      unitRow('unit-1', 'SYN-ABC123XYZ', 'requested'),
+      unitRow('unit-2', 'SYN-FREE00001', 'available'),
+      unitRow('unit-3', 'SYN-HELD00001', 'on_hold'),
+      unitRow('unit-4', 'SYN-OUT000001', 'checked_out'),
+    ])
+  })
+
+  it('is offered only while the request is waiting to be handed over', async () => {
+    for (const loan of [activeLoan, overdueLoan, returnedLoan, deniedRequest, detail({ status: 'cancelled' })]) {
+      vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(loan)
+      const { unmount } = renderDetail()
+      expect(await screen.findByText('SYN-ABC123XYZ')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /switch unit/i })).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('lists every unit but only lets an available one be picked, then shows the new serial', async () => {
+    vi.mocked(fetchLoanRequestItemDetail)
+      .mockResolvedValueOnce(detail())
+      .mockResolvedValueOnce(detail({ equipmentUnitId: 'unit-2', serialNumber: 'SYN-FREE00001' }))
+    vi.mocked(switchLoanItemUnit).mockResolvedValue()
+
+    renderDetail()
+    await userEvent.click(await screen.findByRole('button', { name: 'Switch unit (SYN-ABC123XYZ)' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Switch unit' })
+    expect(fetchEquipmentUnitsWithStatus).toHaveBeenCalledWith('eq-1')
+
+    const current = await within(dialog).findByRole('radio', { name: /SYN-ABC123XYZ/ })
+    expect(current).toHaveTextContent('current')
+    expect(current).toBeDisabled()
+    expect(within(dialog).getByRole('radio', { name: /SYN-HELD00001/ })).toBeDisabled()
+    expect(within(dialog).getByRole('radio', { name: /SYN-OUT000001/ })).toBeDisabled()
+
+    const confirm = within(dialog).getByRole('button', { name: 'Switch unit' })
+    expect(confirm).toBeDisabled()
+    await userEvent.click(within(dialog).getByRole('radio', { name: /SYN-FREE00001/ }))
+    await userEvent.click(confirm)
+
+    expect(switchLoanItemUnit).toHaveBeenCalledWith('item-1', 'unit-2')
+    expect(await screen.findByText('SYN-FREE00001')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('says so when the unit was taken while the dialog was open', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(detail())
+    vi.mocked(switchLoanItemUnit).mockRejectedValue(
+      new UnitUnavailableError('That unit was just taken by another request or put on hold.'),
+    )
+
+    renderDetail()
+    await userEvent.click(await screen.findByRole('button', { name: 'Switch unit (SYN-ABC123XYZ)' }))
+    const dialog = screen.getByRole('dialog')
+    await userEvent.click(await within(dialog).findByRole('radio', { name: /SYN-FREE00001/ }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Switch unit' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('That unit was just taken')
   })
 })

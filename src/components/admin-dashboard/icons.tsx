@@ -133,6 +133,18 @@ export function PencilIcon({ size = 16, className }: IconProps) {
   );
 }
 
+// Two opposed arrows — "trade this for another one", for switching the unit
+// on a checkout request (LoanDetail). Stroked like PencilIcon so it sits
+// quietly beside text rather than reading as a filled action button.
+export function SwapIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M4 8h14M14 4l4 4-4 4" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 16H6M10 12l-4 4 4 4" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MailIcon({ size = 16 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
