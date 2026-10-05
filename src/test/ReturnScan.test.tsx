@@ -50,6 +50,7 @@ function loan(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     returnDate: '2099-10-12',
     returnRequestedAt: null,
     returnedAt: null,
+    cancelledAt: null,
     memberName: 'Bob Reyes',
     ...overrides,
   }
@@ -180,7 +181,7 @@ describe('ReturnScan', () => {
   // The double-return: the unit is on the shelf, and its last loan is closed.
   it('refuses a unit whose loan has already been returned', async () => {
     vi.mocked(fetchEquipmentUnitBySerial).mockResolvedValue({
-      unit: { id: 'unit-3', equipment_id: 'eq-3', serial_number: 'SYN-5OHTYJ2GX', created_at: '' },
+      unit: { id: 'unit-3', equipment_id: 'eq-3', serial_number: 'SYN-5OHTYJ2GX', created_at: '', on_hold_at: null, on_hold_by: null },
       equipment: { id: 'eq-3', name: 'Oculus Quest 2' } as never,
     })
 

@@ -41,6 +41,7 @@ const detail: AdminLoanRequestDetail = {
   itemName: 'Muse 2',
   itemDescription: null,
   imageUrl: null,
+  equipmentUnitId: 'unit-1',
   serialNumber: 'SYN-HJXPP41T5',
   itemRole: 'primary',
   status: 'approved',
@@ -59,6 +60,9 @@ const detail: AdminLoanRequestDetail = {
   memberEmail: 'bob@uw.edu',
   memberDiscord: 'bobreyes',
   reviewerName: 'Ada Admin',
+  cancelledAt: null,
+  cancelledByName: null,
+  cancellationReason: null,
   otherItems: [],
 }
 

@@ -58,6 +58,7 @@ const loan: AdminLoanRequestDetail = {
   itemName: 'Oculus Quest 2',
   itemDescription: null,
   imageUrl: null,
+  equipmentUnitId: 'unit-1',
   serialNumber: 'SYN-5OHTYJ2GX',
   itemRole: 'primary',
   status: 'pending',
@@ -76,6 +77,9 @@ const loan: AdminLoanRequestDetail = {
   memberEmail: 'bob@uw.edu',
   memberDiscord: 'bobreyes',
   reviewerName: null,
+  cancelledAt: null,
+  cancelledByName: null,
+  cancellationReason: null,
   otherItems: [],
 }
 

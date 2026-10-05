@@ -85,6 +85,11 @@ export interface EquipmentUnit {
   equipment_id: string;
   serial_number: string;
   created_at: string;
+  /** Set while an admin is keeping this unit out of circulation — it isn't
+   *  counted as available to members and can't be requested. See the
+   *  20261002010000 migration. */
+  on_hold_at: string | null;
+  on_hold_by: string | null;
 }
 
 // An add-on links one equipment product to another *existing* equipment

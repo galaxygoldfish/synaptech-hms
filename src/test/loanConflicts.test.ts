@@ -2,8 +2,10 @@ import {
   handOffLoanRequestItem,
   LoanConflictError,
   markLoanRequestItemReturned,
+  switchLoanItemUnit,
+  UnitUnavailableError,
 } from '../lib/loanRequests'
-import { stampApprovedAgreement } from '../lib/loanAgreementApproval'
+import { restampAgreementSerial, stampApprovedAgreement } from '../lib/loanAgreementApproval'
 
 // A minimal stand-in for the PostgREST query builder: every chained call is
 // recorded, and awaiting the chain asks `respond` for the result. Tests
@@ -65,11 +67,12 @@ vi.mock('../lib/supabase', () => ({
 
 vi.mock('../lib/loanAgreementApproval', async () => {
   const actual = await vi.importActual<typeof import('../lib/loanAgreementApproval')>('../lib/loanAgreementApproval')
-  return { ...actual, stampApprovedAgreement: vi.fn() }
+  return { ...actual, stampApprovedAgreement: vi.fn(), restampAgreementSerial: vi.fn() }
 })
 
 const ORIGINAL = 'user-1/req-1/eq-1.pdf'
 const STAMPED = 'user-1/req-1/eq-1-approved.pdf'
+const SWITCHED = 'user-1/req-1/eq-1-unit-SYN-NEW.pdf'
 
 interface World {
   itemPath: string
@@ -111,6 +114,7 @@ function updatesTo(table: string) {
 beforeEach(() => {
   queries.length = 0
   vi.mocked(stampApprovedAgreement).mockReset().mockResolvedValue(STAMPED)
+  vi.mocked(restampAgreementSerial).mockReset().mockResolvedValue(SWITCHED)
 })
 
 describe('handOffLoanRequestItem', () => {
@@ -202,5 +206,73 @@ describe('markLoanRequestItemReturned', () => {
     await expect(markLoanRequestItemReturned('item-1', 'admin-2')).rejects.toThrow(
       'already checked in by Ada Admin',
     )
+  })
+})
+
+describe('switchLoanItemUnit', () => {
+  interface SwitchWorld {
+    status: string
+    itemPath?: string
+    /** Rows the item compare-and-set matches — 0 when another admin won. */
+    switchRows?: number
+    switchError?: { message: string }
+  }
+
+  function switchWorld(w: SwitchWorld): Respond {
+    return (query) => {
+      if (query.table === 'loan_request_items' && query.op === 'select') {
+        return {
+          data: {
+            loan_request_id: 'req-1',
+            equipment_id: 'eq-1',
+            equipment_unit_id: 'unit-old',
+            signed_agreement_path: w.itemPath ?? ORIGINAL,
+          },
+          error: null,
+        }
+      }
+      if (query.table === 'loan_requests') return { data: { status: w.status, reviewed_by: null }, error: null }
+      if (query.table === 'equipment_units') return { data: { serial_number: 'SYN-NEW' }, error: null }
+      if (query.table === 'loan_request_items' && query.op === 'update') {
+        if (w.switchError) return { data: null, error: w.switchError }
+        return { data: Array.from({ length: w.switchRows ?? 1 }, () => ({ id: 'item-1' })), error: null }
+      }
+      if (query.table === 'profiles') return { data: null, error: null }
+      throw new Error(`unexpected query on ${query.table}`)
+    }
+  }
+
+  it('rewrites the agreement, then moves unit and agreement together in one compare-and-set', async () => {
+    respond = switchWorld({ status: 'pending' })
+
+    await switchLoanItemUnit('item-1', 'unit-new')
+
+    expect(restampAgreementSerial).toHaveBeenCalledWith(
+      expect.objectContaining({ agreementPath: ORIGINAL, serialNumber: 'SYN-NEW' }),
+    )
+    const [update] = updatesTo('loan_request_items')
+    expect(update.values).toEqual({ equipment_unit_id: 'unit-new', signed_agreement_path: SWITCHED })
+    expect(update.filters).toContainEqual(['eq', 'equipment_unit_id', 'unit-old'])
+    expect(update.filters).toContainEqual(['eq', 'signed_agreement_path', ORIGINAL])
+  })
+
+  it('refuses once the hardware is handed over, before rewriting anything', async () => {
+    respond = switchWorld({ status: 'approved' })
+
+    await expect(switchLoanItemUnit('item-1', 'unit-new')).rejects.toBeInstanceOf(LoanConflictError)
+    expect(restampAgreementSerial).not.toHaveBeenCalled()
+    expect(updatesTo('loan_request_items')).toHaveLength(0)
+  })
+
+  it('reports a unit someone else took while the dialog was open', async () => {
+    respond = switchWorld({ status: 'pending', switchError: { message: 'unit_unavailable' } })
+
+    await expect(switchLoanItemUnit('item-1', 'unit-new')).rejects.toBeInstanceOf(UnitUnavailableError)
+  })
+
+  it('reports the loser of two admins switching at once', async () => {
+    respond = switchWorld({ status: 'pending', switchRows: 0 })
+
+    await expect(switchLoanItemUnit('item-1', 'unit-new')).rejects.toBeInstanceOf(LoanConflictError)
   })
 })

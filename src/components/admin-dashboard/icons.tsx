@@ -133,6 +133,18 @@ export function PencilIcon({ size = 16, className }: IconProps) {
   );
 }
 
+// Two opposed arrows — "trade this for another one", for switching the unit
+// on a checkout request (LoanDetail). Stroked like PencilIcon so it sits
+// quietly beside text rather than reading as a filled action button.
+export function SwapIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M4 8h14M14 4l4 4-4 4" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 16H6M10 12l-4 4 4 4" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MailIcon({ size = 16 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -510,6 +522,25 @@ export function CheckmarkCircleIconFilled({ size = 124, className }: IconProps) 
   return (
     <svg width={size} height={size} viewBox="0 0 124.25 124.25" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <path d="M62.125 0C49.8379 0 37.8266 3.64357 27.6102 10.47C17.3938 17.2963 9.43111 26.9989 4.72901 38.3508C0.0269178 49.7027 -1.20336 62.1939 1.19374 74.245C3.59085 86.2961 9.50768 97.3657 18.196 106.054C26.8844 114.742 37.954 120.659 50.005 123.056C62.0561 125.453 74.5474 124.223 85.8992 119.521C97.2511 114.819 106.954 106.856 113.78 96.6398C120.606 86.4234 124.25 74.4122 124.25 62.125C124.25 45.6484 117.705 29.8467 106.054 18.196C94.4033 6.54529 78.6016 0 62.125 0V0ZM53.25 86.9342L31.0625 64.7467L38.1208 57.6875L53.25 72.8158L86.1319 39.9375L93.2128 46.9749L53.25 86.9342Z" fill="#2BC217" />
+    </svg>
+  );
+}
+
+// currentColor by default, unlike the filled icons above: these sit in the
+// units table's icon buttons, whose hover darkens the glyph through `color`.
+export function PauseIconFilled({ size = 16, color = "currentColor", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="5" y="4" width="5" height="16" rx="1.5" fill={color} />
+      <rect x="14" y="4" width="5" height="16" rx="1.5" fill={color} />
+    </svg>
+  );
+}
+
+export function PlayIconFilled({ size = 16, color = "currentColor", className }: IconProps & { color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M7 4.8v14.4a1.2 1.2 0 0 0 1.84 1.02l11.4-7.2a1.2 1.2 0 0 0 0-2.04L8.84 3.78A1.2 1.2 0 0 0 7 4.8z" fill={color} />
     </svg>
   );
 }

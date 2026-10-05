@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { SECTION_10_FIELD_LAYOUT } from './loanAgreementPdf'
+import { locateSerialNumberCell, SECTION_10_FIELD_LAYOUT } from './loanAgreementPdf'
 
 const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
 
@@ -85,7 +85,81 @@ function formatReceivedTime(date: Date): string {
  * retrievable even after an admin has filled in section 10.
  */
 export async function stampApprovedAgreement(input: StampApprovedAgreementInput): Promise<string> {
-  const response = await fetch(input.agreementUrl)
+  const { pdf, paintValueCell } = await openAgreement(input.agreementUrl)
+
+  // Section 10 is always the last page — see AgreementWriter.newPage() in
+  // loanAgreementPdf.ts, called immediately before that section and never
+  // followed by anything else.
+  const pages = pdf.getPages()
+  const page = pages[pages.length - 1]
+  const { rows } = SECTION_10_FIELD_LAYOUT
+  const drawValue = (rowTopIn: number, text: string) =>
+    paintValueCell(page, { ...SECTION_10_FIELD_LAYOUT, rowTopIn }, text)
+
+  drawValue(rows.receivedDate.rowTopIn, formatReceivedDate(input.receivedAt))
+  drawValue(rows.receivedTime.rowTopIn, formatReceivedTime(input.receivedAt))
+  drawValue(rows.managerName.rowTopIn, input.managerName)
+
+  const approvedPath = input.agreementPath.replace(/\.pdf$/i, '') + APPROVED_SUFFIX
+  // Re-stamping (an admin repeating a hand-off after a failure part-way)
+  // replaces the stamped copy rather than erroring on the existing object.
+  await uploadAgreement(approvedPath, await pdf.save())
+  return approvedPath
+}
+
+export interface RestampAgreementSerialInput {
+  /** A signed URL for the agreement as it stands, fetched by the caller. */
+  agreementUrl: string
+  /** Its object path, which the new copy is named after. */
+  agreementPath: string
+  /** Printed into section 2's "Hardware product serial number" cell. */
+  serialNumber: string
+}
+
+// What restampAgreementSerial adds to a path. Matched (and replaced) on a
+// second switch, so switching twice names the copy after the latest unit
+// rather than stacking one suffix per switch.
+const UNIT_SUFFIX = /(-unit-[A-Za-z0-9-]+)?\.pdf$/i
+
+/**
+ * Writes a different serial number into section 2 of a member's signed
+ * agreement, for an admin switching which unit a request is for before it's
+ * handed over (switchLoanItemUnit in loanRequests.ts). Everything else on
+ * the page — what the member filled in and signed — is left exactly as it
+ * was; only the one cell is painted over, the same way section 10 is
+ * filled in at hand-off.
+ *
+ * Like the stamped copy, this never overwrites what it read: the new copy
+ * gets its own path, so the agreement as the member signed it, for the unit
+ * they were first given, stays in the bucket. Returns the new path.
+ */
+export async function restampAgreementSerial(input: RestampAgreementSerialInput): Promise<string> {
+  const [{ pdf, paintValueCell }, cell] = await Promise.all([
+    openAgreement(input.agreementUrl),
+    locateSerialNumberCell(),
+  ])
+
+  paintValueCell(pdf.getPage(cell.pageIndex), cell, input.serialNumber)
+
+  const slug = input.serialNumber.replace(/[^A-Za-z0-9-]+/g, '-')
+  const path = input.agreementPath.replace(UNIT_SUFFIX, '') + `-unit-${slug}.pdf`
+  // Upserted: switching away and back to the same unit lands on a path that
+  // already exists.
+  await uploadAgreement(path, await pdf.save())
+  return path
+}
+
+interface ValueCell {
+  pageHeightIn: number
+  valueXIn: number
+  valueWidthIn: number
+  rowHeightIn: number
+  rowTopIn: number
+  fontSize: number
+}
+
+async function openAgreement(agreementUrl: string) {
+  const response = await fetch(agreementUrl)
   if (!response.ok) throw new Error('Agreement download failed')
 
   const { PDFDocument, StandardFonts, rgb } = await loadPdfLib()
@@ -93,26 +167,23 @@ export async function stampApprovedAgreement(input: StampApprovedAgreementInput)
 
   const pdf = await PDFDocument.load(await response.arrayBuffer())
   const font = await pdf.embedFont(StandardFonts.Helvetica)
-
-  // Section 10 is always the last page — see AgreementWriter.newPage() in
-  // loanAgreementPdf.ts, called immediately before that section and never
-  // followed by anything else.
-  const pages = pdf.getPages()
-  const page = pages[pages.length - 1]
-  const { valueXIn, valueWidthIn, rowHeightIn, fontSize, rows } = SECTION_10_FIELD_LAYOUT
-  const pageHeightPt = SECTION_10_FIELD_LAYOUT.pageHeightIn * IN_TO_PT
-  const valueXPt = valueXIn * IN_TO_PT
-  const valueWidthPt = valueWidthIn * IN_TO_PT
-  const rowHeightPt = rowHeightIn * IN_TO_PT
   const cellInsetPt = 1.5 // stays clear of the cell's own border
 
-  function drawValue(rowTopIn: number, text: string) {
-    const rowTopPt = rowTopIn * IN_TO_PT
+  // Covers a keyValueTable value cell's existing text and writes new text
+  // in the same spot. Coordinates come in as jsPDF inches from the top of
+  // the page (see loanAgreementPdf.ts) and are converted here.
+  function paintValueCell(page: ReturnType<typeof pdf.getPage>, cell: ValueCell, text: string) {
+    const pageHeightPt = cell.pageHeightIn * IN_TO_PT
+    const valueXPt = cell.valueXIn * IN_TO_PT
+    const valueWidthPt = cell.valueWidthIn * IN_TO_PT
+    const rowHeightPt = cell.rowHeightIn * IN_TO_PT
+    const rowTopPt = cell.rowTopIn * IN_TO_PT
+
     // pdf-lib's y is measured from the bottom of the page; jsPDF's rowTopIn
     // is measured from the top, so flip it. keyValueTable's value cell has
     // no fill (see loanAgreementPdf.ts), so a plain white rect — inset
     // slightly so it doesn't paint over the cell's border — cleanly covers
-    // the "—" placeholder before the real value is drawn on top of it.
+    // whatever was there before the new value is drawn on top of it.
     const cellTopPt = pageHeightPt - rowTopPt
     page.drawRectangle({
       x: valueXPt - 0.1 * IN_TO_PT + cellInsetPt,
@@ -129,30 +200,21 @@ export async function stampApprovedAgreement(input: StampApprovedAgreementInput)
     // enough at this row height (0.34in) that the exact fraction doesn't
     // read as misaligned.
     const rowCenterPt = cellTopPt - rowHeightPt / 2
-    const baselinePt = rowCenterPt - fontSize * 0.32
-    page.drawText(text, { x: valueXPt, y: baselinePt, size: fontSize, font, color: BODY_COLOR })
+    const baselinePt = rowCenterPt - cell.fontSize * 0.32
+    page.drawText(text, { x: valueXPt, y: baselinePt, size: cell.fontSize, font, color: BODY_COLOR })
   }
 
-  drawValue(rows.receivedDate.rowTopIn, formatReceivedDate(input.receivedAt))
-  drawValue(rows.receivedTime.rowTopIn, formatReceivedTime(input.receivedAt))
-  drawValue(rows.managerName.rowTopIn, input.managerName)
+  return { pdf, paintValueCell }
+}
 
+async function uploadAgreement(path: string, bytes: Uint8Array): Promise<void> {
   // pdf-lib hands back a Uint8Array that may be a view onto a larger buffer;
   // Blob needs its own exactly-sized one.
-  const approvedBytes = await pdf.save()
-  const approvedBuffer = new ArrayBuffer(approvedBytes.byteLength)
-  new Uint8Array(approvedBuffer).set(approvedBytes)
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
 
-  const approvedPath = input.agreementPath.replace(/\.pdf$/i, '') + APPROVED_SUFFIX
   const { error } = await supabase.storage
     .from(LOAN_AGREEMENTS_BUCKET)
-    .upload(approvedPath, new Blob([approvedBuffer], { type: 'application/pdf' }), {
-      contentType: 'application/pdf',
-      // Re-stamping (an admin repeating a hand-off after a failure part-way)
-      // replaces the stamped copy rather than erroring on the existing object.
-      upsert: true,
-    })
+    .upload(path, new Blob([buffer], { type: 'application/pdf' }), { contentType: 'application/pdf', upsert: true })
   if (error) throw error
-
-  return approvedPath
 }

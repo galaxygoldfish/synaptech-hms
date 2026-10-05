@@ -19,15 +19,29 @@ function matchesQuery(row: EquipmentInventoryRow, query: string): boolean {
 }
 
 /**
- * One of the three counts on a row. The label sits under the number rather
+ * One of the four counts on a row. The label sits under the number rather
  * than in a header row above the list: these are pill rows, not a table, and
  * a column heading a phone has scrolled past explains nothing.
  */
-function Count({ value, label, tone }: { value: number; label: string; tone: string }) {
+function Count({
+  value,
+  label,
+  shortLabel,
+  tone,
+}: {
+  value: number
+  label: string
+  /** Swapped in on phones, where four counts share one row. */
+  shortLabel?: string
+  tone: string
+}) {
   return (
     <span className={`${styles.count} ${tone}`}>
       <span className={styles.countValue}>{value}</span>
-      <span className={styles.countLabel}>{label}</span>
+      <span className={shortLabel ? `${styles.countLabel} ${styles.countLabelFull}` : styles.countLabel}>
+        {label}
+      </span>
+      {shortLabel && <span className={`${styles.countLabel} ${styles.countLabelShort}`}>{shortLabel}</span>}
     </span>
   )
 }
@@ -132,6 +146,7 @@ export default function ManageInventory() {
                       <Skeleton width="45%" height="1.5rem" shape="pill" style={{ gridArea: 'info' }} />
                       <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'total' }} />
                       <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'out' }} />
+                      <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'hold' }} />
                       <Skeleton width="4.5rem" height="3rem" radius="0.5rem" style={{ gridArea: 'in' }} />
                     </div>
                   </li>
@@ -155,7 +170,7 @@ export default function ManageInventory() {
 
           {!isLoading && !error && visibleRows.length > 0 && (
             <ul className={styles.itemList}>
-              {visibleRows.map(({ equipment, checkedOut }) => (
+              {visibleRows.map(({ equipment, checkedOut, onHold }) => (
                 <li key={equipment.id}>
                   <button
                     type="button"
@@ -175,10 +190,13 @@ export default function ManageInventory() {
                     </span>
 
                     <Count value={equipment.quantity_total} label="total" tone={styles.countTotal} />
-                    <Count value={checkedOut} label="checked out" tone={styles.countOut} />
+                    <Count value={checkedOut} label="checked out" shortLabel="out" tone={styles.countOut} />
+                    <Count value={onHold} label="on hold" tone={styles.countHold} />
+                    {/* What's on the shelf and free to lend: neither out with
+                        a member nor kept back by an admin. */}
                     <Count
-                      value={equipment.quantity_total - checkedOut}
-                      label="in stock"
+                      value={equipment.quantity_total - checkedOut - onHold}
+                      label="available"
                       tone={styles.countIn}
                     />
 

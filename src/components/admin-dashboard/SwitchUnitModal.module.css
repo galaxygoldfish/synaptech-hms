@@ -1,0 +1,105 @@
+/* Rows in the grey of the loan detail screen behind this dialog, so the
+   list reads as more of that page; the chosen one takes the blue focus ring
+   the app's text fields use. Left-aligned where the modal's own copy is
+   centred: it's a list to scan, not a sentence. */
+
+.list {
+  width: 100%;
+  max-height: min(18rem, 45vh);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.skeletonStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.unit {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #f4f4f4;
+  border: 2px solid transparent;
+  border-radius: 0.875rem;
+  padding: 0.75rem 1rem;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+button.unit:hover:not(:disabled) {
+  background: #ebebeb;
+}
+
+button.unit:focus-visible {
+  outline: 2px solid var(--welcome-blue);
+  outline-offset: 2px;
+}
+
+button.unitSelected,
+button.unitSelected:hover:not(:disabled) {
+  background: var(--white);
+  border-color: var(--welcome-blue);
+}
+
+/* Not faded to nothing: a unit that can't be picked is still information
+   (it's out, or on hold), so its serial and chip stay legible. */
+button.unit:disabled {
+  cursor: not-allowed;
+}
+
+button.unit:disabled .serial {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.serial {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Rubik', sans-serif;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+/* Neutral, like the screen's end-state badges: it's where the request is
+   now, not a state of the unit someone has to act on. */
+.chipCurrent {
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.status,
+.hint {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  margin: 0;
+}
+
+.status {
+  padding: 1.5rem 0;
+}
+
+.hint {
+  margin: -0.5rem 0 1.25rem;
+}
+
+.error {
+  width: 100%;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--red-fg);
+  text-align: left;
+  margin: -0.5rem 0 1.25rem;
+}
