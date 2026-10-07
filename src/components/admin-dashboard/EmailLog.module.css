@@ -127,18 +127,18 @@
   font-family: 'Bungee', var(--display-font-fallback);
   font-size: 1.25rem;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 .filterChip:hover {
   border-color: rgba(0, 0, 0, 0.45);
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .filterChipActive {
   border-color: rgba(83, 106, 138, 0.7);
   background: rgba(131, 156, 197, 0.44);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 @media (max-width: 640px) {
@@ -152,7 +152,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -160,7 +160,7 @@
 .count {
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 /* ── Log rows ─────────────────────────────────────────────── */
@@ -247,7 +247,7 @@
   font-family: 'Rubik', sans-serif;
   font-style: italic;
   font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -275,7 +275,7 @@
 .ccEmail {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -287,7 +287,7 @@
   justify-self: end;
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   white-space: nowrap;
 }
 
@@ -458,7 +458,7 @@
 
 .metaLabel {
   flex: 0 0 7.5rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .metaValue {
@@ -470,7 +470,7 @@
 .bodyLabel {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0 0 0.5rem;
 }
 
@@ -490,7 +490,7 @@
 }
 
 .bodyMissing {
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(0, 0, 0, 0.58);
   font-style: italic;
 }
 

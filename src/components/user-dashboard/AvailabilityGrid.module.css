@@ -39,7 +39,7 @@
 .dayLabel {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: #969696;
+  color: #707070;
   text-align: center;
   margin: 0 0 1rem;
 }
@@ -60,7 +60,7 @@
   padding: 0.5rem;
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   cursor: pointer;
   /* Leaves the browser's horizontal swipe alone so a touch user can still
      scroll the fourteen days sideways. */

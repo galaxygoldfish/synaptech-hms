@@ -251,18 +251,18 @@
   font-family: 'Bungee', var(--display-font-fallback);
   font-size: 1.25rem;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 .filterChip:hover {
   border-color: rgba(0, 0, 0, 0.45);
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .filterChipActive {
   border-color: rgba(83, 106, 138, 0.7);
   background: rgba(131, 156, 197, 0.44);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 /* The count in a chip is the useful part while walking a shelf, so it stays
@@ -288,7 +288,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
   max-width: 34rem;
@@ -299,7 +299,7 @@
 .count {
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 
@@ -413,7 +413,7 @@
   justify-self: end;
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   white-space: nowrap;
 }
 
@@ -436,7 +436,7 @@
 .summarySub {
   font-family: 'Rubik', sans-serif;
   font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -568,7 +568,7 @@
   font-size: 1.0625rem;
   font-weight: 500;
   line-height: 1.5;
-  color: #c3c9d3;
+  color: #5f6775;
   text-align: center;
   padding: 0 1.5rem;
   margin: 0;
@@ -693,10 +693,16 @@
   padding: 0.75rem 1rem;
 }
 
+/* The input inside drops its own outline to sit flush in the pill, so the
+   pill carries the focus ring instead. */
+.serialField:focus-within {
+  border-color: var(--welcome-blue);
+}
+
 .serialPrefix {
   font-family: 'Rubik', sans-serif;
   font-size: 1.0625rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .serialInput {
@@ -757,7 +763,7 @@
 .progressSub {
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .progressTrack {
@@ -845,7 +851,7 @@
 .unitMeta {
   font-family: 'Rubik', sans-serif;
   font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -862,7 +868,7 @@
 .unitTime {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   white-space: nowrap;
 }
 
@@ -1068,7 +1074,7 @@
 .metaSub {
   font-weight: 400;
   font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 @media (max-width: 640px) {
@@ -1092,7 +1098,7 @@
 .sectionLabel {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0;
 }
 

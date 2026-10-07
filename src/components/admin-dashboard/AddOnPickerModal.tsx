@@ -3,6 +3,7 @@ import type { Equipment } from '../../types'
 import { ChevronRightFilled, CloseIcon, SearchIcon } from './icons'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AddOnPickerModal.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 interface AddOnPickerModalProps {
   options: Equipment[]
@@ -26,7 +27,7 @@ export function AddOnPickerModal({ options, isLoading, error, onSelect, onClose 
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+      <ModalDialog className={styles.modal} aria-label="Select an add-on product" onClose={onClose}>
         <div className={styles.header}>
           <h2 className={styles.heading}>Select an add-on product</h2>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
@@ -79,7 +80,7 @@ export function AddOnPickerModal({ options, isLoading, error, onSelect, onClose 
               </button>
             ))}
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

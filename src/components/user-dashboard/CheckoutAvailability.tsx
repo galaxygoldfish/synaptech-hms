@@ -179,7 +179,7 @@ export default function CheckoutAvailability() {
           <AvailabilityGrid selected={selected} onChange={setSelected} className={styles.card} />
         )}
 
-        {submitError && <p className={styles.status}>{submitError}</p>}
+        {submitError && <p className={styles.status} role="alert">{submitError}</p>}
 
         <div className={styles.actions}>
           <button type="button" className={styles.backButton} onClick={() => navigate(-1)}>

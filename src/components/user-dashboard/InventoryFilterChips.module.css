@@ -34,13 +34,13 @@
   font-family: 'Bungee', var(--display-font-fallback);
   font-size: 1.125rem;
   text-transform: lowercase;
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.58);
   white-space: nowrap;
 }
 
 .chip:hover {
   border-color: rgba(0, 0, 0, 0.45);
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .chipActive {

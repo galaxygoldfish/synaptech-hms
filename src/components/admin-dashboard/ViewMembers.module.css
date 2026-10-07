@@ -83,7 +83,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -163,7 +163,7 @@
 
 .memberDetail svg {
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 .memberDetail span {
@@ -190,7 +190,7 @@
 .memberJoinedIcon {
   display: none;
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 @media (max-width: 900px) {

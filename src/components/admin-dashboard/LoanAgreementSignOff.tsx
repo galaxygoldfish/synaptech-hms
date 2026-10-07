@@ -267,7 +267,7 @@ export function LoanAgreementSignOff({
               />
             </div>
 
-            {submitError && <p className={styles.inlineError}>{submitError}</p>}
+            {submitError && <p className={styles.inlineError} role="alert">{submitError}</p>}
 
             <div className={styles.actions}>
               <button type="button" className={styles.backActionButton} onClick={onBack}>

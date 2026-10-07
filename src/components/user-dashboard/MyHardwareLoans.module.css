@@ -148,19 +148,19 @@
   font-family: 'Bungee', var(--display-font-fallback);
   font-size: 1.125rem;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.58);
   white-space: nowrap;
 }
 
 .chip:hover {
   border-color: rgba(0, 0, 0, 0.45);
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .chipActive {
   border-color: rgba(83, 106, 138, 0.7);
   background: rgba(131, 156, 197, 0.44);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 @media (max-width: 640px) {
@@ -176,7 +176,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -200,7 +200,7 @@
 .emptyText {
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
-  color: #969696;
+  color: #707070;
   opacity: 0.83;
   margin: 0;
 }
@@ -375,7 +375,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 1.25rem;
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 @media (max-width: 64rem) {

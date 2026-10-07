@@ -50,7 +50,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 2rem 0;
 }
@@ -67,7 +67,7 @@
 .cardTitle {
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
-  color: #969696;
+  color: #707070;
   margin: 0 0 1.25rem;
 }
 
@@ -101,7 +101,7 @@
 .consumableNote {
   font-family: 'Rubik', sans-serif;
   font-size: 0.9375rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   margin: 1rem 0 0;
 }

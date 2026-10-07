@@ -208,6 +208,12 @@
   padding: 1.25rem 1.75rem;
 }
 
+/* The input inside drops its own outline to sit flush in the pill, so the
+   pill carries the focus ring instead. */
+.searchBar:focus-within {
+  border-color: var(--welcome-blue);
+}
+
 .searchBarIcon {
   width: 1.375rem;
   height: auto;
@@ -229,7 +235,7 @@
 }
 
 .searchBarInput::placeholder {
-  color: #c4c4c4;
+  color: #757575;
 }
 
 /* ── Action list ──────────────────────────────────────────── */
@@ -254,7 +260,7 @@
   font-family: 'Rubik', sans-serif;
   font-weight: 400;
   font-size: 0.9375rem;
-  color: #969696;
+  color: #707070;
   margin: 0 0 0.75rem;
 }
 

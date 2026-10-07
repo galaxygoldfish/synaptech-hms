@@ -210,7 +210,7 @@ export default function CheckoutScan() {
 
   return (
     <FlowPage heading="Check out hardware" onBack={handleBack}>
-      {error && <p className={styles.status}>{error}</p>}
+      {error && <p className={styles.status} role="alert">{error}</p>}
 
       {!error && confirmed === null && (
         <div className={styles.scanTopPad}>

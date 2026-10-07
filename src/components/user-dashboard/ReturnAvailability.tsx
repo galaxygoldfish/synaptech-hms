@@ -207,7 +207,7 @@ export default function ReturnAvailability() {
           />
         )}
 
-        {submitError && <p className={styles.status}>{submitError}</p>}
+        {submitError && <p className={styles.status} role="alert">{submitError}</p>}
 
         <div className={styles.actions}>
           <button

@@ -72,7 +72,7 @@ export function LoanConfirmCard({
         ))}
       </dl>
 
-      {errorMessage && <p className={styles.inlineError}>{errorMessage}</p>}
+      {errorMessage && <p className={styles.inlineError} role="alert">{errorMessage}</p>}
 
       {/* One action out of here. The wrong loan is backed out of with the
           Back button in the top row, which is where every other screen puts

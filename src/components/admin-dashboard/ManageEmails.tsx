@@ -163,7 +163,7 @@ export function ManageEmails({ heading, shortHeading, listPath, category }: Mana
                 </li>
               ))}
             </ul>
-            {toggleError && <p className={styles.inlineError}>{toggleError}</p>}
+            {toggleError && <p className={styles.inlineError} role="alert">{toggleError}</p>}
           </div>
         )}
       </main>

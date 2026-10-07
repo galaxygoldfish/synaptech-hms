@@ -18,6 +18,7 @@ import {
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AuditLog.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 type CategoryFilter = 'all' | AuditCategory
 
@@ -234,22 +235,12 @@ function ChangeRow({ change }: { change: AuditChange }) {
 }
 
 function DetailModal({ entry, onClose }: { entry: AuditLogEntry; onClose: () => void }) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
   return (
     <div className={styles.modalBackdrop} onClick={onClose} role="presentation">
-      <div
+      <ModalDialog
         className={styles.modal}
-        role="dialog"
-        aria-modal="true"
         aria-label={`Audit entry: ${actionLabel(entry.action)}`}
-        onClick={(event) => event.stopPropagation()}
+        onClose={onClose}
       >
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{actionLabel(entry.action)}</h2>
@@ -312,7 +303,7 @@ function DetailModal({ entry, onClose }: { entry: AuditLogEntry; onClose: () => 
             </p>
           )}
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

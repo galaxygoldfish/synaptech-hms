@@ -336,7 +336,7 @@ function RecipientsSection({
         </div>
       </div>
 
-      {error && <p className={styles.inlineError}>{error}</p>}
+      {error && <p className={styles.inlineError} role="alert">{error}</p>}
     </div>
   )
 }
@@ -662,7 +662,7 @@ export default function EditEmailTemplate() {
             />
           </div>
 
-          {saveError && <p className={styles.inlineError}>{saveError}</p>}
+          {saveError && <p className={styles.inlineError} role="alert">{saveError}</p>}
         </div>
 
         <RecipientsSection

@@ -6,6 +6,7 @@ import modalStyles from '../Modal.module.css'
 // hold" here in exactly the colour it does there.
 import unitStyles from './EquipmentUnitsTable.module.css'
 import styles from './SwitchUnitModal.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 const STATUS_CHIP_CLASS: Record<EquipmentUnitStatus, string> = {
   available: unitStyles.chipAvailable,
@@ -82,12 +83,10 @@ export function SwitchUnitModal({
 
   return (
     <div className={`${modalStyles.overlay} ${modalStyles.overlayWelcome}`} onClick={isSubmitting ? undefined : onCancel}>
-      <div
+      <ModalDialog
         className={`${modalStyles.modal} ${modalStyles.modalWide}`}
-        role="dialog"
-        aria-modal="true"
         aria-label="Switch unit"
-        onClick={(event) => event.stopPropagation()}
+        onClose={isSubmitting ? undefined : onCancel}
       >
         <div className={modalStyles.headerRow}>
           <h2 className={modalStyles.heading}>Switch unit</h2>
@@ -166,7 +165,7 @@ export function SwitchUnitModal({
             {isSubmitting ? 'Switching…' : 'Switch unit'}
           </button>
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

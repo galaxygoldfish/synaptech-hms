@@ -144,7 +144,7 @@
 
 /* Section 10 as the borrower sees it: the rows exist, the values don't. */
 .kvMuted .kvValue {
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 /* ── gridTable (section 6's liability cap, section 9's signature) ── */

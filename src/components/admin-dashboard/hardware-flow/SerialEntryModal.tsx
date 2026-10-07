@@ -2,6 +2,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { SERIAL_PREFIX, SERIAL_SUFFIX_LENGTH } from '../../../lib/serialNumber'
 import modalStyles from '../../Modal.module.css'
 import styles from './HardwareFlow.module.css'
+import { ModalDialog } from '../../ModalDialog'
 
 /** Masked, and the length of a real suffix — never an actual serial from the
     inventory, which reads as a value to keep rather than an example. */
@@ -59,12 +60,10 @@ export function SerialEntryModal({
 
   return (
     <div className={`${modalStyles.overlay} ${modalStyles.overlayWelcome}`} onClick={onCancel}>
-      <div
+      <ModalDialog
         className={modalStyles.modal}
-        role="dialog"
-        aria-modal="true"
         aria-label="Enter a serial number"
-        onClick={(event) => event.stopPropagation()}
+        onClose={onCancel}
       >
         <div className={modalStyles.headerRow}>
           <h2 className={modalStyles.heading}>Enter a serial number</h2>
@@ -112,7 +111,7 @@ export function SerialEntryModal({
             {isSubmitting ? 'Finding…' : 'Find loan'}
           </button>
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

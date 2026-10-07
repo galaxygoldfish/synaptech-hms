@@ -460,7 +460,7 @@ export default function InventoryAuditScan() {
                   {permissionError ? (
                     <div className={styles.scanError}>
                       <CameraIconFilled size={32} />
-                      <p className={styles.inlineError}>{permissionError}</p>
+                      <p className={styles.inlineError} role="alert">{permissionError}</p>
                     </div>
                   ) : isSupported ? (
                     <video
@@ -636,7 +636,7 @@ export default function InventoryAuditScan() {
               </div>
             </div>
 
-            {saveError && <p className={styles.inlineError}>{saveError}</p>}
+            {saveError && <p className={styles.inlineError} role="alert">{saveError}</p>}
           </>
         )}
       </main>

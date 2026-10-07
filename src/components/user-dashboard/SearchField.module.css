@@ -10,6 +10,12 @@
   padding: 1rem 1.5rem;
 }
 
+/* The input inside drops its own outline to sit flush in the pill, so the
+   pill carries the focus ring instead. */
+.searchField:focus-within {
+  border-color: var(--welcome-blue);
+}
+
 .searchIcon {
   color: #c4c4c4;
   flex-shrink: 0;
@@ -27,7 +33,7 @@
 }
 
 .searchInput::placeholder {
-  color: #c4c4c4;
+  color: #757575;
 }
 
 @media (max-width: 640px) {

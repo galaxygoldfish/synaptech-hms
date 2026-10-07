@@ -1,4 +1,5 @@
 import styles from './Modal.module.css'
+import { ModalDialog } from './ModalDialog'
 
 interface Props {
   isOpen: boolean
@@ -33,10 +34,10 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm }: Props)
 
   return (
     <div className={`${styles.overlay} ${styles.overlayWelcome}`} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+      <ModalDialog className={styles.modal} aria-labelledby="welcome-dialog-heading" onClose={onClose}>
         <div className={styles.headerRow}>
           <GlobeIcon />
-          <h2 className={styles.heading}>Welcome</h2>
+          <h2 id="welcome-dialog-heading" className={styles.heading}>Welcome</h2>
         </div>
 
         <div className={styles.bodyGroup}>
@@ -54,7 +55,7 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm }: Props)
           <CheckmarkIcon />
           Sounds good
         </button>
-      </div>
+      </ModalDialog>
     </div>
   )
 }
