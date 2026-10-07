@@ -1,5 +1,6 @@
 import { WarningIcon } from "./icons";
 import styles from "./Home.module.css";
+import { ModalDialog } from "../ModalDialog";
 
 interface OverdueWarningModalProps {
   onClose: () => void;
@@ -8,7 +9,7 @@ interface OverdueWarningModalProps {
 export function OverdueWarningModal({ onClose }: OverdueWarningModalProps) {
   return (
     <div className={styles.overdueModalOverlay} onClick={onClose}>
-      <div className={styles.overdueModal} onClick={(event) => event.stopPropagation()}>
+      <ModalDialog className={styles.overdueModal} aria-label="Overdue hardware" onClose={onClose}>
         <WarningIcon size={36} />
         <p className={styles.overdueModalText}>
           You must return all overdue hardware before you can check out more
@@ -16,7 +17,7 @@ export function OverdueWarningModal({ onClose }: OverdueWarningModalProps) {
         <button className={styles.overdueModalOk} onClick={onClose} type="button">
           OK
         </button>
-      </div>
+      </ModalDialog>
     </div>
   );
 }

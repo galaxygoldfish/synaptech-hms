@@ -4,6 +4,7 @@ import { fetchAvailability, type AvailabilitySlot } from '../../lib/availability
 import { CloseIcon } from './icons'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './AvailabilityModal.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 interface AvailabilityModalProps {
   loanRequestId: string
@@ -98,7 +99,7 @@ export function AvailabilityModal({
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+      <ModalDialog className={styles.modal} aria-label={purpose === 'checkout' ? 'Checkout availability' : 'Return availability'} onClose={onClose}>
         <div className={styles.header}>
           <div>
             <h2 className={styles.heading}>
@@ -181,7 +182,7 @@ export function AvailabilityModal({
             </div>
           </>
         )}
-      </div>
+      </ModalDialog>
     </div>
   )
 }

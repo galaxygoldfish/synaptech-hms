@@ -67,7 +67,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -118,7 +118,7 @@
   gap: 0.75rem;
   font-family: 'Rubik', sans-serif;
   font-size: 1.0625rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0;
 }
 
@@ -189,12 +189,12 @@
    stay neutral instead of taking a fifth and sixth colour. */
 .badgeReturned {
   background: rgba(0, 0, 0, 0.07);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 .badgeDenied {
   background: rgba(0, 0, 0, 0.07);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 @media (max-width: 640px) {
@@ -255,7 +255,7 @@
 .cardLabel {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: #969696;
+  color: #707070;
   padding: 0 0.5rem;
 }
 
@@ -398,7 +398,7 @@
 .otherItemRole {
   margin-left: auto;
   font-size: 1rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   white-space: nowrap;
 }
 

@@ -356,7 +356,7 @@ export default function LoanDetail() {
               )}
             </div>
 
-            {downloadError && <p className={styles.inlineError}>{downloadError}</p>}
+            {downloadError && <p className={styles.inlineError} role="alert">{downloadError}</p>}
 
             <div className={styles.card}>
               <button

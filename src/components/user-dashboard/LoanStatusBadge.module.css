@@ -45,7 +45,7 @@
    returned, and cancelled before it ever started. */
 .closed {
   background: rgba(0, 0, 0, 0.07);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 @media (max-width: 640px) {

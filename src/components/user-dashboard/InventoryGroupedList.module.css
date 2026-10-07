@@ -1,7 +1,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 2rem 0;
 }
@@ -16,7 +16,7 @@
   font-family: 'Bungee', var(--display-font-fallback);
   font-size: 1.25rem;
   text-transform: uppercase;
-  color: #969696;
+  color: #707070;
   margin: 0;
 }
 
@@ -88,7 +88,7 @@
   font-family: 'Rubik', sans-serif;
   font-style: italic;
   font-size: 1.0625rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0;
 }
 

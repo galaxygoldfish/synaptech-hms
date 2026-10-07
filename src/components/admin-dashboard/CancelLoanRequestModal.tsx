@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import modalStyles from '../Modal.module.css'
 import styles from './CancelLoanRequestModal.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 /** Long enough for a sentence or two of explanation, short enough to stay an
     explanation rather than a letter — it goes into an email verbatim. */
@@ -47,12 +48,10 @@ export function CancelLoanRequestModal({
 
   return (
     <div className={`${modalStyles.overlay} ${modalStyles.overlayWelcome}`} onClick={isSubmitting ? undefined : onCancel}>
-      <div
+      <ModalDialog
         className={`${modalStyles.modal} ${modalStyles.modalWide}`}
-        role="dialog"
-        aria-modal="true"
         aria-label="Cancel this checkout request?"
-        onClick={(event) => event.stopPropagation()}
+        onClose={isSubmitting ? undefined : onCancel}
       >
         <div className={modalStyles.headerRow}>
           <h2 className={modalStyles.heading}>Cancel this checkout request?</h2>
@@ -112,7 +111,7 @@ export function CancelLoanRequestModal({
             {isSubmitting ? 'Cancelling…' : 'Cancel request'}
           </button>
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

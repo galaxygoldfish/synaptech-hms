@@ -7,6 +7,7 @@ import {
   type AvailabilityTarget,
 } from '../../lib/availability'
 import styles from './EditAvailabilityModal.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 /**
  * Changing an answer already given — "Edit checkout availability" while a
@@ -100,12 +101,10 @@ export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabi
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div
+      <ModalDialog
         className={styles.modal}
-        role="dialog"
-        aria-modal="true"
         aria-label={HEADING[target.kind]}
-        onClick={(event) => event.stopPropagation()}
+        onClose={onClose}
       >
         <div className={styles.header}>
           <div className={styles.headerText}>
@@ -140,7 +139,7 @@ export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabi
           )}
         </div>
 
-        {saveError && <p className={styles.inlineError}>{saveError}</p>}
+        {saveError && <p className={styles.inlineError} role="alert">{saveError}</p>}
 
         <div className={styles.actions}>
           <button type="button" className={styles.cancelButton} onClick={onClose}>
@@ -155,7 +154,7 @@ export function EditAvailabilityModal({ target, onClose, onSaved }: EditAvailabi
             {isSaving ? 'Saving…' : 'Save availability'}
           </button>
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

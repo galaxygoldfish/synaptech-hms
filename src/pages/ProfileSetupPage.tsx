@@ -5,6 +5,14 @@ import type { Profile } from '../types/index'
 import { BrandWordmark } from '../components/BrandWordmark'
 import styles from './ProfileSetupPage.module.css'
 
+// The Synaptech HMS Privacy Policy and the Hardware Checkout & Usage Policy
+// live as Google Docs, so the officers can update them without a deploy.
+const PRIVACY_POLICY_URL =
+  'https://docs.google.com/document/d/1CcBlw_iRk67ylRKu2XkWYUxA8kZHiqVxedKEcEnbcBw/edit?usp=sharing'
+const USAGE_POLICY_URL = 'https://docs.google.com/document/d/11RSFuvvg1F4aM9V0znWw7wFn_MZMx95T7EdlblAyPfc/edit?tab=t.0'
+
+const PRIVACY_CONSENT_ERROR = 'You must agree to the Privacy Policy to continue.'
+
 interface FormState {
   first_name: string
   last_name: string
@@ -80,8 +88,10 @@ function Field({ label, value, onChange, error, placeholder, inputMode, locked }
         inputMode={inputMode}
         readOnly={locked}
         tabIndex={locked ? -1 : undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
       />
-      {error && <span className={styles.fieldError}>{error}</span>}
+      {error && <span id={`${id}-error`} className={styles.fieldError}>{error}</span>}
     </div>
   )
 }
@@ -99,6 +109,8 @@ export default function ProfileSetupPage() {
     discord: '',
   })
   const [errors, setErrors] = useState<FieldErrors>({})
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)
+  const [privacyError, setPrivacyError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -114,8 +126,15 @@ export default function ProfileSetupPage() {
     setSubmitError(null)
 
     const fieldErrors = validate(form)
-    if (Object.keys(fieldErrors).length > 0) {
+    const consentMissing = !agreedToPrivacy
+    if (Object.keys(fieldErrors).length > 0 || consentMissing) {
       setErrors(fieldErrors)
+      setPrivacyError(consentMissing ? PRIVACY_CONSENT_ERROR : null)
+      // Errors appear beside each field, so send a keyboard or screen-reader
+      // user to the first one; it announces its own message through
+      // aria-describedby. The form renders fields in validate()'s order.
+      const formElement = e.currentTarget as HTMLFormElement
+      requestAnimationFrame(() => formElement.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus())
       return
     }
 
@@ -229,7 +248,42 @@ export default function ProfileSetupPage() {
             />
           </div>
 
-          {submitError && <p className={styles.submitError}>{submitError}</p>}
+          <div className={styles.consent}>
+            <label className={styles.consentLabel}>
+              <span className={styles.checkboxBox}>
+                <input
+                  type="checkbox"
+                  className={privacyError ? `${styles.checkbox} ${styles.checkboxError}` : styles.checkbox}
+                  checked={agreedToPrivacy}
+                  onChange={(e) => {
+                    setAgreedToPrivacy(e.target.checked)
+                    if (e.target.checked) setPrivacyError(null)
+                  }}
+                  aria-invalid={privacyError ? true : undefined}
+                  aria-describedby={privacyError ? 'privacy-consent-error' : undefined}
+                />
+                <svg className={styles.checkmark} viewBox="0 0 22.5 15.3881" aria-hidden="true">
+                  <path
+                    d="M8.4375 15.3881L0 6.95062L1.32563 5.625L8.4375 12.7359L21.1744 0L22.5 1.32562L8.4375 15.3881Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </span>
+              <span className={styles.consentText}>
+                I have read and agree to the{' '}
+                <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer" className={styles.consentLink}>
+                  Synaptech HMS Privacy Policy
+                </a>
+              </span>
+            </label>
+            {privacyError && (
+              <span id="privacy-consent-error" className={styles.fieldError}>
+                {privacyError}
+              </span>
+            )}
+          </div>
+
+          {submitError && <p className={styles.submitError} role="alert">{submitError}</p>}
 
           <div className={styles.actions}>
             <button
@@ -245,7 +299,10 @@ export default function ProfileSetupPage() {
         <p className={styles.footer}>
           We require this information for record-keeping purposes for users of
           Synaptech hardware in accordance with our{' '}
-          <span className={styles.footerLink}>Hardware Checkout &amp; Usage Policy</span>.
+          <a href={USAGE_POLICY_URL} target="_blank" rel="noopener noreferrer" className={styles.footerLink}>
+            Hardware Checkout &amp; Usage Policy
+          </a>
+          .
         </p>
       </main>
     </div>

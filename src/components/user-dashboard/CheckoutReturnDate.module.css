@@ -35,7 +35,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 2rem 0;
 }
@@ -64,7 +64,7 @@
 .cardTitle {
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
-  color: #969696;
+  color: #707070;
   margin: 0 0 1.25rem;
 }
 
@@ -114,7 +114,7 @@
   flex-shrink: 0;
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0;
 }
 
@@ -137,7 +137,7 @@
 }
 
 .dateButtonIcon {
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   flex-shrink: 0;
 }
 
@@ -150,7 +150,7 @@
   pointer-events: none;
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   white-space: nowrap;
 }
 
@@ -187,11 +187,11 @@
   text-align: center;
   font-family: 'Rubik', sans-serif;
   font-size: 1rem;
-  color: rgba(0, 0, 0, 0.35);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 .policyLink {
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-decoration: underline;
 }
 

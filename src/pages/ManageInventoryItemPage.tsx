@@ -750,7 +750,7 @@ export default function ManageInventoryItemPage() {
           </>
         )}
 
-        {saveError && <p className={formStyles.submitError}>{saveError}</p>}
+        {saveError && <p className={formStyles.submitError} role="alert">{saveError}</p>}
       </main>
 
       {isProfileOpen && user && (

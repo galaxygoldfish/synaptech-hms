@@ -88,7 +88,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -106,7 +106,7 @@
 .fieldLabel {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 .subjectInput {
@@ -145,7 +145,7 @@
   padding: 0.375rem 0.5rem 0.375rem 0.75rem;
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.43);
+  color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
 }
 
@@ -174,7 +174,7 @@
 
 .editor:empty::before {
   content: 'Start typing the email body…';
-  color: rgba(0, 0, 0, 0.35);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 /* ── Chips inside the editor ──────────────────────────────── */
@@ -205,7 +205,7 @@
   background: none;
   border: none;
   padding: 0.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   cursor: pointer;
 }
 
@@ -283,7 +283,7 @@
 .aboutFactLabel {
   flex-shrink: 0;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 @media (max-width: 640px) {
@@ -326,7 +326,7 @@
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 /* Same look as .recipientName below — this is the one-row "card" for the
@@ -382,7 +382,7 @@
 .recipientEmail {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -401,7 +401,7 @@
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 /* Smaller than ManageEmails' .toggle — two of these share a row here. */

@@ -320,8 +320,8 @@ export default function MemberDetail() {
               )}
             </div>
 
-            {roleError && <p className={styles.status}>{roleError}</p>}
-            {deleteError && <p className={styles.status}>{deleteError}</p>}
+            {roleError && <p className={styles.status} role="alert">{roleError}</p>}
+            {deleteError && <p className={styles.status} role="alert">{deleteError}</p>}
           </>
         )}
       </main>

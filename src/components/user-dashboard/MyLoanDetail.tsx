@@ -250,7 +250,7 @@ export default function MyLoanDetail() {
               </div>
             </div>
 
-            {actionError && <p className={styles.inlineError}>{actionError}</p>}
+            {actionError && <p className={styles.inlineError} role="alert">{actionError}</p>}
 
             <div className={styles.linkRows}>
               {/* The one action that changes the loan, when there is one, sits

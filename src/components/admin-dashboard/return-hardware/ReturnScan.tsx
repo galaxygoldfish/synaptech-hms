@@ -186,7 +186,7 @@ export default function ReturnScan() {
 
   return (
     <FlowPage heading="Return hardware" onBack={() => navigate('/adminHome')}>
-      {error && <p className={styles.status}>{error}</p>}
+      {error && <p className={styles.status} role="alert">{error}</p>}
 
       {!error && (
         <div className={styles.scanTopPad}>

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, matchPath, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { preloadInBackground } from './lib/backgroundPreload'
 import { PageTransition } from './components/PageTransition'
@@ -102,7 +102,7 @@ function LoadingScreen() {
 }
 
 function ProfileFetchError() {
-  return <div>Something went wrong loading your profile. Please refresh and try again.</div>
+  return <div role="alert">Something went wrong loading your profile. Please refresh and try again.</div>
 }
 
 // Resolves a profiled user to their role-appropriate home route.
@@ -160,10 +160,75 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Every screen used to share the one <title> from index.html, so a
+// screen-reader user arriving on a page, or anyone looking through their
+// tabs or history, couldn't tell where they were (WCAG 2.4.2). Checked in
+// order, so a fixed segment (`audit/new`) has to come before the `:id`
+// pattern that would also match it. Keep in step with the routes below.
+const ROUTE_TITLES: [pattern: string, title: string][] = [
+  ['/', 'Sign in'],
+  ['/setup', 'Set up your profile'],
+  ['/home', 'Home'],
+  ['/home/browse', 'Browse inventory'],
+  ['/home/browse/item', 'Inventory item'],
+  ['/home/loans', 'My hardware loans'],
+  ['/home/loans/:id', 'Loan details'],
+  ['/home/loans/:id/return', 'Request a return'],
+  ['/home/checkout', 'Check out: select hardware'],
+  ['/home/checkout/confirm', 'Check out: confirm hardware'],
+  ['/home/checkout/return-date', 'Check out: return date'],
+  ['/home/checkout/sign-agreement', 'Check out: sign agreement'],
+  ['/home/checkout/availability', 'Check out: availability'],
+  ['/home/checkout/success', 'Check out: request sent'],
+  ['/adminHome', 'Admin home'],
+  ['/adminHome/loans', 'Hardware loans'],
+  ['/adminHome/loans/:id', 'Loan details'],
+  ['/adminHome/loans/:id/hand-off', 'Hand off: scan item'],
+  ['/adminHome/loans/:id/hand-off/agreement', 'Hand off: agreement'],
+  ['/adminHome/members', 'Members'],
+  ['/adminHome/members/:id', 'Member details'],
+  ['/adminHome/audit-log', 'Audit log'],
+  ['/adminHome/inventory', 'Manage inventory'],
+  ['/adminHome/inventory/audit', 'Inventory audits'],
+  ['/adminHome/inventory/audit/new', 'New inventory audit'],
+  ['/adminHome/inventory/audit/:id', 'Inventory audit report'],
+  ['/adminHome/inventory/:id', 'Inventory item'],
+  ['/adminHome/add-item', 'Add inventory item'],
+  ['/adminHome/add-item/labels', 'Add inventory item: labels'],
+  ['/adminHome/add-item/done', 'Add inventory item: done'],
+  ['/adminHome/get-labels', 'Get labels'],
+  ['/adminHome/get-labels/browse', 'Get labels: browse'],
+  ['/adminHome/get-labels/browse/:id', 'Get labels: item'],
+  ['/adminHome/emails/user', 'Member emails'],
+  ['/adminHome/emails/admin', 'Admin emails'],
+  ['/adminHome/emails/log', 'Email log'],
+  ['/adminHome/emails/:category/:templateId', 'Edit email template'],
+  ['/adminHome/return', 'Return hardware'],
+  ['/adminHome/return/pick', 'Return hardware: pick loan'],
+  ['/adminHome/return/:id/confirm', 'Return hardware: confirm'],
+  ['/adminHome/checkout', 'Check out hardware'],
+  ['/adminHome/checkout/pick', 'Check out hardware: pick loan'],
+  ['/adminHome/checkout/:id/agreement', 'Check out hardware: agreement'],
+]
+
+const APP_TITLE = 'Synaptech HMS'
+
+function RouteTitle() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    const match = ROUTE_TITLES.find(([pattern]) => matchPath(pattern, pathname))
+    document.title = match ? `${match[1]} – ${APP_TITLE}` : APP_TITLE
+  }, [pathname])
+
+  return null
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <PreloadRoutes />
+      <RouteTitle />
       <PageTransition>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>

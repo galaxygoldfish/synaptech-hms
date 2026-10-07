@@ -79,7 +79,7 @@ export function ScanColumn({
         {permissionError ? (
           <div className={styles.scanError}>
             <CameraIconFilled size={32} />
-            <p className={styles.inlineError}>{permissionError}</p>
+            <p className={styles.inlineError} role="alert">{permissionError}</p>
           </div>
         ) : isSupported ? (
           <video

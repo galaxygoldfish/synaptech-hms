@@ -503,7 +503,7 @@ export default function AddInventoryItemPage() {
           </>
         )}
 
-        {submitError && <p className={styles.submitError}>{submitError}</p>}
+        {submitError && <p className={styles.submitError} role="alert">{submitError}</p>}
 
         <div className={styles.actions}>
           <button type="button" className={styles.backButton} onClick={() => navigate('/adminHome')}>

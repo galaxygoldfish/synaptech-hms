@@ -89,7 +89,7 @@
   font-family: 'Rubik', sans-serif;
   font-weight: 400;
   font-size: 1.25rem;
-  color: #969696;
+  color: #707070;
   margin: 0 0 1rem;
 }
 
@@ -112,7 +112,7 @@
 .hardwareEmptyText {
   font-family: 'Rubik', sans-serif;
   font-size: 1.25rem;
-  color: #969696;
+  color: #707070;
   opacity: 0.83;
   margin: 0;
 }
@@ -631,7 +631,7 @@
 .loanDate {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0 0 0.75rem;
 }
 

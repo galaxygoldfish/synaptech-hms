@@ -8,7 +8,7 @@
 .sectionLabel {
   font-family: 'Rubik', sans-serif;
   font-size: 0.8125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 .card {
@@ -20,7 +20,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 2rem 0;
 }
@@ -37,7 +37,7 @@
   font-size: 0.875rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.47);
+  color: rgba(0, 0, 0, 0.6);
   text-align: left;
   padding: 0.8125rem 1.25rem;
   white-space: nowrap;

@@ -1,4 +1,5 @@
 import styles from './Modal.module.css'
+import { ModalDialog } from './ModalDialog'
 
 interface ConfirmActionModalProps {
   isOpen: boolean
@@ -38,12 +39,10 @@ export default function ConfirmActionModal({
           modals elsewhere in the app (EmailLog's detail modal, say). Without
           this it was an anonymous div, so assistive tech gave no signal that
           a confirmation had taken over the screen. */}
-      <div
+      <ModalDialog
         className={wide ? `${styles.modal} ${styles.modalWide}` : styles.modal}
-        role="dialog"
-        aria-modal="true"
         aria-label={heading}
-        onClick={(event) => event.stopPropagation()}
+        onClose={confirmDisabled ? undefined : onCancel}
       >
         <div className={styles.headerRow}>
           <h2 className={styles.heading}>{heading}</h2>
@@ -67,7 +66,7 @@ export default function ConfirmActionModal({
             {confirmLabel}
           </button>
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

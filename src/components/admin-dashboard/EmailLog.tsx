@@ -10,6 +10,7 @@ import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import { useEdgeFade } from '../../lib/useEdgeFade'
 import styles from './EmailLog.module.css'
+import { ModalDialog } from '../ModalDialog'
 
 type StatusFilter = 'all' | EmailLogStatus
 
@@ -74,14 +75,6 @@ function StatusBadge({ status }: { status: EmailLogStatus }) {
 }
 
 function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => void }) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
   // The list doesn't carry the rendered HTML (see fetchEmailLog), so it's
   // fetched for the one email opened. undefined while loading; null when
   // there is none or it couldn't be loaded, which falls back to the
@@ -105,12 +98,10 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose} role="presentation">
-      <div
+      <ModalDialog
         className={styles.modal}
-        role="dialog"
-        aria-modal="true"
         aria-label={`Email detail: ${entry.templateLabel}`}
-        onClick={(event) => event.stopPropagation()}
+        onClose={onClose}
       >
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{entry.templateLabel}</h2>
@@ -190,7 +181,7 @@ function DetailModal({ entry, onClose }: { entry: EmailLogEntry; onClose: () => 
             <p className={styles.bodyBox}>{entry.bodyText}</p>
           )}
         </div>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

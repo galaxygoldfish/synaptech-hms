@@ -1,4 +1,5 @@
 import styles from './Modal.module.css'
+import { ModalDialog } from './ModalDialog'
 
 interface Props {
   isOpen: boolean
@@ -21,10 +22,10 @@ export default function AccountErrorModal({ isOpen, onRetry }: Props) {
 
   return (
     <div className={`${styles.overlay} ${styles.overlayError}`}>
-      <div className={styles.modal}>
+      <ModalDialog className={styles.modal} aria-labelledby="account-error-dialog-heading">
         <div className={styles.headerRow}>
           <WarningIcon />
-          <h2 className={`${styles.heading} ${styles.headingError}`}>Account error</h2>
+          <h2 id="account-error-dialog-heading" className={`${styles.heading} ${styles.headingError}`}>Account error</h2>
         </div>
 
         <div className={styles.bodyGroup}>
@@ -41,7 +42,7 @@ export default function AccountErrorModal({ isOpen, onRetry }: Props) {
         <button className={styles.button} onClick={onRetry}>
           Try again
         </button>
-      </div>
+      </ModalDialog>
     </div>
   )
 }

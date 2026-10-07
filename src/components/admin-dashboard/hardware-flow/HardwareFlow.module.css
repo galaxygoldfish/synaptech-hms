@@ -91,7 +91,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -244,7 +244,7 @@
   font-size: 1.125rem;
   font-weight: 500;
   line-height: 1.5;
-  color: #c3c9d3;
+  color: #5f6775;
   text-align: center;
   padding: 0 2rem;
   margin: 0;
@@ -333,7 +333,7 @@
   flex-shrink: 0;
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   letter-spacing: 0.04em;
 }
 
@@ -351,7 +351,7 @@
 }
 
 .dialogInput::placeholder {
-  color: var(--gray-400);
+  color: #757575;
   letter-spacing: 0.04em;
   text-transform: none;
 }
@@ -453,7 +453,7 @@
   width: 8.5rem;
   font-family: 'Rubik', sans-serif;
   font-size: 1rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   margin: 0;
 }
 
@@ -616,7 +616,7 @@
 /* An item with no serial assigned is the reason half of this screen exists,
    so the row says so plainly rather than leaving a gap. */
 .pickSerialMissing {
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.6);
   font-style: italic;
 }
 

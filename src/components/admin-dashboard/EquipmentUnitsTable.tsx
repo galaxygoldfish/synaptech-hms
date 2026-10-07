@@ -352,7 +352,7 @@ export function EquipmentUnitsTable({ equipmentId, productName, onCountChange }:
                 {holdError}
               </p>
             )}
-            {addError && <p className={styles.inlineError}>{addError}</p>}
+            {addError && <p className={styles.inlineError} role="alert">{addError}</p>}
 
             <div className={styles.footer}>
               <button type="button" className={styles.addButton} onClick={() => void handleAddItem()} disabled={isAdding}>

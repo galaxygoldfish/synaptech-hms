@@ -86,7 +86,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
 }
@@ -280,7 +280,7 @@
   font-size: 1.125rem;
   font-weight: 500;
   line-height: 1.5;
-  color: #c3c9d3;
+  color: #5f6775;
   text-align: center;
   padding: 0 2rem;
   margin: 0;

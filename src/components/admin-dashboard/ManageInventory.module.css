@@ -120,7 +120,7 @@
 .status {
   font-family: 'Rubik', sans-serif;
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   text-align: center;
   padding: 3rem 0;
   max-width: 34rem;
@@ -231,7 +231,7 @@
 
 .countLabel {
   font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.62);
   white-space: nowrap;
 }
 
