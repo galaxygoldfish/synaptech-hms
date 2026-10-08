@@ -15,6 +15,8 @@ Working notes for anyone (human or AI agent) changing this codebase: how it is l
 - **Migrations are applied by hand** in the Supabase SQL editor, in filename order. Keep them idempotent, and keep every migration's version prefix unique.
 - **Types:** `src/types.ts` and `src/types/` both exist — Supabase row types alongside dashboard/API-shaped ones.
 - **Styling:** CSS Modules next to each component; a few shared global classes and design tokens (`--blue-bg`, `--green-fg`, …) live in `src/styles.css`. Layouts are responsive, with phone breakpoints at 640px and 480px (and 800px on the member home page).
+- **Dialogs** use [`ModalDialog`](src/components/ModalDialog.tsx) for the box inside each modal's overlay: it supplies `role="dialog"`, moves focus in and back out, keeps Tab inside, and calls `onClose` on Escape (pass `undefined` while the dialog is busy, and do the same for the overlay's click). Don't hand-roll `role="dialog"` on a div.
+- **Page titles** come from `ROUTE_TITLES` in [`src/router.tsx`](src/router.tsx). A new route needs an entry there; `router.test.tsx` fails if one is missing.
 - **Tests:** Vitest + React Testing Library in `src/test/`. Run `npm run test:run` and `npm run build` (which type-checks) before pushing.
 
 ## Project structure
@@ -118,6 +120,8 @@ Product photos are uploaded to a public `equipment-images` Storage bucket; signe
 The `email_log` columns recording the message body and archive CC are added by [`supabase/migrations/20260916010000_email_log_detail.sql`](supabase/migrations/20260916010000_email_log_detail.sql) — run it before deploying the functions, or sends will fail to log.
 
 Every change to those tables is recorded in `audit_log` — see [App audit log](#app-audit-log) below.
+
+Profile setup (`/setup`) won't submit until the member ticks agreement to the Synaptech HMS Privacy Policy; it and the Hardware Checkout & Usage Policy are Google Docs linked from that page (URLs at the top of [`ProfileSetupPage.tsx`](src/pages/ProfileSetupPage.tsx)), so officers can edit them without a deploy. The agreement itself is **not stored** — `profiles` has no consent column — and members who set up a profile before the checkbox existed were never shown it.
 
 A member's home address is masked behind a **Reveal** control on the admin "Member details" screen. It isn't removed, because it's printed on the loan agreement each member signs and is what the club has to go on when hardware doesn't come back — the point is that opening someone's profile to check their Discord handle shouldn't also put their home address on screen. The signed agreement PDF still carries it in full.
 
@@ -231,7 +235,15 @@ Two things a member can do to their own loan from "My hardware loans" without an
 
 Both surface immediately through `bucketForLoanItem`: a cancelled request drops out of every list (same as denied), and a return request moves the item into the `'returns'` bucket — the admin "Hardware loans" list, the loan detail screen's **Return requested** row, and the member's **Processing return request** badge all read the same field.
 
-One rough edge worth knowing about: the admin loan detail screen ([`LoanDetail.tsx`](src/components/admin-dashboard/LoanDetail.tsx)) only has a `LoanState` for `denied`, not `cancelled` — `bucketForLoanItem` returns `null` for both, and the screen falls back to labelling either one "Denied". A cancelled request and a denied one are therefore visually indistinguishable to an admin who lands on that detail page directly.
+`bucketForLoanItem` returns `null` for both cancelled and denied requests; the admin loan detail screen ([`LoanDetail.tsx`](src/components/admin-dashboard/LoanDetail.tsx)) tells them apart by `status` and labels each one correctly, showing who cancelled and why when it was an admin.
+
+### Admin cancel, unit hold and unit switch
+
+Three things an admin can do to a request or a unit before anything is handed over. Each has its own migration, and in each the database stamps who and when and refuses the change if it no longer makes sense — the app's own checks are only there to give a readable message first.
+
+- **Cancel a pending request, with a reason** — `cancelLoanRequestAsAdmin` in [`src/lib/loanRequests.ts`](src/lib/loanRequests.ts), from the loan detail screen. It's the same `'pending'` → `'cancelled'` transition a member makes, compare-and-set on `'pending'`, plus `loan_requests.cancelled_at`/`cancelled_by`/`cancellation_reason`. The reason is required in the UI (500 characters, enforced client-side only) because the member is emailed it: `checkout-request-cancellation`, sent by the `loan_request.cancelled` event only when the canceller isn't the member. [`20261002000000_admin_loan_cancellation.sql`](supabase/migrations/20261002000000_admin_loan_cancellation.sql); redeploy `send-email` after applying it.
+- **Put a unit on hold** — `setEquipmentUnitOnHold` in [`src/lib/inventory.ts`](src/lib/inventory.ts), from the item's units table. Sets `equipment_units.on_hold_at`/`on_hold_by`, which takes the unit out of `available_equipment_units`, `equipment_availability` and the reservation guard, so members can neither see nor request it. Only a free unit can be held — a unit on a live request belongs to that request, and the way to stop it going out is to cancel the request. [`20261002010000_unit_hold.sql`](supabase/migrations/20261002010000_unit_hold.sql).
+- **Switch the unit on a pending request** — `switchLoanItemUnit` in [`src/lib/loanRequests.ts`](src/lib/loanRequests.ts), from the loan detail screen. Points the item at another free unit of the same product and writes the new serial into section 2 of the member's signed agreement (`restampAgreementSerial` in [`loanAgreementApproval.ts`](src/lib/loanAgreementApproval.ts)). Like the hand-off stamp, the rewritten copy is a new object (`…-unit-<serial>.pdf`) and the agreement as signed stays in the bucket. The new copy is uploaded before the item is repointed, so a failed switch can leave an unused PDF behind but never an item without its agreement. [`20261005000000_loan_item_unit_switch.sql`](supabase/migrations/20261005000000_loan_item_unit_switch.sql) adds the database guard (only while `'pending'`, only to the same product) and the readable audit entry; without it a switch still works but is fenced by the app alone.
 
 ## Inventory audits
 

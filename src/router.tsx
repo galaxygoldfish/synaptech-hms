@@ -164,8 +164,9 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
 // screen-reader user arriving on a page, or anyone looking through their
 // tabs or history, couldn't tell where they were (WCAG 2.4.2). Checked in
 // order, so a fixed segment (`audit/new`) has to come before the `:id`
-// pattern that would also match it. Keep in step with the routes below.
-const ROUTE_TITLES: [pattern: string, title: string][] = [
+// pattern that would also match it. Keep in step with the routes below —
+// router.test.tsx fails if a route has no title here.
+export const ROUTE_TITLES: [pattern: string, title: string][] = [
   ['/', 'Sign in'],
   ['/setup', 'Set up your profile'],
   ['/home', 'Home'],

@@ -33,8 +33,11 @@ export default function ConfirmActionModal({
 }: ConfirmActionModalProps) {
   if (!isOpen) return null
 
+  // confirmDisabled means the action is in flight — every caller passes its
+  // isDeleting/isSaving flag — so the overlay can't dismiss it either, same
+  // as Escape below.
   return (
-    <div className={`${styles.overlay} ${styles.overlayWelcome}`} onClick={onCancel}>
+    <div className={`${styles.overlay} ${styles.overlayWelcome}`} onClick={confirmDisabled ? undefined : onCancel}>
       {/* Announced as a dialog, named by its own heading — matching the
           modals elsewhere in the app (EmailLog's detail modal, say). Without
           this it was an anonymous div, so assistive tech gave no signal that
