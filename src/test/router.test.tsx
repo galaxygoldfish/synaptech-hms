@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
-import { PublicRoute, SetupRoute, PrivateRoute, AdminRoute } from '../router'
+import { PublicRoute, SetupRoute, PrivateRoute, AdminRoute, ROUTE_TITLES } from '../router'
 import type { Profile } from '../types/index'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
@@ -217,5 +217,23 @@ describe('AdminRoute', () => {
     mockAuth({ session: mockSession, profile: adminProfile })
     renderGuard(<AdminRoute><Child /></AdminRoute>)
     expect(screen.getByText('Protected Content')).toBeInTheDocument()
+  })
+})
+
+// ── Page titles ──────────────────────────────────────────────────────────────
+
+describe('ROUTE_TITLES', () => {
+  it('has a title for every route in AppRouter', async () => {
+    // Read from source rather than rendering AppRouter, which would pull in
+    // every lazy page. The catch-all redirect has no screen to title.
+    const { default: source } = await import('../router.tsx?raw')
+    const routePaths = [...source.matchAll(/<Route path="([^"]+)"/g)]
+      .map((match) => match[1])
+      .filter((path) => path !== '*')
+    const titled = new Set(ROUTE_TITLES.map(([pattern]) => pattern))
+
+    expect(routePaths.length).toBeGreaterThan(0)
+    expect(routePaths.filter((path) => !titled.has(path))).toEqual([])
+    expect([...titled].filter((pattern) => !routePaths.includes(pattern))).toEqual([])
   })
 })
