@@ -1,4 +1,4 @@
-import brainLogo from '../assets/synaptech-brain.png'
+import brainLogo from '../assets/synaptech-brain.svg'
 import styles from './BrandWordmark.module.css'
 
 const MUTED_FROM_CLASS = {

@@ -20,6 +20,8 @@ export function preloadAgreementPdfLib(): void {
     // Retried on use; the failure is reported there.
   })
 }
+// A PNG rasterised from synaptech-brain.svg, because jsPDF's addImage can't
+// embed SVG. Regenerate it from the SVG if the logo changes.
 import brainLogo from '../assets/synaptech-brain.png'
 import bungeeRegularFont from '../assets/fonts/Bungee-Regular.ttf?url'
 import rubikRegularFont from '../assets/fonts/Rubik-Regular.ttf?url'

@@ -1,4 +1,4 @@
-import brainLogo from '../../../assets/synaptech-brain.png'
+import brainLogo from '../../../assets/synaptech-brain.svg'
 import { encodeCode128B } from '../../../lib/code128'
 import styles from './SerialBarcodeLabel.module.css'
 
