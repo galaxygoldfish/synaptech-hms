@@ -1,4 +1,4 @@
-import brainLogo from '../../assets/synaptech-brain.png'
+import brainLogo from '../../assets/synaptech-brain.svg'
 import {
   AGREEMENT_INTRO_PARAGRAPHS,
   AGREEMENT_SIGNATURE_DISCLAIMER,

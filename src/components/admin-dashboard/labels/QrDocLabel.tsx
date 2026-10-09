@@ -1,4 +1,4 @@
-import brainLogo from '../../../assets/synaptech-brain.png'
+import brainLogo from '../../../assets/synaptech-brain.svg'
 import qrItemDocs from '../../../assets/qr-item-docs.png'
 import qrCheckoutPolicy from '../../../assets/qr-checkout-policy.png'
 import styles from './QrDocLabel.module.css'
