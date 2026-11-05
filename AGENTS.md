@@ -125,7 +125,7 @@ Profile setup (`/setup`) won't submit until the member ticks agreement to the Sy
 
 A member's home address is masked behind a **Reveal** control on the admin "Member details" screen. It isn't removed, because it's printed on the loan agreement each member signs and is what the club has to go on when hardware doesn't come back — the point is that opening someone's profile to check their Discord handle shouldn't also put their home address on screen. The signed agreement PDF still carries it in full.
 
-Row-level security restricts each table to the rows a user is allowed to see/edit (e.g. members can only read/create their own `loan_requests` and can't edit them after submitting; only admins can review a request or edit `equipment`, `equipment_units`, and `equipment_addons`; only the profile owner can read/write their own `profiles` row).
+Row-level security restricts each table to the rows a user is allowed to see/edit (e.g. members can only read/create their own `loan_requests` and can't edit them after submitting; only admins can review a request or edit `equipment`, `equipment_units`, and `equipment_addons`; only the profile owner can read/write their own `profiles` row, and then only the columns granted in [`20261104000000_profiles_column_grants.sql`](supabase/migrations/20261104000000_profiles_column_grants.sql) — see [Project groups → Security](#security)).
 
 The `equipment`/`equipment_units` columns and the `equipment_addons` table, RLS policies, and storage bucket/policies are defined in [`supabase/migrations/20260817000000_equipment_inventory.sql`](supabase/migrations/20260817000000_equipment_inventory.sql) — written defensively (`if not exists` throughout) since this repo has no prior migration history to confirm the exact shape already live in Supabase. The `category` column was added afterward in [`supabase/migrations/20260817010000_equipment_category.sql`](supabase/migrations/20260817010000_equipment_category.sql), and the table-level grants (RLS policies alone aren't sufficient — see that migration's comment) in [`supabase/migrations/20260817020000_equipment_grants.sql`](supabase/migrations/20260817020000_equipment_grants.sql). The `loan_requests`/`loan_request_items`/`loan_request_availability` tables, their RLS policies and grants, and the `loan-agreements` bucket are defined in [`supabase/migrations/20260817030000_loan_requests.sql`](supabase/migrations/20260817030000_loan_requests.sql). Run all four via the Supabase SQL editor or CLI against your project, in order. Admin visibility over `profiles` (the "View registered members" and "Member details" screens) comes from [`supabase/migrations/20260916000000_profiles_admin_visibility_fix.sql`](supabase/migrations/20260916000000_profiles_admin_visibility_fix.sql), which supersedes the read/update policies in `20260817040000`/`20260817050000` — those were written as a policy on `profiles` that selects from `profiles`, which Postgres rejects as infinite recursion. Run it too; without it an admin sees only their own row.
 
@@ -262,7 +262,30 @@ How a sheet is read ([`_shared/memberGroups.ts`](supabase/functions/_shared/memb
 
 A run that can't reach Google, finds no sheets, or finds no readable members table changes nothing, so a revoked share or a wrong folder id never resets everyone to "None". Only profiles whose values actually change are written, so the App audit log gets one `member.group_changed` entry per real move rather than one per member per night.
 
-The columns are written only by the service role. [`20261104000000_profiles_column_grants.sql`](supabase/migrations/20261104000000_profiles_column_grants.sql) replaced `authenticated`'s table-wide insert/update on `profiles` with column-level grants (personal fields, plus `role` for admins, still guarded by `guard_profile_role_change`). It also pins `uw_email` to the verified sign-in address on insert, so the email the matching relies on can't be pointed at someone else's. A column added to `profiles` later gets no client write access unless a migration grants it.
+### Security
+
+What stops each part of this from being misused, and where it's enforced:
+
+- **Members can't set their own group.** [`20261104000000_profiles_column_grants.sql`](supabase/migrations/20261104000000_profiles_column_grants.sql) replaced `authenticated`'s table-wide insert/update on `profiles` with column-level grants:
+  - *insert*: the fields profile setup sends;
+  - *update*: the personal fields, plus `role` for admins (still refused for non-admins by `guard_profile_role_change` in `20261031000000_profile_role_guard.sql`).
+
+  `project_group`/`project_group_size` have no grant, so only the service role (the sync function) can write them. A column added to `profiles` later is the same: no client write access unless a migration grants it.
+- **Members can't claim someone else's group.** Matching is on `profiles.uw_email`, so that column has to be trustworthy:
+  - A `before insert` trigger (`pin_profile_uw_email`) overwrites it with the verified sign-in address from `auth.users`.
+  - It isn't in the update grant, so a signed-in user can't change it afterwards.
+  - The same migration backfills existing rows to their sign-in address once. Any row that changes shows in the App audit log as a **System** profile update. That's normally none, since setup pre-fills and locks the field.
+- **Only admins can run a sync.** The function is deployed with `--no-verify-jwt`, so its own check is the only gate. `withSupabase({ auth: ['user', 'secret'] })` rejects any request that isn't a valid user JWT or the project secret key, and the user path then requires `profiles.role = 'admin'`. `trigger_member_group_sync()` (the cron entry point) is revoked from `anon`/`authenticated`, so it can't be called through the API.
+- **Runs can't pile up.** A partial unique index allows one unfinished `member_group_sync_runs` row at a time. A second caller (a double click, or the button during the nightly run) gets a 409. A run left unfinished for 10 minutes is closed out as failed so it can't block later ones.
+- **Sync history is admin-only.** `member_group_sync_runs` has RLS on, with an admin-only `select` policy via `is_admin()`, select-only for `authenticated`, and no access for `anon`. Only the service role writes it.
+- **Google access is read-only and narrow.** The service account holds Viewer on the groups folder and nothing else. The function requests only `drive.metadata.readonly` and `spreadsheets.readonly`.
+- **Nothing sensitive leaks.** Google errors are reduced to "Google … failed (HTTP n)" before being stored or returned; response bodies, the token and the key never reach the database or the browser. Only the group name and count are stored, not the sheets' email lists. No member data is sent to Google: the sheets are read and matched inside the function.
+- **Failures change nothing.** A Google outage, an empty folder or no readable sheet ends the run as failed before any profile is written.
+
+Known limits, accepted rather than fixed:
+
+- **The sheets are the authority.** Anyone who can edit a group's sheet decides who appears in that group, and with what size. The app trusts the club Drive's own sharing. A member added to a second sheet surfaces as a warning, nothing more.
+- **Cron reuses the project secret key.** It reads the same `service_role_key` Vault secret as `notify_email_event` rather than a single-purpose secret. Rotating that key (see [Automated emails](#one-time-setup)) covers both.
 
 ### Setup
 
