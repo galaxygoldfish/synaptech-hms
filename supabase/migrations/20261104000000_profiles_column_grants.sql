@@ -57,3 +57,15 @@ drop trigger if exists pin_profile_uw_email on public.profiles;
 create trigger pin_profile_uw_email
   before insert on public.profiles
   for each row execute function public.pin_profile_uw_email();
+
+-- The trigger covers new rows only. Bring existing ones into line once, so
+-- every profile's uw_email is its verified sign-in address before anything
+-- (project-group matching) relies on it. Normally a no-op — setup pre-fills
+-- and locks the field — but nothing enforced that until now. Any row that
+-- does change shows in the App audit log as a System profile update.
+update public.profiles p
+   set uw_email = u.email
+  from auth.users u
+ where u.id = p.id
+   and u.email is not null
+   and p.uw_email is distinct from u.email;
