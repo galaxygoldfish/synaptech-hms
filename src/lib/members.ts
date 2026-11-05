@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import type { Profile } from '../types/index'
@@ -57,4 +58,93 @@ export async function deleteMember(id: string): Promise<void> {
   invalidate(CACHE_KEYS.members)
   if (error) throw error
   if (!data?.ok) throw new Error(data?.error ?? 'Failed to delete account')
+}
+
+// ── Project groups ──────────────────────────────────────────────────────
+// profiles.project_group / project_group_size are written only by the
+// sync-member-groups Edge Function, which reads the group sheets in the
+// club Drive (see AGENTS.md, "Project groups"). Admin screens only.
+
+/** The member's project group for display — 'None' when they aren't in one. */
+export function groupLabel(member: Pick<Profile, 'project_group'>): string {
+  return member.project_group ?? 'None'
+}
+
+/** The member's group size for display — 1 when they aren't in a group. */
+export function groupSize(member: Pick<Profile, 'project_group' | 'project_group_size'>): number {
+  return member.project_group ? member.project_group_size : 1
+}
+
+export interface GroupSyncRun {
+  id: string
+  started_at: string
+  finished_at: string | null
+  ok: boolean | null
+  trigger: 'manual' | 'cron'
+  sheets_scanned: number | null
+  members_matched: number | null
+  warnings: string[]
+  error: string | null
+}
+
+export interface GroupSyncResult {
+  sheetsScanned: number
+  membersMatched: number
+  membersUpdated: number
+  warnings: string[]
+}
+
+/** Another sync (the nightly one, or another admin's click) is still running. */
+export class GroupSyncBusyError extends Error {
+  constructor() {
+    super('A group sync is already running. Try again in a minute.')
+    this.name = 'GroupSyncBusyError'
+  }
+}
+
+/** The most recent sync attempt, finished or not, or null if none has run. */
+export async function fetchLastGroupSync(): Promise<GroupSyncRun | null> {
+  const { data, error } = await supabase
+    .from('member_group_sync_runs')
+    .select('id, started_at, finished_at, ok, trigger, sheets_scanned, members_matched, warnings, error')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return (data as GroupSyncRun | null) ?? null
+}
+
+async function functionErrorMessage(error: FunctionsHttpError): Promise<string | null> {
+  try {
+    const body = (await error.context.json()) as { error?: string }
+    return body?.error ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function syncMemberGroups(): Promise<GroupSyncResult> {
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean; error?: string } & GroupSyncResult>(
+    'sync-member-groups',
+    { body: {} },
+  )
+  // Whatever happened, some profiles may have been rewritten.
+  invalidate(CACHE_KEYS.members)
+  invalidate(CACHE_KEYS.auditLog)
+
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      if (error.context.status === 409) throw new GroupSyncBusyError()
+      const message = await functionErrorMessage(error)
+      if (message) throw new Error(message)
+    }
+    throw error
+  }
+  if (!data?.ok) throw new Error(data?.error ?? 'The group sync failed')
+  return {
+    sheetsScanned: data.sheetsScanned,
+    membersMatched: data.membersMatched,
+    membersUpdated: data.membersUpdated,
+    warnings: data.warnings ?? [],
+  }
 }

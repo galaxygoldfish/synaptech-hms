@@ -245,6 +245,40 @@ Three things an admin can do to a request or a unit before anything is handed ov
 - **Put a unit on hold** — `setEquipmentUnitOnHold` in [`src/lib/inventory.ts`](src/lib/inventory.ts), from the item's units table. Sets `equipment_units.on_hold_at`/`on_hold_by`, which takes the unit out of `available_equipment_units`, `equipment_availability` and the reservation guard, so members can neither see nor request it. Only a free unit can be held — a unit on a live request belongs to that request, and the way to stop it going out is to cancel the request. [`20261002010000_unit_hold.sql`](supabase/migrations/20261002010000_unit_hold.sql).
 - **Switch the unit on a pending request** — `switchLoanItemUnit` in [`src/lib/loanRequests.ts`](src/lib/loanRequests.ts), from the loan detail screen. Points the item at another free unit of the same product and writes the new serial into section 2 of the member's signed agreement (`restampAgreementSerial` in [`loanAgreementApproval.ts`](src/lib/loanAgreementApproval.ts)). Like the hand-off stamp, the rewritten copy is a new object (`…-unit-<serial>.pdf`) and the agreement as signed stays in the bucket. The new copy is uploaded before the item is repointed, so a failed switch can leave an unused PDF behind but never an item without its agreement. [`20261005000000_loan_item_unit_switch.sql`](supabase/migrations/20261005000000_loan_item_unit_switch.sql) adds the database guard (only while `'pending'`, only to the same product) and the readable audit entry; without it a switch still works but is fenced by the app alone.
 
+## Project groups
+
+Admins see two extra facts per member on "View registered members" and "Member details": the member's **project group** ("None" if they aren't in one) and the **group size** (1 if none). Members see neither: no member screen reads them.
+
+The source of truth is the club Drive. Each project group keeps a Google Sheet in one shared folder, and one of its tabs holds a members table with an email column. The [`sync-member-groups`](supabase/functions/sync-member-groups/index.ts) Edge Function lists the folder (sheets, plus shortcuts to sheets kept elsewhere), reads each sheet, looks every profile's `uw_email` up in them, and writes `profiles.project_group`/`project_group_size`. It runs when an admin presses **Sync groups** on the members list, and nightly at 09:15 UTC from `pg_cron` (`trigger_member_group_sync()` in [`20261104010000_member_groups.sql`](supabase/migrations/20261104010000_member_groups.sql)). Every attempt is recorded in `member_group_sync_runs` (admin-readable, kept 90 days), which is where the screen's "Groups last synced …" line and its warnings come from.
+
+How a sheet is read ([`_shared/memberGroups.ts`](supabase/functions/_shared/memberGroups.ts), pure and unit-tested):
+
+- The **header** is the first cell in the top 10 rows that says "email" ("Email", "E-mail", "UW Email", …). A title row above the table is fine.
+- The table ends at the first **fully blank row**. A row with other data but no email is skipped, not treated as the end.
+- Tab names aren't standardised yet, so every tab is searched and the first one with emails wins. Once they are, set `GROUP_SHEET_TAB` and only that tab is read.
+- The **group name** is the spreadsheet's file title (`groupNameFor`). If it moves into a cell, that function is the one place to change.
+- The **size** is the number of distinct emails on the sheet, including people who haven't signed up to HMS.
+- A member on **two sheets** is shown in the larger group (ties by name) and listed as a warning for an officer to sort out.
+
+A run that can't reach Google, finds no sheets, or finds no readable members table changes nothing, so a revoked share or a wrong folder id never resets everyone to "None". Only profiles whose values actually change are written, so the App audit log gets one `member.group_changed` entry per real move rather than one per member per night.
+
+The columns are written only by the service role. [`20261104000000_profiles_column_grants.sql`](supabase/migrations/20261104000000_profiles_column_grants.sql) replaced `authenticated`'s table-wide insert/update on `profiles` with column-level grants (personal fields, plus `role` for admins, still guarded by `guard_profile_role_change`). It also pins `uw_email` to the verified sign-in address on insert, so the email the matching relies on can't be pointed at someone else's. A column added to `profiles` later gets no client write access unless a migration grants it.
+
+### Setup
+
+1. In Google Cloud, create a service account (no roles needed) and a JSON key for it. Enable the **Google Drive API** and **Google Sheets API** on its project.
+2. Share the groups folder with the service account's email as **Viewer**. That's the only thing it can see. The function asks for read-only scopes (`drive.metadata.readonly`, `spreadsheets.readonly`).
+3. Set the function's secrets and deploy:
+   ```bash
+   supabase secrets set GOOGLE_SERVICE_ACCOUNT_JSON="$(cat key.json)" GROUP_SHEETS_FOLDER_ID=<folder id from its URL>
+   supabase secrets set GROUP_SHEET_TAB="Members"   # optional, once the tab name is standardised
+   supabase functions deploy sync-member-groups --no-verify-jwt
+   ```
+   `--no-verify-jwt` for the same reason as `send-email`: the cron caller presents the project secret key, not a JWT. `withSupabase({ auth: ['user', 'secret'] })` accepts that or a signed-in user, and the function then requires the user to be an admin. Anything else is rejected before Google is touched.
+4. Apply `20261104000000_profiles_column_grants.sql`, then `20261104010000_member_groups.sql`. The cron call reuses the `edge_functions_url`/`service_role_key` Vault secrets from [Automated emails](#one-time-setup). If `pg_cron` is off, the migration prints a notice and the button still works.
+
+To rotate the key, create a new one, `supabase secrets set` it, and delete the old one in Google Cloud. Nothing needs redeploying.
+
 ## Inventory audits
 
 An inventory audit is someone standing in the hardware storage facility scanning everything on the shelf. The admin "Inventory audit" screen (`/adminHome/inventory/audit`) lists past audits newest first with a single badge for each — **All accounted for**, **N missing**, or **N discrepancies** — and a **New audit** button that opens the live scan at `/adminHome/inventory/audit/new`. Clicking a past audit opens its report at `/adminHome/inventory/audit/:id`.

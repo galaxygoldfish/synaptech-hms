@@ -51,6 +51,8 @@ const member = {
   role: 'member' as const,
   created_at: '2026-08-16T12:00:00Z',
   updated_at: '2026-08-16T12:00:00Z',
+  project_group: null as string | null,
+  project_group_size: 1,
 }
 
 beforeEach(() => {
@@ -167,5 +169,24 @@ describe('MemberDetail — delete account', () => {
 
     expect(await screen.findByText('Could not delete this account. Please try again.')).toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+})
+
+describe('MemberDetail — project group', () => {
+  it('shows the member’s group and its size', async () => {
+    vi.mocked(fetchProfileById).mockResolvedValue({ ...member, project_group: 'EEG Speller', project_group_size: 6 })
+    renderMemberDetail()
+
+    expect(await screen.findByText('EEG Speller')).toBeInTheDocument()
+    expect(screen.getByText('Project group')).toBeInTheDocument()
+    expect(screen.getByText('Group size')).toBeInTheDocument()
+    expect(screen.getByText('6')).toBeInTheDocument()
+  })
+
+  it('shows None and a size of 1 for a member in no group', async () => {
+    renderMemberDetail()
+
+    expect(await screen.findByText('None')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
   })
 })

@@ -4,8 +4,17 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
-import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon } from './icons'
-import { fetchAllProfiles, peekAllProfiles } from '../../lib/members'
+import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon, PersonIcon, SwapIcon } from './icons'
+import {
+  fetchAllProfiles,
+  fetchLastGroupSync,
+  groupLabel,
+  groupSize,
+  GroupSyncBusyError,
+  peekAllProfiles,
+  syncMemberGroups,
+  type GroupSyncRun,
+} from '../../lib/members'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
@@ -16,9 +25,21 @@ function formatJoinedDate(iso: string): string {
   return `${date.toLocaleDateString(undefined, { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 
+function formatSyncTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 function matchesQuery(member: Profile, query: string): boolean {
-  const haystack = `${member.first_name} ${member.last_name} ${member.uw_email} ${member.discord}`.toLowerCase()
+  const haystack =
+    `${member.first_name} ${member.last_name} ${member.uw_email} ${member.discord} ${member.project_group ?? ''}`.toLowerCase()
   return haystack.includes(query)
+}
+
+/** One line under the toolbar describing the latest group sync. */
+function describeSyncRun(run: GroupSyncRun): string {
+  if (!run.finished_at) return `Group sync in progress (started ${formatSyncTime(run.started_at)})`
+  if (!run.ok) return `Last group sync failed ${formatSyncTime(run.finished_at)}${run.error ? `: ${run.error}` : ''}`
+  return `Groups last synced ${formatSyncTime(run.finished_at)}`
 }
 
 export default function ViewMembers() {
@@ -32,6 +53,55 @@ export default function ViewMembers() {
   const [isLoading, setLoading] = useState(initialMembers === null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+
+  const [lastSync, setLastSync] = useState<GroupSyncRun | null>(null)
+  const [isSyncing, setSyncing] = useState(false)
+  const [syncNotice, setSyncNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchLastGroupSync()
+      .then((run) => {
+        if (!cancelled) setLastSync(run)
+      })
+      .catch((syncError) => {
+        // Only the status line depends on it; the list itself still works.
+        // eslint-disable-next-line no-console
+        console.error('Failed to load last group sync:', syncError)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncNotice(null)
+    try {
+      const result = await syncMemberGroups()
+      setSyncNotice({
+        tone: 'ok',
+        text: `Synced ${result.sheetsScanned} group ${result.sheetsScanned === 1 ? 'sheet' : 'sheets'}: ${result.membersMatched} ${result.membersMatched === 1 ? 'member is' : 'members are'} in a group.`,
+      })
+    } catch (syncError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to sync member groups:', syncError)
+      setSyncNotice({
+        tone: 'error',
+        text:
+          syncError instanceof GroupSyncBusyError
+            ? syncError.message
+            : `Could not sync groups${syncError instanceof Error && syncError.message ? `: ${syncError.message}` : '.'}`,
+      })
+    } finally {
+      setSyncing(false)
+    }
+    // Refresh both whether or not the sync succeeded — a failed run is
+    // still recorded, and a partial one may have changed some rows.
+    const [membersResult, runResult] = await Promise.allSettled([fetchAllProfiles(), fetchLastGroupSync()])
+    if (membersResult.status === 'fulfilled') setMembers(membersResult.value)
+    if (runResult.status === 'fulfilled') setLastSync(runResult.value)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -89,7 +159,43 @@ export default function ViewMembers() {
           <div className={styles.searchWrap}>
             <SearchBar value={query} onChange={setQuery} placeholder="Search members" />
           </div>
+          <button
+            type="button"
+            className={styles.syncButton}
+            onClick={() => void handleSync()}
+            disabled={isSyncing}
+            aria-label={isSyncing ? 'Syncing project groups' : 'Sync project groups'}
+          >
+            <SwapIcon size={20} />
+            <span>{isSyncing ? 'Syncing…' : 'Sync groups'}</span>
+          </button>
         </div>
+
+        {(lastSync || syncNotice) && (
+          <div className={styles.syncStatus}>
+            {syncNotice && (
+              <p
+                className={syncNotice.tone === 'error' ? styles.syncNoticeError : styles.syncNotice}
+                role={syncNotice.tone === 'error' ? 'alert' : 'status'}
+              >
+                {syncNotice.text}
+              </p>
+            )}
+            {lastSync && <p className={styles.syncLine}>{describeSyncRun(lastSync)}</p>}
+            {lastSync && lastSync.warnings.length > 0 && (
+              <details className={styles.syncWarnings}>
+                <summary>
+                  {lastSync.warnings.length} {lastSync.warnings.length === 1 ? 'warning' : 'warnings'} from the last sync
+                </summary>
+                <ul>
+                  {lastSync.warnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
 
         <div className={styles.card}>
           {isLoading && (
@@ -145,6 +251,13 @@ export default function ViewMembers() {
                     <span className={styles.memberDetail}>
                       <HandleIcon size={18} />
                       <span>{member.discord}</span>
+                    </span>
+
+                    <span className={`${styles.memberDetail} ${styles.memberGroup}`}>
+                      <PersonIcon size={18} />
+                      <span>
+                        {groupLabel(member)} · {groupSize(member)}
+                      </span>
                     </span>
 
                     <span className={styles.memberJoined}>

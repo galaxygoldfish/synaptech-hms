@@ -43,6 +43,69 @@
   min-width: 0;
 }
 
+/* Same shape as .backButton, on the toolbar's trailing edge. */
+.syncButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: rgba(131, 156, 197, 0.44);
+  border: 3px solid transparent;
+  border-radius: 1rem;
+  padding: 1.25rem 1.75rem;
+  color: rgba(0, 0, 0, 0.66);
+  font-family: 'Rubik', sans-serif;
+  font-size: 1.125rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.syncButton:hover:not(:disabled) {
+  background: rgba(131, 156, 197, 0.6);
+}
+
+.syncButton:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* ── Group sync status (under the toolbar) ───────────────────── */
+
+.syncStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-top: -0.5rem;
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.9375rem;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.syncStatus p {
+  margin: 0;
+}
+
+.syncNotice {
+  color: var(--green-fg);
+}
+
+.syncNoticeError {
+  color: #a3261b;
+}
+
+.syncWarnings summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.syncWarnings ul {
+  margin: 0.375rem 0 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 @media (max-width: 900px) {
   /* Same height as the search bar beside it, on tablet and phone alike —
      stretch, not each sized by its own padding, the way the inventory-audit
@@ -68,6 +131,16 @@
   }
 
   .backButton span {
+    display: none;
+  }
+
+  .syncButton {
+    padding: 0.8125rem;
+    aspect-ratio: 1;
+    justify-content: center;
+  }
+
+  .syncButton span {
     display: none;
   }
 }
@@ -205,6 +278,7 @@
       'name badge'
       'email email'
       'handle handle'
+      'group group'
       'joined joined';
     row-gap: 0.375rem;
     column-gap: 1rem;
@@ -232,6 +306,10 @@
     grid-area: handle;
   }
 
+  .memberItem > .memberGroup {
+    grid-area: group;
+  }
+
   .memberJoined {
     grid-area: joined;
   }
@@ -245,7 +323,8 @@
     grid-template-areas:
       'name badge'
       'email email'
-      'handle joined';
+      'handle joined'
+      'group group';
   }
 
   .memberJoined {

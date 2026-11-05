@@ -41,6 +41,7 @@ One of Synaptech's missions at UW is to increase access to neurotechnology educa
   - [View automated email log](documentation/admin-facing/view-automated-email-log.md)
 - Administrative
   - [Manage user roles](documentation/admin-facing/manage-user-roles.md)
+  - [Sync project groups](documentation/admin-facing/sync-project-groups.md)
   - [Access app audit log](documentation/admin-facing/access-app-audit-log.md)
 
 ## Development environment setup

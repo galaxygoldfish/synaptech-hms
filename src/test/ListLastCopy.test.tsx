@@ -25,6 +25,8 @@ const bob: Profile = {
   role: 'member',
   created_at: '2026-09-01T00:00:00Z',
   updated_at: '2026-09-01T00:00:00Z',
+  project_group: null,
+  project_group_size: 1,
 }
 
 beforeEach(() => {

@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import ConfirmActionModal from '../ConfirmActionModal'
 import { ArrowLeftIcon, CheckmarkIconFilled, CopyIcon, PersonIcon, TrashIconOutline } from './icons'
-import { countAdmins, deleteMember, fetchProfileById, updateMemberRole } from '../../lib/members'
+import { countAdmins, deleteMember, fetchProfileById, groupLabel, groupSize, updateMemberRole } from '../../lib/members'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -28,6 +28,8 @@ const DETAIL_LABELS = [
   'UW Email',
   'Student ID',
   'Discord',
+  'Project group',
+  'Group size',
   'Phone #',
   'Address',
   'Registration date',
@@ -35,7 +37,7 @@ const DETAIL_LABELS = [
 ] as const
 
 // Varied widths so the placeholder reads as data rather than a bar chart.
-const SKELETON_VALUE_WIDTHS = ['9rem', '14rem', '7rem', '10rem', '8.5rem', '16rem', '11rem', '5rem']
+const SKELETON_VALUE_WIDTHS = ['9rem', '14rem', '7rem', '10rem', '12rem', '2rem', '8.5rem', '16rem', '11rem', '5rem']
 
 function DetailRow({ label, value, copyable }: DetailRowProps) {
   return (
@@ -290,6 +292,8 @@ export default function MemberDetail() {
               <DetailRow label="UW Email" value={member.uw_email} copyable />
               <DetailRow label="Student ID" value={member.student_id} copyable />
               <DetailRow label="Discord" value={member.discord} copyable />
+              <DetailRow label="Project group" value={groupLabel(member)} />
+              <DetailRow label="Group size" value={String(groupSize(member))} />
               <DetailRow label="Phone #" value={member.phone} />
               <AddressRow address={member.address} />
               <DetailRow label="Registration date" value={formatRegistrationDate(member.created_at)} />
