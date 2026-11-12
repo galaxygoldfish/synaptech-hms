@@ -289,7 +289,7 @@ Known limits, accepted rather than fixed:
 
 ### Setup
 
-1. In Google Cloud, create a service account (no roles needed) and a JSON key for it. Enable the **Google Drive API** and **Google Sheets API** on its project.
+1. In the **existing** Google Cloud project, the one holding the OAuth client that Supabase Auth uses for Google sign-in, enable the **Google Drive API** and **Google Sheets API**. Then create a service account (no roles) and a JSON key for it. Don't create a separate project. Enabling the APIs doesn't change sign-in or the consent screen, and a service account with no roles can't touch anything else in the project.
 2. Share the groups folder with the service account's email as **Viewer**. That's the only thing it can see. The function asks for read-only scopes (`drive.metadata.readonly`, `spreadsheets.readonly`).
 3. Set the function's secrets and deploy:
    ```bash
