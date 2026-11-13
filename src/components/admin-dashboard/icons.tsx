@@ -30,6 +30,18 @@ export function PersonIcon({ size = 16, className }: IconProps) {
   );
 }
 
+/** Two people — a project group. Same stroke weight as PersonIcon. */
+export function GroupIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="9" cy="8.5" r="3" stroke={stroke} strokeWidth="1.6" />
+      <path d="M3.5 19.5c.9-3.2 3.2-4.8 5.5-4.8s4.6 1.6 5.5 4.8" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M15.2 5.8a2.8 2.8 0 1 1 0 5.4" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M16.6 14.8c1.9.3 3.4 1.8 4 4.7" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ClockIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>

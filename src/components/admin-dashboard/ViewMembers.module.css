@@ -245,27 +245,27 @@
   white-space: nowrap;
 }
 
-/* Groups stack one per line and are never cut off: the cell doesn't
-   shrink on desktop (email and handle give way instead), and a name too
-   long for a phone-width line wraps. */
+/* Groups stack one per line, each with its icon, and are never cut off:
+   the cell doesn't shrink on desktop (email and handle give way instead),
+   and a name too long for a phone-width line wraps. */
 .memberGroup {
-  flex-shrink: 0;
-  align-items: flex-start;
-}
-
-.memberGroup svg {
-  /* Level with the first line rather than the middle of the stack. */
-  margin-top: 0.15em;
-}
-
-.memberDetail .groupLines {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
-.memberDetail .groupLines span {
+.memberGroup .memberDetail {
+  align-items: flex-start;
+  overflow: visible;
+}
+
+.memberGroup .memberDetail svg {
+  /* Level with the text's first line if a long name wraps. */
+  margin-top: 0.1em;
+}
+
+.memberGroup .memberDetail span {
   overflow: visible;
   white-space: normal;
 }

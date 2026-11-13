@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { SearchBar } from './SearchBar'
-import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon, PersonIcon, SwapIcon } from './icons'
+import { ArrowLeftIcon, ClockIcon, GroupIcon, HandleIcon, MailIcon, SwapIcon } from './icons'
 import {
   fetchAllProfiles,
   fetchLastGroupSync,
@@ -253,15 +253,14 @@ export default function ViewMembers() {
                       <span>{member.discord}</span>
                     </span>
 
-                    <span className={`${styles.memberDetail} ${styles.memberGroup}`}>
-                      <PersonIcon size={18} />
-                      {/* One line per group, stacked, so a second group adds
-                          height rather than pushing the row's columns over. */}
-                      <span className={styles.groupLines}>
-                        {groupLines(member).map((line, index) => (
-                          <span key={index}>{line}</span>
-                        ))}
-                      </span>
+                    {/* One line per group, each with its own icon. */}
+                    <span className={styles.memberGroup}>
+                      {groupLines(member).map((line, index) => (
+                        <span key={index} className={styles.memberDetail}>
+                          <GroupIcon size={18} />
+                          <span>{line}</span>
+                        </span>
+                      ))}
                     </span>
 
                     <span className={styles.memberJoined}>
