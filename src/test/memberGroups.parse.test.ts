@@ -55,6 +55,32 @@ describe('extractEmails', () => {
   it('returns null for a tab with no email column', () => {
     expect(extractEmails([['Task', 'Owner']])).toBeNull()
   })
+
+  it('finds the column by its @uw.edu contents when no header says email', () => {
+    const rows = [
+      ['Project Members'],
+      ['Name', 'NetID', 'Role'],
+      ['Ada', 'ada@uw.edu', 'Lead'],
+      [],
+      ['Bob', 'BOB@uw.edu', 'Member'],
+    ]
+    expect(extractEmails(rows)).toEqual(['ada@uw.edu', 'bob@uw.edu'])
+  })
+
+  it('prefers the column with more @uw.edu addresses over one with other emails', () => {
+    const rows = [
+      ['Name', 'Personal', 'School'],
+      ['Ada', 'ada@gmail.com', 'ada@uw.edu'],
+      ['Bob', 'bob@gmail.com', 'bob@uw.edu'],
+      ['Cy', 'cy@gmail.com', ''],
+    ]
+    expect(extractEmails(rows)).toEqual(['ada@uw.edu', 'bob@uw.edu'])
+  })
+
+  it('falls back to contents when the header-like cell sits over an empty column', () => {
+    const rows = [['Email us with questions', 'Name', 'Contact'], ['', 'Ada', 'ada@uw.edu']]
+    expect(extractEmails(rows)).toEqual(['ada@uw.edu'])
+  })
 })
 
 describe('emailsFromTabs', () => {

@@ -98,7 +98,9 @@ interface SyncOutcome {
   warnings: string[];
 }
 
-async function runSync(admin: AdminClient): Promise<SyncOutcome> {
+// `warnings` is the caller's, so a run that fails part-way still records
+// what it found ("could not be read (HTTP 403)", …) for the screen to show.
+async function runSync(admin: AdminClient, warnings: string[]): Promise<SyncOutcome> {
   const serviceAccount = parseServiceAccount(requireEnv("GOOGLE_SERVICE_ACCOUNT_JSON"));
   const folderId = requireEnv("GROUP_SHEETS_FOLDER_ID");
   const onlyTab = Deno.env.get("GROUP_SHEET_TAB")?.trim() || undefined;
@@ -115,7 +117,6 @@ async function runSync(admin: AdminClient): Promise<SyncOutcome> {
     );
   }
 
-  const warnings: string[] = [];
   const excelNote = (count: number) =>
     count > 0 ? ` It has ${count} Excel file${count === 1 ? "" : "s"}, which need saving as Google Sheets.` : "";
 
@@ -164,7 +165,11 @@ async function runSync(admin: AdminClient): Promise<SyncOutcome> {
   }
 
   if (groups.length === 0) {
-    throw new Error(`None of the ${sources.length} projects in "${folderName}" had a readable members table`);
+    const reasons = warnings.slice(0, 3).join(" ");
+    throw new Error(
+      `None of the ${sources.length} projects in "${folderName}" had a readable members table.` +
+        (reasons ? ` ${reasons}${warnings.length > 3 ? ` (+${warnings.length - 3} more)` : ""}` : ""),
+    );
   }
 
   const members = await fetchAllMembers(admin);
@@ -235,8 +240,9 @@ export default {
       return json({ ok: false, error: "Could not start the sync" }, 500);
     }
 
+    const warnings: string[] = [];
     try {
-      const outcome = await runSync(admin);
+      const outcome = await runSync(admin, warnings);
       await admin
         .from("member_group_sync_runs")
         .update({
@@ -259,7 +265,7 @@ export default {
       console.error("sync-member-groups: run failed:", error);
       await admin
         .from("member_group_sync_runs")
-        .update({ finished_at: new Date().toISOString(), ok: false, error: message })
+        .update({ finished_at: new Date().toISOString(), ok: false, error: message, warnings })
         .eq("id", run.id);
       return json({ ok: false, error: message }, 500);
     }

@@ -68,21 +68,65 @@ function isBlankRow(row: string[] | undefined): boolean {
   return !row || row.every((cell) => !cell || !cell.trim());
 }
 
+const UW_EMAIL = /@uw\.edu$/i;
+
+/**
+ * The column whose cells hold the most email addresses — @uw.edu ones
+ * counted first, since that's what members sign in with. Null if no cell in
+ * the tab holds an email. Header wording doesn't matter.
+ */
+export function findEmailColumnByContent(rows: string[][]): number | null {
+  const scores = new Map<number, { uw: number; any: number }>();
+  for (const row of rows) {
+    row.forEach((cell, column) => {
+      const match = (cell ?? '').match(EMAIL_PATTERN);
+      if (!match) return;
+      const score = scores.get(column) ?? { uw: 0, any: 0 };
+      score.any++;
+      if (UW_EMAIL.test(match[0])) score.uw++;
+      scores.set(column, score);
+    });
+  }
+  let best: number | null = null;
+  let bestScore = { uw: 0, any: 0 };
+  for (const [column, score] of [...scores].sort(([a], [b]) => a - b)) {
+    if (score.uw > bestScore.uw || (score.uw === bestScore.uw && score.any > bestScore.any)) {
+      best = column;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 /**
  * The emails in a tab's members table, normalised and de-duplicated, or null
- * when the tab has no email column at all. Reading stops at the first fully
- * blank row — the end of the table — so notes further down aren't counted.
- * A row with other data but no email is skipped rather than ending the table.
+ * when the tab has no email column at all.
+ *
+ * With a header cell saying "email", reading starts under it and stops at
+ * the first fully blank row — the end of the table — so notes further down
+ * aren't counted; a row with other data but no email is skipped rather than
+ * ending the table. Without one, the column is found by its contents (the
+ * most @uw.edu addresses) and every email in it is taken.
  */
 export function extractEmails(rows: string[][]): string[] | null {
-  const header = findEmailColumn(rows);
-  if (!header) return null;
-
   const emails = new Set<string>();
-  for (let r = header.headerRow + 1; r < rows.length; r++) {
-    const row = rows[r];
-    if (isBlankRow(row)) break;
-    const match = (row[header.column] ?? '').match(EMAIL_PATTERN);
+  const header = findEmailColumn(rows);
+  if (header) {
+    for (let r = header.headerRow + 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (isBlankRow(row)) break;
+      const match = (row[header.column] ?? '').match(EMAIL_PATTERN);
+      if (match) emails.add(normalizeEmail(match[0]));
+    }
+    if (emails.size > 0) return [...emails];
+  }
+
+  // No usable header (missing, or a header-like cell over the wrong column):
+  // go by what the cells hold.
+  const column = findEmailColumnByContent(rows);
+  if (column === null) return header ? [] : null;
+  for (const row of rows) {
+    const match = (row[column] ?? '').match(EMAIL_PATTERN);
     if (match) emails.add(normalizeEmail(match[0]));
   }
   return [...emails];
