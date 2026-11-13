@@ -245,6 +245,25 @@
   white-space: nowrap;
 }
 
+/* Groups stack one per line. On desktop the cell keeps a fixed width, so
+   a long group name or a second group never shifts the other columns. */
+.memberGroup {
+  flex: 0 0 15rem;
+  align-items: flex-start;
+}
+
+.memberGroup svg {
+  /* Level with the first line rather than the middle of the stack. */
+  margin-top: 0.15em;
+}
+
+.memberDetail .groupLines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
 .memberJoined {
   display: inline-flex;
   align-items: center;

@@ -124,7 +124,8 @@ describe('ViewMembers — project groups', () => {
 
     expect(syncMemberGroups).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('Synced 3 group sheets: 10 members are in a group.')).toBeInTheDocument()
-    expect(await screen.findByText('Robot Arm · 4, EEG Speller · 5')).toBeInTheDocument()
+    expect(await screen.findByText('Robot Arm · 4')).toBeInTheDocument()
+    expect(screen.getByText('EEG Speller · 5')).toBeInTheDocument()
   })
 
   it('says so when a sync is already running', async () => {

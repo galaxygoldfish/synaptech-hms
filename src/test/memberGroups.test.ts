@@ -1,5 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { groupNames, groupsDetail, groupsLabel, GroupSyncBusyError, syncMemberGroups } from '../lib/members'
+import { groupLines, groupNames, groupsDetail, GroupSyncBusyError, syncMemberGroups } from '../lib/members'
 import * as queryCache from '../lib/queryCache'
 import { supabase } from '../lib/supabase'
 
@@ -19,13 +19,13 @@ describe('group display helpers', () => {
   const twoGroups = { project_groups: [{ name: 'Mind Games', size: 5 }, { name: 'Robot Arm', size: 1 }] }
 
   it('lists every group with its size', () => {
-    expect(groupsLabel(twoGroups)).toBe('Mind Games · 5, Robot Arm · 1')
+    expect(groupLines(twoGroups)).toEqual(['Mind Games · 5', 'Robot Arm · 1'])
     expect(groupsDetail(twoGroups)).toBe('Mind Games (5 members), Robot Arm (1 member)')
     expect(groupNames(twoGroups)).toBe('Mind Games Robot Arm')
   })
 
   it('shows None for a member in no group', () => {
-    expect(groupsLabel({ project_groups: [] })).toBe('None · 1')
+    expect(groupLines({ project_groups: [] })).toEqual(['None · 1'])
     expect(groupsDetail({ project_groups: [] })).toBe('None')
     expect(groupNames({ project_groups: [] })).toBe('')
   })

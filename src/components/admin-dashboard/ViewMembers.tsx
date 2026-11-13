@@ -8,8 +8,8 @@ import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon, PersonIcon, SwapIcon } 
 import {
   fetchAllProfiles,
   fetchLastGroupSync,
+  groupLines,
   groupNames,
-  groupsLabel,
   GroupSyncBusyError,
   peekAllProfiles,
   syncMemberGroups,
@@ -255,7 +255,13 @@ export default function ViewMembers() {
 
                     <span className={`${styles.memberDetail} ${styles.memberGroup}`}>
                       <PersonIcon size={18} />
-                      <span>{groupsLabel(member)}</span>
+                      {/* One line per group, stacked, so a second group adds
+                          height rather than pushing the row's columns over. */}
+                      <span className={styles.groupLines}>
+                        {groupLines(member).map((line, index) => (
+                          <span key={index}>{line}</span>
+                        ))}
+                      </span>
                     </span>
 
                     <span className={styles.memberJoined}>
