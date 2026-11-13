@@ -255,7 +255,7 @@ How a sheet is read ([`_shared/memberGroups.ts`](supabase/functions/_shared/memb
 
 - The **email column** is found by its header if one of the top 10 rows has a cell saying "email" ("Email", "E-mail", "UW Email", …). Otherwise it's the column holding the most `@uw.edu` addresses, whatever its header says.
 - Under an email header, the table ends at the first **fully blank row**. A row with other data but no email is skipped, not treated as the end.
-- Tab names aren't standardised yet, so every tab is searched and the first one with emails wins. Once they are, set `GROUP_SHEET_TAB` and only that tab is read.
+- Tab names aren't standardised yet, so every tab is searched: tabs whose name contains "member" first, then the rest, each in sheet order. The first with emails wins. Once they are, set `GROUP_SHEET_TAB` and only that tab is read.
 - The **group name** is the project's folder name (`groupNameFor`). A sheet sitting loose in the groups folder is a group of its own, named by its title. If the name moves into a cell, that function is the one place to change.
 - A project folder usually holds other sheets too. Its **members sheet** is the one with emails; if several have them, a title containing "member", "roster" or "team" wins, then the most emails (`pickRosterSheet`), and the run warns which one it used.
 - **Excel files** aren't read. A project whose only list is an `.xlsx` gets a warning saying so (File → Save as Google Sheets fixes it).

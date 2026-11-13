@@ -93,6 +93,22 @@ describe('emailsFromTabs', () => {
     expect(emailsFromTabs(tabs)).toEqual(['ada@uw.edu'])
   })
 
+  it('reads a tab named like the members list before tabs to its left', () => {
+    const tabs = [
+      { title: 'Sign-ups', rows: [['Email'], ['x@uw.edu'], ['y@uw.edu']] },
+      { title: 'Project Members', rows: [['Name', 'UW'], ['Ada', 'ada@uw.edu']] },
+    ]
+    expect(emailsFromTabs(tabs)).toEqual(['ada@uw.edu'])
+  })
+
+  it('falls back to other tabs when the members tab has no emails', () => {
+    const tabs = [
+      { title: 'Members', rows: [['Email']] },
+      { title: 'Sheet1', rows: [['Email'], ['ada@uw.edu']] },
+    ]
+    expect(emailsFromTabs(tabs)).toEqual(['ada@uw.edu'])
+  })
+
   it('distinguishes an empty members table from no members table at all', () => {
     expect(emailsFromTabs([{ title: 'Members', rows: [['Email']] }])).toEqual([])
     expect(emailsFromTabs([{ title: 'Notes', rows: [['Hello']] }])).toBeNull()

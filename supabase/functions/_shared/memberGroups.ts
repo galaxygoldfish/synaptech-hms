@@ -132,13 +132,23 @@ export function extractEmails(rows: string[][]): string[] | null {
   return [...emails];
 }
 
+// A tab titled like the members list ("Members", "Project Members", …) is
+// read before any other, so a sign-up or contacts tab further left that also
+// has emails isn't taken for the roster.
+const MEMBERS_TAB = /member/i;
+
 /**
- * The members list of a whole spreadsheet: the first tab (in sheet order)
- * whose table has at least one email. Null if no tab has an email column.
+ * The members list of a whole spreadsheet: the first tab with at least one
+ * email, trying tabs whose title says "member" before the rest (each group
+ * in sheet order). Null if no tab has an email column.
  */
 export function emailsFromTabs(tabs: SheetTab[]): string[] | null {
+  const ordered = [
+    ...tabs.filter((tab) => MEMBERS_TAB.test(tab.title)),
+    ...tabs.filter((tab) => !MEMBERS_TAB.test(tab.title)),
+  ];
   let sawEmailColumn = false;
-  for (const tab of tabs) {
+  for (const tab of ordered) {
     const emails = extractEmails(tab.rows);
     if (emails === null) continue;
     sawEmailColumn = true;
