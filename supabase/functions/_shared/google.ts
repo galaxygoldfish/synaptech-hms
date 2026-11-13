@@ -24,8 +24,23 @@ const EXCEL_MIMES = new Set([
   "application/vnd.ms-excel",
 ]);
 
-/** Folder listings beyond this are almost certainly the wrong folder. */
+/** More sheets than this is almost certainly the wrong folder. */
 const MAX_FILES = 200;
+/** Folder listing requests per run (pages included), so a huge or wrong folder fails fast. */
+const MAX_FOLDER_LISTINGS = 300;
+
+/** Thrown when the groups folder is too big to be the right one. */
+class FolderTooLargeError extends Error {
+  constructor() {
+    super(`The groups folder is too large to sync (over ${MAX_FILES} sheets or ${MAX_FOLDER_LISTINGS} folder pages) — check GROUP_SHEETS_FOLDER_ID`);
+  }
+}
+
+/** Shared across one walk of the groups folder. */
+interface WalkBudget {
+  listings: number;
+  sheets: number;
+}
 /** Columns/rows read per tab — far more than any group's members table. */
 const TAB_RANGE = "A1:Z1000";
 
@@ -101,11 +116,12 @@ interface FolderChildren {
 }
 
 /** One folder's direct children: sheets, subfolders (shortcuts resolved), and a count of Excel files. */
-async function listFolderChildren(token: string, folderId: string): Promise<FolderChildren> {
+async function listFolderChildren(token: string, folderId: string, budget: WalkBudget): Promise<FolderChildren> {
   const escapedFolder = folderId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   const children: FolderChildren = { sheets: [], folders: [], excelFiles: 0 };
   let pageToken: string | undefined;
   do {
+    if (++budget.listings > MAX_FOLDER_LISTINGS) throw new FolderTooLargeError();
     const params = new URLSearchParams({
       q: `'${escapedFolder}' in parents and trashed = false`,
       fields: "nextPageToken, files(id, name, mimeType, shortcutDetails(targetId, targetMimeType))",
@@ -130,8 +146,11 @@ async function listFolderChildren(token: string, folderId: string): Promise<Fold
         ? { id: file.shortcutDetails?.targetId, mimeType: file.shortcutDetails?.targetMimeType }
         : { id: file.id, mimeType: file.mimeType };
       if (!target.id) continue;
-      if (target.mimeType === SPREADSHEET_MIME) children.sheets.push({ spreadsheetId: target.id, name: file.name });
-      else if (target.mimeType === FOLDER_MIME) children.folders.push({ id: target.id, name: file.name });
+      if (target.mimeType === SPREADSHEET_MIME) {
+        children.sheets.push({ spreadsheetId: target.id, name: file.name });
+      } else if (target.mimeType === FOLDER_MIME) {
+        children.folders.push({ id: target.id, name: file.name });
+      }
       else if (target.mimeType && EXCEL_MIMES.has(target.mimeType)) children.excelFiles++;
     }
     pageToken = page.nextPageToken;
@@ -157,23 +176,25 @@ const MAX_PROJECT_DEPTH = 3;
  * its title. Shortcuts count as what they point at.
  */
 export async function listGroupSources(token: string, rootFolderId: string): Promise<{ groups: GroupSource[]; rootExcelFiles: number }> {
-  const root = await listFolderChildren(token, rootFolderId);
+  const budget: WalkBudget = { listings: 0, sheets: 0 };
+  const root = await listFolderChildren(token, rootFolderId, budget);
+  budget.sheets = root.sheets.length;
+  if (budget.sheets > MAX_FILES || root.folders.length > MAX_FILES) throw new FolderTooLargeError();
   const groups: GroupSource[] = root.sheets.map((sheet) => ({ name: sheet.name, spreadsheets: [sheet], excelFiles: 0 }));
-  let totalSheets = root.sheets.length;
 
   for (const project of root.folders) {
     const seen = new Set<string>([rootFolderId, project.id]);
     const sheets = new Map<string, FolderSpreadsheet>();
     let excelFiles = 0;
     let level = [project.id];
-    for (let depth = 0; depth < MAX_PROJECT_DEPTH && level.length > 0 && totalSheets < MAX_FILES; depth++) {
+    for (let depth = 0; depth < MAX_PROJECT_DEPTH && level.length > 0; depth++) {
       const next: string[] = [];
       for (const folderId of level) {
-        const children = await listFolderChildren(token, folderId);
+        const children = await listFolderChildren(token, folderId, budget);
         for (const sheet of children.sheets) {
           if (!sheets.has(sheet.spreadsheetId)) {
             sheets.set(sheet.spreadsheetId, sheet);
-            totalSheets++;
+            if (++budget.sheets > MAX_FILES) throw new FolderTooLargeError();
           }
         }
         excelFiles += children.excelFiles;
