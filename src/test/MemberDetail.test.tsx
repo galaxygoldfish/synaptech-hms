@@ -51,8 +51,7 @@ const member = {
   role: 'member' as const,
   created_at: '2026-08-16T12:00:00Z',
   updated_at: '2026-08-16T12:00:00Z',
-  project_group: null as string | null,
-  project_group_size: 1,
+  project_groups: [] as { name: string; size: number }[],
 }
 
 beforeEach(() => {
@@ -173,20 +172,17 @@ describe('MemberDetail — delete account', () => {
 })
 
 describe('MemberDetail — project group', () => {
-  it('shows the member’s group and its size', async () => {
-    vi.mocked(fetchProfileById).mockResolvedValue({ ...member, project_group: 'EEG Speller', project_group_size: 6 })
+  it('lists every group the member is in, each with its size', async () => {
+    vi.mocked(fetchProfileById).mockResolvedValue({ ...member, project_groups: [{ name: 'EEG Speller', size: 6 }, { name: 'Robot Arm', size: 1 }] })
     renderMemberDetail()
 
-    expect(await screen.findByText('EEG Speller')).toBeInTheDocument()
-    expect(screen.getByText('Project group')).toBeInTheDocument()
-    expect(screen.getByText('Group size')).toBeInTheDocument()
-    expect(screen.getByText('6')).toBeInTheDocument()
+    expect(await screen.findByText('EEG Speller (6 members), Robot Arm (1 member)')).toBeInTheDocument()
+    expect(screen.getByText('Project groups')).toBeInTheDocument()
   })
 
-  it('shows None and a size of 1 for a member in no group', async () => {
+  it('shows None for a member in no group', async () => {
     renderMemberDetail()
 
     expect(await screen.findByText('None')).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
   })
 })

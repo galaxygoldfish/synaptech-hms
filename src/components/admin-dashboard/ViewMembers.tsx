@@ -8,8 +8,8 @@ import { ArrowLeftIcon, ClockIcon, HandleIcon, MailIcon, PersonIcon, SwapIcon } 
 import {
   fetchAllProfiles,
   fetchLastGroupSync,
-  groupLabel,
-  groupSize,
+  groupNames,
+  groupsLabel,
   GroupSyncBusyError,
   peekAllProfiles,
   syncMemberGroups,
@@ -31,7 +31,7 @@ function formatSyncTime(iso: string): string {
 
 function matchesQuery(member: Profile, query: string): boolean {
   const haystack =
-    `${member.first_name} ${member.last_name} ${member.uw_email} ${member.discord} ${member.project_group ?? ''}`.toLowerCase()
+    `${member.first_name} ${member.last_name} ${member.uw_email} ${member.discord} ${groupNames(member)}`.toLowerCase()
   return haystack.includes(query)
 }
 
@@ -255,9 +255,7 @@ export default function ViewMembers() {
 
                     <span className={`${styles.memberDetail} ${styles.memberGroup}`}>
                       <PersonIcon size={18} />
-                      <span>
-                        {groupLabel(member)} · {groupSize(member)}
-                      </span>
+                      <span>{groupsLabel(member)}</span>
                     </span>
 
                     <span className={styles.memberJoined}>

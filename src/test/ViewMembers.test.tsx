@@ -39,8 +39,7 @@ const base: Profile = {
   role: 'member',
   created_at: '2026-08-16T12:00:00Z',
   updated_at: '2026-08-16T12:00:00Z',
-  project_group: 'EEG Speller',
-  project_group_size: 5,
+  project_groups: [{ name: 'EEG Speller', size: 5 }],
 }
 
 const loner: Profile = {
@@ -50,8 +49,7 @@ const loner: Profile = {
   last_name: 'Tran',
   uw_email: 'cy@uw.edu',
   discord: 'cyt',
-  project_group: null,
-  project_group_size: 1,
+  project_groups: [],
 }
 
 const lastRun: GroupSyncRun = {
@@ -120,13 +118,13 @@ describe('ViewMembers — project groups', () => {
     vi.mocked(syncMemberGroups).mockResolvedValue({ sheetsScanned: 3, membersMatched: 10, membersUpdated: 2, warnings: [] })
     renderList()
     await screen.findByText('EEG Speller · 5')
-    vi.mocked(fetchAllProfiles).mockResolvedValue([{ ...base, project_group: 'Robot Arm', project_group_size: 4 }, loner])
+    vi.mocked(fetchAllProfiles).mockResolvedValue([{ ...base, project_groups: [{ name: 'Robot Arm', size: 4 }, { name: 'EEG Speller', size: 5 }] }, loner])
 
     await userEvent.click(screen.getByRole('button', { name: 'Sync project groups' }))
 
     expect(syncMemberGroups).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('Synced 3 group sheets: 10 members are in a group.')).toBeInTheDocument()
-    expect(await screen.findByText('Robot Arm · 4')).toBeInTheDocument()
+    expect(await screen.findByText('Robot Arm · 4, EEG Speller · 5')).toBeInTheDocument()
   })
 
   it('says so when a sync is already running', async () => {

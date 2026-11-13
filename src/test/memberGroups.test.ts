@@ -1,5 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { groupLabel, groupSize, GroupSyncBusyError, syncMemberGroups } from '../lib/members'
+import { groupNames, groupsDetail, groupsLabel, GroupSyncBusyError, syncMemberGroups } from '../lib/members'
 import * as queryCache from '../lib/queryCache'
 import { supabase } from '../lib/supabase'
 
@@ -15,17 +15,19 @@ beforeEach(() => {
   vi.mocked(supabase.functions.invoke).mockReset()
 })
 
-describe('groupLabel / groupSize', () => {
-  it('shows the group and its size', () => {
-    const member = { project_group: 'EEG Speller', project_group_size: 5 }
-    expect(groupLabel(member)).toBe('EEG Speller')
-    expect(groupSize(member)).toBe(5)
+describe('group display helpers', () => {
+  const twoGroups = { project_groups: [{ name: 'Mind Games', size: 5 }, { name: 'Robot Arm', size: 1 }] }
+
+  it('lists every group with its size', () => {
+    expect(groupsLabel(twoGroups)).toBe('Mind Games · 5, Robot Arm · 1')
+    expect(groupsDetail(twoGroups)).toBe('Mind Games (5 members), Robot Arm (1 member)')
+    expect(groupNames(twoGroups)).toBe('Mind Games Robot Arm')
   })
 
-  it('shows None and 1 for a member in no group', () => {
-    const member = { project_group: null, project_group_size: 1 }
-    expect(groupLabel(member)).toBe('None')
-    expect(groupSize(member)).toBe(1)
+  it('shows None for a member in no group', () => {
+    expect(groupsLabel({ project_groups: [] })).toBe('None · 1')
+    expect(groupsDetail({ project_groups: [] })).toBe('None')
+    expect(groupNames({ project_groups: [] })).toBe('')
   })
 })
 

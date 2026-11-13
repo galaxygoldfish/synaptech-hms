@@ -1,3 +1,9 @@
+/** A project group as recorded on a profile: its name and how many people its sheet lists. */
+export interface ProjectGroup {
+  name: string
+  size: number
+}
+
 export interface Profile {
   id: string
   first_name: string
@@ -8,10 +14,12 @@ export interface Profile {
   address: string
   discord: string
   role: 'member' | 'admin'
-  /** Project group from the Drive group sheets, or null for none. Admin-facing; set only by the sync-member-groups function. */
-  project_group: string | null
-  /** How many people that group's sheet lists — 1 when not in a group. */
-  project_group_size: number
+  /**
+   * Every project group the member is listed in on the Drive group sheets,
+   * largest first; [] when none. Admin-facing; set only by the
+   * sync-member-groups function.
+   */
+  project_groups: ProjectGroup[]
   created_at: string
   updated_at: string
 }

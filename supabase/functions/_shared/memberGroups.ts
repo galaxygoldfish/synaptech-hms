@@ -27,9 +27,15 @@ export interface MemberForMatching {
   uw_email: string;
 }
 
+export interface ProjectGroup {
+  name: string;
+  /** How many distinct emails the group's members sheet lists. */
+  size: number;
+}
+
 export interface MemberGroupAssignment {
-  project_group: string | null;
-  project_group_size: number;
+  /** Every group the member is listed in, largest first; [] = none. */
+  project_groups: ProjectGroup[];
 }
 
 /** How far down a tab to look for the header row. */
@@ -201,17 +207,15 @@ export function pickRosterSheet(
 }
 
 /**
- * Who is in which group. Every member gets an assignment — unmatched members
- * get { null, 1 } so a member who left a group is reset rather than kept.
- *
- * A member listed in more than one sheet is shown in the largest of them
- * (ties broken by name, so the result is stable night to night) and reported
- * as a warning for an officer to sort out.
+ * Who is in which groups. Every member gets an assignment — unmatched members
+ * get [] so a member who left every group is reset rather than kept. A member
+ * on several sheets is in all of those groups, largest first (ties by name,
+ * so the order is stable night to night).
  */
 export function resolveMemberGroups(
   members: MemberForMatching[],
   groups: GroupSheet[],
-): { assignments: Map<string, MemberGroupAssignment>; warnings: string[] } {
+): Map<string, MemberGroupAssignment> {
   const groupsByEmail = new Map<string, GroupSheet[]>();
   for (const group of groups) {
     for (const email of group.emails) {
@@ -222,26 +226,39 @@ export function resolveMemberGroups(
   }
 
   const assignments = new Map<string, MemberGroupAssignment>();
-  const warnings: string[] = [];
-
   for (const member of members) {
     const matches = groupsByEmail.get(normalizeEmail(member.uw_email ?? '')) ?? [];
-    if (matches.length === 0) {
-      assignments.set(member.id, { project_group: null, project_group_size: 1 });
-      continue;
-    }
-
-    const [chosen] = [...matches].sort(
-      (a, b) => b.emails.length - a.emails.length || a.name.localeCompare(b.name),
-    );
-    assignments.set(member.id, { project_group: chosen.name, project_group_size: chosen.emails.length });
-
-    if (matches.length > 1) {
-      const name = `${member.first_name} ${member.last_name}`.trim() || member.uw_email;
-      const names = matches.map((group) => group.name).sort().join(', ');
-      warnings.push(`${name} is listed in ${matches.length} groups (${names}); showing ${chosen.name}.`);
-    }
+    const projectGroups = [...matches]
+      .sort((a, b) => b.emails.length - a.emails.length || a.name.localeCompare(b.name))
+      .map((group) => ({ name: group.name, size: group.emails.length }));
+    assignments.set(member.id, { project_groups: projectGroups });
   }
+  return assignments;
+}
 
-  return { assignments, warnings };
+/** Whether two group lists say the same thing (same groups, sizes and order). */
+export function sameGroups(a: ProjectGroup[], b: ProjectGroup[]): boolean {
+  return a.length === b.length && a.every((group, i) => group.name === b[i].name && group.size === b[i].size);
+}
+
+// "0. Project Example", "1. Project Information Documents", "2) Templates"…
+// The groups folder numbers its housekeeping folders; projects aren't.
+const HOUSEKEEPING_FOLDER = /^\s*\d+\s*[.)]/;
+
+/** Whether a folder in the groups folder is a project, rather than a numbered housekeeping folder. */
+export function isProjectFolder(name: string): boolean {
+  return !HOUSEKEEPING_FOLDER.test(name);
+}
+
+// Every project's roster is titled "Project Members - <project>".
+const PROJECT_MEMBERS_SHEET = /^\s*project members\b/i;
+
+/**
+ * The sheets in a project folder worth reading: only those titled
+ * "Project Members …" when the folder has any (so a stray "NEW Member Sheet"
+ * is never opened), otherwise all of them.
+ */
+export function rosterCandidates<T extends { name: string }>(sheets: T[]): T[] {
+  const named = sheets.filter((sheet) => PROJECT_MEMBERS_SHEET.test(sheet.name));
+  return named.length > 0 ? named : sheets;
 }

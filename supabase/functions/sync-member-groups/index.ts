@@ -1,7 +1,7 @@
 // Reads every project group's Google Sheet and records, on each profile,
-// which group the member is in (profiles.project_group, null = none) and how
-// many people that group's sheet lists (profiles.project_group_size, 1 if
-// none). Admin-facing only — no member screen reads either column.
+// which groups the member is in and how many people each group's sheet lists
+// (profiles.project_groups: [{ name, size }, …], [] = none). Admin-facing
+// only — no member screen reads it.
 //
 // Callers:
 //   * the "Sync groups" button on the admin members screen, through
@@ -40,7 +40,10 @@ import {
   emailsFromTabs,
   groupNameFor,
   pickRosterSheet,
+  type ProjectGroup,
   resolveMemberGroups,
+  rosterCandidates,
+  sameGroups,
   type GroupSheet,
   type MemberForMatching,
 } from "../_shared/memberGroups.ts";
@@ -77,12 +80,14 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   return results;
 }
 
-async function fetchAllMembers(admin: AdminClient): Promise<Array<MemberForMatching & { project_group: string | null; project_group_size: number }>> {
-  const members: Array<MemberForMatching & { project_group: string | null; project_group_size: number }> = [];
+type StoredMember = MemberForMatching & { project_groups: ProjectGroup[] | null };
+
+async function fetchAllMembers(admin: AdminClient): Promise<StoredMember[]> {
+  const members: StoredMember[] = [];
   for (let from = 0; ; from += PROFILE_PAGE_SIZE) {
     const { data, error } = await admin
       .from("profiles")
-      .select("id, first_name, last_name, uw_email, project_group, project_group_size")
+      .select("id, first_name, last_name, uw_email, project_groups")
       .order("id")
       .range(from, from + PROFILE_PAGE_SIZE - 1);
     if (error) throw error;
@@ -121,7 +126,8 @@ async function runSync(admin: AdminClient, warnings: string[]): Promise<SyncOutc
     count > 0 ? ` It has ${count} Excel file${count === 1 ? "" : "s"}, which need saving as Google Sheets.` : "";
 
   // Read every sheet once, then decide per project which one is its roster.
-  const allSheets = sources.flatMap((source) => source.spreadsheets);
+  // Only "Project Members …" sheets, where a project has one.
+  const allSheets = sources.flatMap((source) => rosterCandidates(source.spreadsheets));
   const read = await mapWithConcurrency(allSheets, READ_CONCURRENCY, async (sheet): Promise<CandidateSheet | null> => {
     try {
       const emails = emailsFromTabs(await readSpreadsheetTabs(token, sheet.spreadsheetId, onlyTab));
@@ -144,7 +150,7 @@ async function runSync(admin: AdminClient, warnings: string[]): Promise<SyncOutc
       warnings.push(`"${name}" has no Google Sheets; skipped.${excelNote(source.excelFiles)}`);
       continue;
     }
-    const candidates = source.spreadsheets
+    const candidates = rosterCandidates(source.spreadsheets)
       .map((sheet) => readById.get(sheet.spreadsheetId))
       .filter((sheet): sheet is CandidateSheet => !!sheet);
     if (candidates.length === 0) continue; // every sheet failed to read; already warned
@@ -173,14 +179,13 @@ async function runSync(admin: AdminClient, warnings: string[]): Promise<SyncOutc
   }
 
   const members = await fetchAllMembers(admin);
-  const { assignments, warnings: matchWarnings } = resolveMemberGroups(members, groups);
-  warnings.push(...matchWarnings);
+  const assignments = resolveMemberGroups(members, groups);
 
   // Only rows that actually change are written, so the audit log records
   // real moves rather than every member every night.
   const changed = members.filter((member) => {
     const next = assignments.get(member.id)!;
-    return next.project_group !== member.project_group || next.project_group_size !== member.project_group_size;
+    return !sameGroups(next.project_groups, member.project_groups ?? []);
   });
 
   await mapWithConcurrency(changed, 8, async (member) => {
@@ -188,7 +193,7 @@ async function runSync(admin: AdminClient, warnings: string[]): Promise<SyncOutc
     if (error) throw error;
   });
 
-  const membersMatched = [...assignments.values()].filter((a) => a.project_group !== null).length;
+  const membersMatched = [...assignments.values()].filter((a) => a.project_groups.length > 0).length;
   return { sheetsScanned: groups.length, membersMatched, membersUpdated: changed.length, warnings };
 }
 

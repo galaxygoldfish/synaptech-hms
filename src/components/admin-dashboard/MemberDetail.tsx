@@ -5,7 +5,7 @@ import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import ConfirmActionModal from '../ConfirmActionModal'
 import { ArrowLeftIcon, CheckmarkIconFilled, CopyIcon, PersonIcon, TrashIconOutline } from './icons'
-import { countAdmins, deleteMember, fetchProfileById, groupLabel, groupSize, updateMemberRole } from '../../lib/members'
+import { countAdmins, deleteMember, fetchProfileById, groupsDetail, updateMemberRole } from '../../lib/members'
 import type { Profile } from '../../types/index'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
@@ -28,8 +28,7 @@ const DETAIL_LABELS = [
   'UW Email',
   'Student ID',
   'Discord',
-  'Project group',
-  'Group size',
+  'Project groups',
   'Phone #',
   'Address',
   'Registration date',
@@ -292,8 +291,7 @@ export default function MemberDetail() {
               <DetailRow label="UW Email" value={member.uw_email} copyable />
               <DetailRow label="Student ID" value={member.student_id} copyable />
               <DetailRow label="Discord" value={member.discord} copyable />
-              <DetailRow label="Project group" value={groupLabel(member)} />
-              <DetailRow label="Group size" value={String(groupSize(member))} />
+              <DetailRow label="Project groups" value={groupsDetail(member)} />
               <DetailRow label="Phone #" value={member.phone} />
               <AddressRow address={member.address} />
               <DetailRow label="Registration date" value={formatRegistrationDate(member.created_at)} />

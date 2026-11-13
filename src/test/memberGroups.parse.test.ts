@@ -3,8 +3,11 @@ import {
   extractEmails,
   findEmailColumn,
   groupNameFor,
+  isProjectFolder,
   pickRosterSheet,
   resolveMemberGroups,
+  rosterCandidates,
+  sameGroups,
   type GroupSheet,
 } from '../../supabase/functions/_shared/memberGroups'
 
@@ -163,30 +166,66 @@ describe('resolveMemberGroups', () => {
   const arm: GroupSheet = { spreadsheetId: 's2', name: 'Robot Arm', emails: ['bob@uw.edu', 'ada@uw.edu'] }
 
   it('gives a matched member the group name and the size of its sheet', () => {
-    const { assignments } = resolveMemberGroups([bob], [speller, arm])
-    expect(assignments.get('bob')).toEqual({ project_group: 'Robot Arm', project_group_size: 2 })
+    expect(resolveMemberGroups([bob], [speller, arm]).get('bob')).toEqual({
+      project_groups: [{ name: 'Robot Arm', size: 2 }],
+    })
   })
 
-  it('gives an unmatched member no group and a size of 1', () => {
-    const { assignments, warnings } = resolveMemberGroups([cy], [speller, arm])
-    expect(assignments.get('cy')).toEqual({ project_group: null, project_group_size: 1 })
-    expect(warnings).toEqual([])
+  it('gives an unmatched member no groups', () => {
+    expect(resolveMemberGroups([cy], [speller, arm]).get('cy')).toEqual({ project_groups: [] })
   })
 
   it('matches the profile email case-insensitively', () => {
-    const { assignments } = resolveMemberGroups([ada], [speller])
-    expect(assignments.get('ada')?.project_group).toBe('EEG Speller')
+    expect(resolveMemberGroups([ada], [speller]).get('ada')?.project_groups[0].name).toBe('EEG Speller')
   })
 
-  it('shows a member in two groups in the larger one, and warns', () => {
-    const { assignments, warnings } = resolveMemberGroups([ada], [arm, speller])
-    expect(assignments.get('ada')).toEqual({ project_group: 'EEG Speller', project_group_size: 3 })
-    expect(warnings).toEqual(['Ada L is listed in 2 groups (EEG Speller, Robot Arm); showing EEG Speller.'])
+  it('keeps every group a member is in, largest first', () => {
+    expect(resolveMemberGroups([ada], [arm, speller]).get('ada')).toEqual({
+      project_groups: [
+        { name: 'EEG Speller', size: 3 },
+        { name: 'Robot Arm', size: 2 },
+      ],
+    })
   })
 
-  it('breaks a size tie by name, so the result is stable', () => {
+  it('orders equal-sized groups by name, so the result is stable', () => {
     const a: GroupSheet = { spreadsheetId: 'a', name: 'Beta', emails: ['cy@uw.edu'] }
     const b: GroupSheet = { spreadsheetId: 'b', name: 'Alpha', emails: ['cy@uw.edu'] }
-    expect(resolveMemberGroups([cy], [a, b]).assignments.get('cy')?.project_group).toBe('Alpha')
+    expect(resolveMemberGroups([cy], [a, b]).get('cy')?.project_groups.map((g) => g.name)).toEqual(['Alpha', 'Beta'])
+  })
+})
+
+describe('sameGroups', () => {
+  it('compares names, sizes and order', () => {
+    const one = [{ name: 'A', size: 2 }]
+    expect(sameGroups(one, [{ name: 'A', size: 2 }])).toBe(true)
+    expect(sameGroups(one, [{ name: 'A', size: 3 }])).toBe(false)
+    expect(sameGroups(one, [])).toBe(false)
+  })
+})
+
+describe('isProjectFolder', () => {
+  it('skips numbered housekeeping folders', () => {
+    expect(isProjectFolder('0. Project Example')).toBe(false)
+    expect(isProjectFolder('1. Project Information Documents')).toBe(false)
+    expect(isProjectFolder('2. Standup Templates')).toBe(false)
+    expect(isProjectFolder('3) Archive')).toBe(false)
+  })
+
+  it('keeps project folders, including ones with numbers later in the name', () => {
+    expect(isProjectFolder('Mind Games')).toBe(true)
+    expect(isProjectFolder('Robot Arm 2.0')).toBe(true)
+  })
+})
+
+describe('rosterCandidates', () => {
+  it('reads only Project Members sheets when the folder has one', () => {
+    const sheets = [{ name: 'Project Members - Mind Games' }, { name: 'NEW Member Sheet' }, { name: 'Budget' }]
+    expect(rosterCandidates(sheets)).toEqual([{ name: 'Project Members - Mind Games' }])
+  })
+
+  it('falls back to every sheet when none is titled Project Members', () => {
+    const sheets = [{ name: 'Roster' }, { name: 'Budget' }]
+    expect(rosterCandidates(sheets)).toEqual(sheets)
   })
 })

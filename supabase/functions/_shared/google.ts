@@ -5,7 +5,7 @@
 // key — they end up in member_group_sync_runs, which admins can read.
 
 import { importPKCS8, SignJWT } from "npm:jose@5";
-import type { SheetTab } from "./memberGroups.ts";
+import { isProjectFolder, type SheetTab } from "./memberGroups.ts";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
@@ -182,7 +182,9 @@ export async function listGroupSources(token: string, rootFolderId: string): Pro
   if (budget.sheets > MAX_FILES || root.folders.length > MAX_FILES) throw new FolderTooLargeError();
   const groups: GroupSource[] = root.sheets.map((sheet) => ({ name: sheet.name, spreadsheets: [sheet], excelFiles: 0 }));
 
-  for (const project of root.folders) {
+  // Numbered folders ("0. Project Example", "2. Standup Templates") are
+  // housekeeping, not projects.
+  for (const project of root.folders.filter((folder) => isProjectFolder(folder.name))) {
     const seen = new Set<string>([rootFolderId, project.id]);
     const sheets = new Map<string, FolderSpreadsheet>();
     let excelFiles = 0;

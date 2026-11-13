@@ -247,9 +247,9 @@ Three things an admin can do to a request or a unit before anything is handed ov
 
 ## Project groups
 
-Admins see two extra facts per member on "View registered members" and "Member details": the member's **project group** ("None" if they aren't in one) and the **group size** (1 if none). Members see neither: no member screen reads them.
+Admins see every **project group** a member is in, each with its **group size**, on "View registered members" (`Mind Games · 5, Stress Test Gaming · 4`, or `None · 1`) and "Member details". Members see neither: no member screen reads them.
 
-The source of truth is the club Drive. The shared groups folder holds one subfolder per project, and somewhere in each (up to three folders deep) is a Google Sheet with a members table: one of its tabs has an email column. The [`sync-member-groups`](supabase/functions/sync-member-groups/index.ts) Edge Function walks the folder (following shortcuts), reads every sheet, looks every profile's `uw_email` up in them, and writes `profiles.project_group`/`project_group_size`. It runs when an admin presses **Sync groups** on the members list, and nightly at 09:15 UTC from `pg_cron` (`trigger_member_group_sync()` in [`20261104010000_member_groups.sql`](supabase/migrations/20261104010000_member_groups.sql)). Every attempt is recorded in `member_group_sync_runs` (admin-readable, kept 90 days), which is where the screen's "Groups last synced …" line and its warnings come from.
+The source of truth is the club Drive. The shared groups folder holds one subfolder per project, and somewhere in each (up to three folders deep) is a Google Sheet with a members table: one of its tabs has an email column. The [`sync-member-groups`](supabase/functions/sync-member-groups/index.ts) Edge Function walks the folder (following shortcuts), reads every sheet, looks every profile's `uw_email` up in them, and writes `profiles.project_groups`: a JSON list of `{ name, size }`, largest group first, `[]` for none ([`20261113000000_member_groups_list.sql`](supabase/migrations/20261113000000_member_groups_list.sql) replaced the original single `project_group`/`project_group_size` pair). It runs when an admin presses **Sync groups** on the members list, and nightly at 09:15 UTC from `pg_cron` (`trigger_member_group_sync()` in [`20261104010000_member_groups.sql`](supabase/migrations/20261104010000_member_groups.sql)). Every attempt is recorded in `member_group_sync_runs` (admin-readable, kept 90 days), which is where the screen's "Groups last synced …" line and its warnings come from.
 
 How a sheet is read ([`_shared/memberGroups.ts`](supabase/functions/_shared/memberGroups.ts), pure and unit-tested):
 
@@ -257,10 +257,11 @@ How a sheet is read ([`_shared/memberGroups.ts`](supabase/functions/_shared/memb
 - Under an email header, the table ends at the first **fully blank row**. A row with other data but no email is skipped, not treated as the end.
 - Tab names aren't standardised yet, so every tab is searched: tabs whose name contains "member" first, then the rest, each in sheet order. The first with emails wins. Once they are, set `GROUP_SHEET_TAB` and only that tab is read.
 - The **group name** is the project's folder name (`groupNameFor`). A sheet sitting loose in the groups folder is a group of its own, named by its title. If the name moves into a cell, that function is the one place to change.
-- A project folder usually holds other sheets too. Its **members sheet** is the one with emails; if several have them, a title containing "member", "roster" or "team" wins, then the most emails (`pickRosterSheet`), and the run warns which one it used.
+- Numbered folders in the groups folder ("0. Project Example", "1. Project Information Documents", "2. Standup Templates") are housekeeping, not projects, and are skipped (`isProjectFolder`).
+- A project folder usually holds other sheets too. If any is titled **"Project Members …"**, only those are read (`rosterCandidates`), so a stray "NEW Member Sheet" is ignored. Otherwise every sheet is read, and if several have emails, a title containing "member", "roster" or "team" wins, then the most emails (`pickRosterSheet`), and the run warns which one it used.
 - **Excel files** aren't read. A project whose only list is an `.xlsx` gets a warning saying so (File → Save as Google Sheets fixes it).
 - The **size** is the number of distinct emails on the members sheet, including people who haven't signed up to HMS.
-- A member on **two sheets** is shown in the larger group (ties by name) and listed as a warning for an officer to sort out.
+- A member on **several projects' sheets** is in all of those groups, listed largest first (ties by name). That's normal, not a warning.
 
 A run that can't reach Google, finds no sheets, or finds no readable members table changes nothing, so a revoked share or a wrong folder id never resets everyone to "None". Only profiles whose values actually change are written, so the App audit log gets one `member.group_changed` entry per real move rather than one per member per night.
 
@@ -272,7 +273,7 @@ What stops each part of this from being misused, and where it's enforced:
   - *insert*: the fields profile setup sends;
   - *update*: the personal fields, plus `role` for admins (still refused for non-admins by `guard_profile_role_change` in `20261031000000_profile_role_guard.sql`).
 
-  `project_group`/`project_group_size` have no grant, so only the service role (the sync function) can write them. A column added to `profiles` later is the same: no client write access unless a migration grants it.
+  `project_groups` has no grant, so only the service role (the sync function) can write them. A column added to `profiles` later is the same: no client write access unless a migration grants it.
 - **Members can't claim someone else's group.** Matching is on `profiles.uw_email`, so that column has to be trustworthy:
   - A `before insert` trigger (`pin_profile_uw_email`) overwrites it with the verified sign-in address from `auth.users`.
   - It isn't in the update grant, so a signed-in user can't change it afterwards.

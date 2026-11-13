@@ -105,6 +105,8 @@ const FIELD_LABEL: Record<string, string> = {
   student_id: 'Student ID',
   address: 'Address',
   role: 'Role',
+  project_groups: 'Project groups',
+  // Entries written before members could be in several groups.
   project_group: 'Project group',
   project_group_size: 'Group size',
   name: 'Name',

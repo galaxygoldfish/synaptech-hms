@@ -95,8 +95,7 @@ const member = {
   role: 'member' as const,
   created_at: '2026-08-16T12:00:00Z',
   updated_at: '2026-08-16T12:00:00Z',
-  project_group: null,
-  project_group_size: 1,
+  project_groups: [],
 }
 
 const equipment = {

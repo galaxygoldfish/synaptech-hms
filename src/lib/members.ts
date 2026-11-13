@@ -61,18 +61,31 @@ export async function deleteMember(id: string): Promise<void> {
 }
 
 // ── Project groups ──────────────────────────────────────────────────────
-// profiles.project_group / project_group_size are written only by the
-// sync-member-groups Edge Function, which reads the group sheets in the
-// club Drive (see AGENTS.md, "Project groups"). Admin screens only.
+// profiles.project_groups is written only by the sync-member-groups Edge
+// Function, which reads the group sheets in the club Drive (see AGENTS.md,
+// "Project groups"). Admin screens only.
 
-/** The member's project group for display — 'None' when they aren't in one. */
-export function groupLabel(member: Pick<Profile, 'project_group'>): string {
-  return member.project_group ?? 'None'
+function groupsOf(member: Pick<Profile, 'project_groups'>) {
+  return member.project_groups ?? []
 }
 
-/** The member's group size for display — 1 when they aren't in a group. */
-export function groupSize(member: Pick<Profile, 'project_group' | 'project_group_size'>): number {
-  return member.project_group ? member.project_group_size : 1
+/** The members list's group chip: "Mind Games · 5, Stress Test Gaming · 4", or "None · 1". */
+export function groupsLabel(member: Pick<Profile, 'project_groups'>): string {
+  const groups = groupsOf(member)
+  if (groups.length === 0) return 'None · 1'
+  return groups.map((group) => `${group.name} · ${group.size}`).join(', ')
+}
+
+/** Member details' wording: "Mind Games (5 members), Stress Test Gaming (4 members)", or "None". */
+export function groupsDetail(member: Pick<Profile, 'project_groups'>): string {
+  const groups = groupsOf(member)
+  if (groups.length === 0) return 'None'
+  return groups.map((group) => `${group.name} (${group.size} ${group.size === 1 ? 'member' : 'members'})`).join(', ')
+}
+
+/** The group names, for search. */
+export function groupNames(member: Pick<Profile, 'project_groups'>): string {
+  return groupsOf(member).map((group) => group.name).join(' ')
 }
 
 export interface GroupSyncRun {
