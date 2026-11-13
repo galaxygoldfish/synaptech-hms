@@ -18,6 +18,11 @@ export const GOOGLE_SCOPES = [
 
 const SPREADSHEET_MIME = "application/vnd.google-apps.spreadsheet";
 const SHORTCUT_MIME = "application/vnd.google-apps.shortcut";
+const FOLDER_MIME = "application/vnd.google-apps.folder";
+const EXCEL_MIMES = new Set([
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+]);
 
 /** Folder listings beyond this are almost certainly the wrong folder. */
 const MAX_FILES = 200;
@@ -89,22 +94,20 @@ export interface FolderSpreadsheet {
   name: string;
 }
 
-/**
- * Every Google Sheet directly in the folder, including shortcuts to sheets
- * kept elsewhere — so a group can keep its sheet in its own folder and just
- * drop a shortcut into the groups folder.
- */
-export async function listFolderSpreadsheets(token: string, folderId: string): Promise<FolderSpreadsheet[]> {
-  const escapedFolder = folderId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-  const q =
-    `'${escapedFolder}' in parents and trashed = false and ` +
-    `(mimeType = '${SPREADSHEET_MIME}' or mimeType = '${SHORTCUT_MIME}')`;
+interface FolderChildren {
+  sheets: FolderSpreadsheet[];
+  folders: Array<{ id: string; name: string }>;
+  excelFiles: number;
+}
 
-  const results: FolderSpreadsheet[] = [];
+/** One folder's direct children: sheets, subfolders (shortcuts resolved), and a count of Excel files. */
+async function listFolderChildren(token: string, folderId: string): Promise<FolderChildren> {
+  const escapedFolder = folderId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  const children: FolderChildren = { sheets: [], folders: [], excelFiles: 0 };
   let pageToken: string | undefined;
   do {
     const params = new URLSearchParams({
-      q,
+      q: `'${escapedFolder}' in parents and trashed = false`,
       fields: "nextPageToken, files(id, name, mimeType, shortcutDetails(targetId, targetMimeType))",
       pageSize: "100",
       supportsAllDrives: "true",
@@ -123,18 +126,98 @@ export async function listFolderSpreadsheets(token: string, folderId: string): P
     }>(`${DRIVE_FILES_URL}?${params}`, token, "Drive folder listing");
 
     for (const file of page.files ?? []) {
-      if (file.mimeType === SPREADSHEET_MIME) {
-        results.push({ spreadsheetId: file.id, name: file.name });
-      } else if (file.shortcutDetails?.targetMimeType === SPREADSHEET_MIME && file.shortcutDetails.targetId) {
-        results.push({ spreadsheetId: file.shortcutDetails.targetId, name: file.name });
-      }
+      const target = file.mimeType === SHORTCUT_MIME
+        ? { id: file.shortcutDetails?.targetId, mimeType: file.shortcutDetails?.targetMimeType }
+        : { id: file.id, mimeType: file.mimeType };
+      if (!target.id) continue;
+      if (target.mimeType === SPREADSHEET_MIME) children.sheets.push({ spreadsheetId: target.id, name: file.name });
+      else if (target.mimeType === FOLDER_MIME) children.folders.push({ id: target.id, name: file.name });
+      else if (target.mimeType && EXCEL_MIMES.has(target.mimeType)) children.excelFiles++;
     }
     pageToken = page.nextPageToken;
-  } while (pageToken && results.length < MAX_FILES);
+  } while (pageToken);
+  return children;
+}
 
-  // A sheet both in the folder and shortcut into it counts once.
-  const unique = new Map(results.map((file) => [file.spreadsheetId, file]));
-  return [...unique.values()].slice(0, MAX_FILES);
+/** A project group as found in Drive: its name and the sheets that might hold its members list. */
+export interface GroupSource {
+  name: string;
+  spreadsheets: FolderSpreadsheet[];
+  /** Excel files seen in the group's folder — unreadable until converted. */
+  excelFiles: number;
+}
+
+/** How deep inside a project's folder to look for its sheets. */
+const MAX_PROJECT_DEPTH = 3;
+
+/**
+ * The groups folder's projects. Each subfolder is one group, named after the
+ * folder, holding every Google Sheet inside it (to MAX_PROJECT_DEPTH levels).
+ * A sheet sitting loose in the groups folder is a group of its own, named by
+ * its title. Shortcuts count as what they point at.
+ */
+export async function listGroupSources(token: string, rootFolderId: string): Promise<{ groups: GroupSource[]; rootExcelFiles: number }> {
+  const root = await listFolderChildren(token, rootFolderId);
+  const groups: GroupSource[] = root.sheets.map((sheet) => ({ name: sheet.name, spreadsheets: [sheet], excelFiles: 0 }));
+  let totalSheets = root.sheets.length;
+
+  for (const project of root.folders) {
+    const seen = new Set<string>([rootFolderId, project.id]);
+    const sheets = new Map<string, FolderSpreadsheet>();
+    let excelFiles = 0;
+    let level = [project.id];
+    for (let depth = 0; depth < MAX_PROJECT_DEPTH && level.length > 0 && totalSheets < MAX_FILES; depth++) {
+      const next: string[] = [];
+      for (const folderId of level) {
+        const children = await listFolderChildren(token, folderId);
+        for (const sheet of children.sheets) {
+          if (!sheets.has(sheet.spreadsheetId)) {
+            sheets.set(sheet.spreadsheetId, sheet);
+            totalSheets++;
+          }
+        }
+        excelFiles += children.excelFiles;
+        for (const folder of children.folders) {
+          if (!seen.has(folder.id)) {
+            seen.add(folder.id);
+            next.push(folder.id);
+          }
+        }
+      }
+      level = next;
+    }
+    groups.push({ name: project.name, spreadsheets: [...sheets.values()], excelFiles });
+  }
+
+  return { groups, rootExcelFiles: root.excelFiles };
+}
+
+
+/**
+ * The groups folder's name, or a readable error saying why it can't be
+ * opened. Drive answers a listing of an unshared folder with an empty list,
+ * not an error, so this is what tells "not shared" apart from "empty".
+ */
+export async function getFolderName(token: string, folderId: string, serviceAccountEmail: string): Promise<string> {
+  const params = new URLSearchParams({ fields: "name, mimeType", supportsAllDrives: "true" });
+  const response = await fetch(`${DRIVE_FILES_URL}/${encodeURIComponent(folderId)}?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (response.status === 404) {
+    await response.body?.cancel();
+    throw new Error(
+      `The groups folder can't be found. Check GROUP_SHEETS_FOLDER_ID, and that the folder is shared with ${serviceAccountEmail} as Viewer`,
+    );
+  }
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new GoogleApiError("Drive folder lookup", response.status);
+  }
+  const folder = (await response.json()) as { name?: string; mimeType?: string };
+  if (folder.mimeType !== FOLDER_MIME) {
+    throw new Error("GROUP_SHEETS_FOLDER_ID points at a file, not a folder");
+  }
+  return folder.name ?? "groups folder";
 }
 
 function quoteSheetTitle(title: string): string {

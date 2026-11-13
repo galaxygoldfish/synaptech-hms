@@ -104,11 +104,46 @@ export function emailsFromTabs(tabs: SheetTab[]): string[] | null {
 }
 
 /**
- * The group's display name. Currently the spreadsheet's file title — if the
- * name moves into a cell of the sheet, this is the one place to change.
+ * The group's display name: the project's folder name (or, for a sheet sitting
+ * loose in the groups folder, its file title). If the name moves into a cell
+ * of the sheet, this is the one place to change.
  */
-export function groupNameFor(file: { name: string }): string {
-  return file.name.trim() || 'Untitled group';
+export function groupNameFor(source: { name: string }): string {
+  return source.name.trim() || 'Untitled group';
+}
+
+/** One spreadsheet in a project's folder, once read. */
+export interface CandidateSheet {
+  spreadsheetId: string;
+  name: string;
+  /** null: no tab has an email column. */
+  emails: string[] | null;
+}
+
+// A title that says it's the members list wins over a bigger sheet that
+// merely has an email column (a sign-up form, a contacts list).
+const ROSTER_TITLE = /member|roster|team/i;
+
+/**
+ * Which of a project folder's sheets is its members list: among sheets with
+ * at least one email, one titled like a roster first, then the most emails,
+ * then by title so the pick is stable. `others` names the sheets passed over,
+ * so the sync can say which one it used.
+ */
+export function pickRosterSheet(
+  sheets: CandidateSheet[],
+): { chosen: CandidateSheet & { emails: string[] }; others: string[] } | null {
+  const withEmails = sheets.filter(
+    (sheet): sheet is CandidateSheet & { emails: string[] } => !!sheet.emails && sheet.emails.length > 0,
+  );
+  if (withEmails.length === 0) return null;
+  const ranked = [...withEmails].sort(
+    (a, b) =>
+      Number(ROSTER_TITLE.test(b.name)) - Number(ROSTER_TITLE.test(a.name)) ||
+      b.emails.length - a.emails.length ||
+      a.name.localeCompare(b.name),
+  );
+  return { chosen: ranked[0], others: ranked.slice(1).map((sheet) => sheet.name) };
 }
 
 /**

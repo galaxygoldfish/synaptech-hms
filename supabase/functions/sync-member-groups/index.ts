@@ -28,10 +28,18 @@
 
 import { withSupabase } from "npm:@supabase/server";
 import { createAdminClient } from "../_shared/db.ts";
-import { getGoogleAccessToken, listFolderSpreadsheets, parseServiceAccount, readSpreadsheetTabs } from "../_shared/google.ts";
 import {
+  getFolderName,
+  getGoogleAccessToken,
+  listGroupSources,
+  parseServiceAccount,
+  readSpreadsheetTabs,
+} from "../_shared/google.ts";
+import {
+  type CandidateSheet,
   emailsFromTabs,
   groupNameFor,
+  pickRosterSheet,
   resolveMemberGroups,
   type GroupSheet,
   type MemberForMatching,
@@ -96,36 +104,67 @@ async function runSync(admin: AdminClient): Promise<SyncOutcome> {
   const onlyTab = Deno.env.get("GROUP_SHEET_TAB")?.trim() || undefined;
 
   const token = await getGoogleAccessToken(serviceAccount);
-  const files = await listFolderSpreadsheets(token, folderId);
-  if (files.length === 0) {
-    throw new Error("No Google Sheets found in the groups folder — check GROUP_SHEETS_FOLDER_ID and that the folder is shared with the service account");
+  const folderName = await getFolderName(token, folderId, serviceAccount.client_email);
+  const { groups: sources, rootExcelFiles } = await listGroupSources(token, folderId);
+  const sheetCount = sources.reduce((sum, source) => sum + source.spreadsheets.length, 0);
+  if (sheetCount === 0) {
+    const excel = rootExcelFiles + sources.reduce((sum, source) => sum + source.excelFiles, 0);
+    throw new Error(
+      `No Google Sheets found in "${folderName}" or its project folders` +
+        (excel > 0 ? ` (${excel} Excel files found; open each and use File → Save as Google Sheets)` : ""),
+    );
   }
 
   const warnings: string[] = [];
-  const parsed = await mapWithConcurrency(files, READ_CONCURRENCY, async (file): Promise<GroupSheet | null> => {
-    const name = groupNameFor(file);
+  const excelNote = (count: number) =>
+    count > 0 ? ` It has ${count} Excel file${count === 1 ? "" : "s"}, which need saving as Google Sheets.` : "";
+
+  // Read every sheet once, then decide per project which one is its roster.
+  const allSheets = sources.flatMap((source) => source.spreadsheets);
+  const read = await mapWithConcurrency(allSheets, READ_CONCURRENCY, async (sheet): Promise<CandidateSheet | null> => {
     try {
-      const emails = emailsFromTabs(await readSpreadsheetTabs(token, file.spreadsheetId, onlyTab));
-      if (emails === null) {
-        warnings.push(`"${name}" has no email column${onlyTab ? ` on a tab named "${onlyTab}"` : ""}; skipped.`);
-        return null;
-      }
-      if (emails.length === 0) {
-        warnings.push(`"${name}" lists no emails; skipped.`);
-        return null;
-      }
-      return { spreadsheetId: file.spreadsheetId, name, emails };
+      const emails = emailsFromTabs(await readSpreadsheetTabs(token, sheet.spreadsheetId, onlyTab));
+      return { spreadsheetId: sheet.spreadsheetId, name: sheet.name, emails };
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(`sync-member-groups: could not read "${name}" (${file.spreadsheetId}):`, error);
-      warnings.push(`"${name}" could not be read${error instanceof Error ? ` (${error.message})` : ""}; skipped.`);
+      console.error(`sync-member-groups: could not read "${sheet.name}" (${sheet.spreadsheetId}):`, error);
+      warnings.push(`"${sheet.name}" could not be read${error instanceof Error ? ` (${error.message})` : ""}; skipped.`);
       return null;
     }
   });
+  const readById = new Map(
+    read.filter((sheet): sheet is CandidateSheet => sheet !== null).map((sheet) => [sheet.spreadsheetId, sheet]),
+  );
 
-  const groups = parsed.filter((group): group is GroupSheet => group !== null);
+  const groups: GroupSheet[] = [];
+  for (const source of sources) {
+    const name = groupNameFor(source);
+    if (source.spreadsheets.length === 0) {
+      warnings.push(`"${name}" has no Google Sheets; skipped.${excelNote(source.excelFiles)}`);
+      continue;
+    }
+    const candidates = source.spreadsheets
+      .map((sheet) => readById.get(sheet.spreadsheetId))
+      .filter((sheet): sheet is CandidateSheet => !!sheet);
+    if (candidates.length === 0) continue; // every sheet failed to read; already warned
+    const pick = pickRosterSheet(candidates);
+    if (!pick) {
+      const anyColumn = candidates.some((sheet) => sheet.emails !== null);
+      warnings.push(
+        anyColumn
+          ? `"${name}" has an email column but no emails in it; skipped.`
+          : `"${name}" has no sheet with an email column${onlyTab ? ` on a tab named "${onlyTab}"` : ""}; skipped.`,
+      );
+      continue;
+    }
+    if (pick.others.length > 0) {
+      warnings.push(`"${name}" has several sheets with emails; used "${pick.chosen.name}" (not ${pick.others.map((n) => `"${n}"`).join(", ")}).`);
+    }
+    groups.push({ spreadsheetId: pick.chosen.spreadsheetId, name, emails: pick.chosen.emails });
+  }
+
   if (groups.length === 0) {
-    throw new Error(`None of the ${files.length} sheets in the groups folder had a readable members table`);
+    throw new Error(`None of the ${sources.length} projects in "${folderName}" had a readable members table`);
   }
 
   const members = await fetchAllMembers(admin);

@@ -4,10 +4,12 @@ Each member's **project group** and **group size** appear on **View registered m
 
 ## Where it comes from
 
-Every project group's Google Sheet sits in the shared project-groups folder in the club Drive. The app looks each member's UW email up in those sheets:
+Every project has its own folder inside the shared project-groups folder in the club Drive, and somewhere in it is a Google Sheet listing the team's emails. The app looks each member's UW email up in those sheets:
 
-- **Group** is the name of the sheet the member's email appears in.
-- **Group size** is how many emails that sheet lists, counting people who haven't signed up to the app yet.
+- **Group** is the name of the project's folder.
+- **Group size** is how many emails that project's members sheet lists, counting people who haven't signed up to the app yet.
+
+If a project folder has several sheets with emails in them, the app prefers one with "member", "roster" or "team" in its title, and says which one it used in the warnings. Excel files are skipped, so save them as Google Sheets first.
 
 To move someone between groups, edit the group sheets, not the app.
 
@@ -19,7 +21,8 @@ To move someone between groups, edit the group sheets, not the app.
 Under the search bar you'll see when groups were last synced. If the sync found something worth checking, open **N warnings from the last sync**. Examples:
 
 - a member listed in two groups (they're shown in the larger one)
-- a sheet with no email column
+- a project folder with no sheet that has an email column
+- a project folder with several sheets of emails (it names the one it used)
 - a sheet the app couldn't read (usually because it isn't shared with the sync account)
 
 If a sync fails, nothing changes: everyone keeps the group they had.

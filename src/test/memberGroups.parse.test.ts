@@ -3,6 +3,7 @@ import {
   extractEmails,
   findEmailColumn,
   groupNameFor,
+  pickRosterSheet,
   resolveMemberGroups,
   type GroupSheet,
 } from '../../supabase/functions/_shared/memberGroups'
@@ -79,6 +80,35 @@ describe('groupNameFor', () => {
 
   it('falls back for an untitled sheet', () => {
     expect(groupNameFor({ name: '   ' })).toBe('Untitled group')
+  })
+})
+
+describe('pickRosterSheet', () => {
+  const sheet = (name: string, emails: string[] | null) => ({ spreadsheetId: name, name, emails })
+
+  it('returns null when no sheet has emails', () => {
+    expect(pickRosterSheet([sheet('Budget', null), sheet('Sign-ups', [])])).toBeNull()
+  })
+
+  it('takes the only sheet with emails', () => {
+    expect(pickRosterSheet([sheet('Budget', null), sheet('Plan', ['a@uw.edu'])])).toEqual({
+      chosen: sheet('Plan', ['a@uw.edu']),
+      others: [],
+    })
+  })
+
+  it('prefers a roster-like title over a bigger sheet', () => {
+    const pick = pickRosterSheet([
+      sheet('Interest form', ['a@uw.edu', 'b@uw.edu', 'c@uw.edu']),
+      sheet('Team Members', ['a@uw.edu']),
+    ])
+    expect(pick?.chosen.name).toBe('Team Members')
+    expect(pick?.others).toEqual(['Interest form'])
+  })
+
+  it('otherwise takes the most emails, then the first title', () => {
+    expect(pickRosterSheet([sheet('B', ['a@uw.edu']), sheet('A', ['a@uw.edu']), sheet('C', ['a@uw.edu', 'b@uw.edu'])])?.others)
+      .toEqual(['A', 'B'])
   })
 })
 
