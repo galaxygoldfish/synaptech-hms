@@ -90,16 +90,16 @@ function renderList() {
 }
 
 describe('ViewMembers — project groups', () => {
-  it('shows each member’s group and size, with None · 1 for no group', async () => {
+  it('shows each member’s group and size, with 1 · None for no group', async () => {
     renderList()
 
-    expect(await screen.findByText('EEG Speller · 5')).toBeInTheDocument()
-    expect(screen.getByText('None · 1')).toBeInTheDocument()
+    expect(await screen.findByText('5 · EEG Speller')).toBeInTheDocument()
+    expect(screen.getByText('1 · None')).toBeInTheDocument()
   })
 
   it('finds members by group name', async () => {
     renderList()
-    await screen.findByText('EEG Speller · 5')
+    await screen.findByText('5 · EEG Speller')
 
     await userEvent.type(screen.getByPlaceholderText('Search members'), 'speller')
 
@@ -117,21 +117,21 @@ describe('ViewMembers — project groups', () => {
   it('runs a sync and reloads the list', async () => {
     vi.mocked(syncMemberGroups).mockResolvedValue({ sheetsScanned: 3, membersMatched: 10, membersUpdated: 2, warnings: [] })
     renderList()
-    await screen.findByText('EEG Speller · 5')
+    await screen.findByText('5 · EEG Speller')
     vi.mocked(fetchAllProfiles).mockResolvedValue([{ ...base, project_groups: [{ name: 'Robot Arm', size: 4 }, { name: 'EEG Speller', size: 5 }] }, loner])
 
     await userEvent.click(screen.getByRole('button', { name: 'Sync project groups' }))
 
     expect(syncMemberGroups).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('Synced 3 group sheets: 10 members are in a group.')).toBeInTheDocument()
-    expect(await screen.findByText('Robot Arm · 4')).toBeInTheDocument()
-    expect(screen.getByText('EEG Speller · 5')).toBeInTheDocument()
+    expect(await screen.findByText('4 · Robot Arm')).toBeInTheDocument()
+    expect(screen.getByText('5 · EEG Speller')).toBeInTheDocument()
   })
 
   it('says so when a sync is already running', async () => {
     vi.mocked(syncMemberGroups).mockRejectedValue(new GroupSyncBusyError())
     renderList()
-    await screen.findByText('EEG Speller · 5')
+    await screen.findByText('5 · EEG Speller')
 
     await userEvent.click(screen.getByRole('button', { name: 'Sync project groups' }))
 

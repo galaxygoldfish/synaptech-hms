@@ -1,6 +1,6 @@
 # Sync project groups
 
-Every **project group** a member is in, with each group's **size**, appears on **View registered members** (as `Group · size` under each member, for example `Mind Games · 5, Stress Test Gaming · 4`) and on their **Member details** page. Members without a group show **None · 1**. Members never see this information.
+Every **project group** a member is in, with each group's **size**, appears on **View registered members** (one line per group under each member, size first, for example `5 · Mind Games` above `4 · Stress Test Gaming`) and on their **Member details** page. Members without a group show **1 · None**. Members never see this information.
 
 ## Where it comes from
 

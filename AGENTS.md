@@ -247,7 +247,7 @@ Three things an admin can do to a request or a unit before anything is handed ov
 
 ## Project groups
 
-Admins see every **project group** a member is in, each with its **group size**, on "View registered members" (`Mind Games · 5, Stress Test Gaming · 4`, or `None · 1`) and "Member details". Members see neither: no member screen reads them.
+Admins see every **project group** a member is in, each with its **group size**, on "View registered members" (one line per group, size first: `5 · Mind Games`, `4 · Stress Test Gaming`, or `1 · None`) and "Member details". Members see neither: no member screen reads them.
 
 The source of truth is the club Drive. The shared groups folder holds one subfolder per project, and somewhere in each (up to three folders deep) is a Google Sheet with a members table: one of its tabs has an email column. The [`sync-member-groups`](supabase/functions/sync-member-groups/index.ts) Edge Function walks the folder (following shortcuts), reads every sheet, looks every profile's `uw_email` up in them, and writes `profiles.project_groups`: a JSON list of `{ name, size }`, largest group first, `[]` for none ([`20261113000000_member_groups_list.sql`](supabase/migrations/20261113000000_member_groups_list.sql) replaced the original single `project_group`/`project_group_size` pair). It runs when an admin presses **Sync groups** on the members list, and nightly at 09:15 UTC from `pg_cron` (`trigger_member_group_sync()` in [`20261104010000_member_groups.sql`](supabase/migrations/20261104010000_member_groups.sql)). Every attempt is recorded in `member_group_sync_runs` (admin-readable, kept 90 days), which is where the screen's "Groups last synced …" line and its warnings come from.
 

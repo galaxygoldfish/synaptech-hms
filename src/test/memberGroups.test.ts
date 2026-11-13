@@ -19,13 +19,13 @@ describe('group display helpers', () => {
   const twoGroups = { project_groups: [{ name: 'Mind Games', size: 5 }, { name: 'Robot Arm', size: 1 }] }
 
   it('lists every group with its size', () => {
-    expect(groupLines(twoGroups)).toEqual(['Mind Games · 5', 'Robot Arm · 1'])
+    expect(groupLines(twoGroups)).toEqual(['5 · Mind Games', '1 · Robot Arm'])
     expect(groupsDetail(twoGroups)).toBe('Mind Games (5 members), Robot Arm (1 member)')
     expect(groupNames(twoGroups)).toBe('Mind Games Robot Arm')
   })
 
   it('shows None for a member in no group', () => {
-    expect(groupLines({ project_groups: [] })).toEqual(['None · 1'])
+    expect(groupLines({ project_groups: [] })).toEqual(['1 · None'])
     expect(groupsDetail({ project_groups: [] })).toBe('None')
     expect(groupNames({ project_groups: [] })).toBe('')
   })

@@ -69,11 +69,11 @@ function groupsOf(member: Pick<Profile, 'project_groups'>) {
   return member.project_groups ?? []
 }
 
-/** The members list's group lines, one per group: ["Mind Games · 5", "Stress Test Gaming · 4"], or ["None · 1"]. */
+/** The members list's group lines, one per group, size first: ["5 · Mind Games", "4 · Stress Test Gaming"], or ["1 · None"]. */
 export function groupLines(member: Pick<Profile, 'project_groups'>): string[] {
   const groups = groupsOf(member)
-  if (groups.length === 0) return ['None · 1']
-  return groups.map((group) => `${group.name} · ${group.size}`)
+  if (groups.length === 0) return ['1 · None']
+  return groups.map((group) => `${group.size} · ${group.name}`)
 }
 
 /** Member details' wording: "Mind Games (5 members), Stress Test Gaming (4 members)", or "None". */

@@ -245,10 +245,11 @@
   white-space: nowrap;
 }
 
-/* Groups stack one per line. On desktop the cell keeps a fixed width, so
-   a long group name or a second group never shifts the other columns. */
+/* Groups stack one per line and are never cut off: the cell doesn't
+   shrink on desktop (email and handle give way instead), and a name too
+   long for a phone-width line wraps. */
 .memberGroup {
-  flex: 0 0 15rem;
+  flex-shrink: 0;
   align-items: flex-start;
 }
 
@@ -262,6 +263,11 @@
   flex-direction: column;
   gap: 0.125rem;
   min-width: 0;
+}
+
+.memberDetail .groupLines span {
+  overflow: visible;
+  white-space: normal;
 }
 
 .memberJoined {
