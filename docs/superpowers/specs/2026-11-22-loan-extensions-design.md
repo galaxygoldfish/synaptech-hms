@@ -108,7 +108,7 @@ extension's details until the next request overwrites them, so `send-email` (whi
 re-reads the row by id via `pg_net`, later) always finds what it needs. "Pending" is
 `extension_status = 'pending' and returned_at is null`.
 
-On **approve** (one conditional update, `where extension_status = 'pending'`):
+On **approve** (one conditional update, `where extension_status = 'pending'`; the client sends only the status and the stamped path — a `before update` stamp trigger does the rest, and also stamps requested/reviewed who-and-when, as the admin-cancel migration does):
 `return_date ← extension_return_date`, `signed_agreement_path ←` stamped copy,
 `signature_name/signature_date ←` the extension's values (so section 9 read-back
 matches the agreement now on file; the original stays in storage and the audit log),
