@@ -71,30 +71,67 @@ create index if not exists loan_request_items_extension_pending_idx
 -- their own: not return_date, not signed_agreement_path, not the review
 -- columns. The status itself is fenced to the two moves a member makes.
 
+--
+-- Three more rules, all about the extension:
+--   * The terms (date, agreement, signature) can only be written in the same
+--     update that asks — never edited while an admin is looking at them, or
+--     the admin could approve a date they never saw.
+--   * Who asked, when, and the date being replaced are not member-writable
+--     at all; stamp_loan_item_extension sets them.
+--   * Asking again within EXTENSION_COOLDOWN of the last ask is refused, so
+--     withdraw-and-resubmit can't be used to flood admins with emails.
+--   The new date must also be after both today and the current due date, and
+--   within 140 days — a loose ceiling on the app's next-quarter cap (the
+--   longest real span, Aug 6 → Dec 15, is 131 days). The exact cap stays in
+--   the app; the admin reviewing the date is the final check.
+
 create or replace function public.guard_member_loan_item_update()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  v_member_columns text[] := array[
-    'return_requested_at', 'return_requested_by',
-    'extension_status', 'extension_requested_at', 'extension_requested_by',
-    'extension_return_date', 'extension_previous_return_date',
-    'extension_agreement_path', 'extension_signature_name', 'extension_signature_date'
+  v_return_columns text[] := array['return_requested_at', 'return_requested_by'];
+  v_terms text[] := array[
+    'extension_status', 'extension_return_date', 'extension_agreement_path',
+    'extension_signature_name', 'extension_signature_date'
   ];
+  v_asking boolean;
 begin
   if auth.uid() is null or exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin') then
     return new;
   end if;
 
-  if (to_jsonb(new) - v_member_columns) is distinct from (to_jsonb(old) - v_member_columns) then
-    raise exception 'A member may only request a return or an extension, not edit the loan';
+  v_asking := new.extension_status = 'pending' and old.extension_status is distinct from 'pending';
+
+  if v_asking then
+    if (to_jsonb(new) - v_return_columns - v_terms) is distinct from (to_jsonb(old) - v_return_columns - v_terms) then
+      raise exception 'A member may only request a return or an extension, not edit the loan';
+    end if;
+    if old.extension_requested_at is not null and old.extension_requested_at > now() - interval '15 minutes' then
+      raise exception 'Please wait a few minutes before asking for another extension';
+    end if;
+    if new.extension_return_date is null
+       or new.extension_return_date <= greatest(old.return_date, current_date)
+       or new.extension_return_date > current_date + 140 then
+      raise exception 'That return date cannot be used for an extension';
+    end if;
+    if new.extension_agreement_path is null or new.extension_signature_name is null or new.extension_signature_date is null then
+      raise exception 'An extension needs a newly signed agreement';
+    end if;
+    return new;
   end if;
 
-  if old.extension_status is distinct from new.extension_status
-     and not (
-       (new.extension_status = 'pending' and old.extension_status is distinct from 'pending')
-       or (old.extension_status = 'pending' and new.extension_status = 'withdrawn')
-     ) then
+  if old.extension_status = 'pending' and new.extension_status = 'withdrawn' then
+    if (to_jsonb(new) - 'extension_status') is distinct from (to_jsonb(old) - 'extension_status') then
+      raise exception 'Withdrawing an extension changes nothing else';
+    end if;
+    return new;
+  end if;
+
+  if old.extension_status is distinct from new.extension_status then
     raise exception 'A member may only request or withdraw an extension';
+  end if;
+
+  if (to_jsonb(new) - v_return_columns) is distinct from (to_jsonb(old) - v_return_columns) then
+    raise exception 'A member may only request a return or an extension, not edit the loan';
   end if;
 
   return new;
