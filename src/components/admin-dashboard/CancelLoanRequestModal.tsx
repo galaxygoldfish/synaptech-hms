@@ -16,6 +16,32 @@ interface CancelLoanRequestModalProps {
   onChange: (reason: string) => void
   onConfirm: () => void
   onCancel: () => void
+  /**
+   * Wording, for reusing this dialog to deny a loan extension — the same
+   * required, emailed reason. Defaults are the checkout-cancellation copy.
+   */
+  copy?: Partial<ReasonDialogCopy>
+}
+
+export interface ReasonDialogCopy {
+  heading: string
+  /** Follows the member's name. */
+  body: string
+  label: string
+  placeholder: string
+  keepLabel: string
+  confirmLabel: string
+  submittingLabel: string
+}
+
+const CANCEL_COPY: ReasonDialogCopy = {
+  heading: 'Cancel this checkout request?',
+  body: 'will be emailed the reason below. Their hardware is released for other members.',
+  label: 'Reason for cancelling',
+  placeholder: "e.g. This unit failed inspection and can't be lent out right now.",
+  keepLabel: 'Keep request',
+  confirmLabel: 'Cancel request',
+  submittingLabel: 'Cancelling…',
 }
 
 /**
@@ -36,7 +62,9 @@ export function CancelLoanRequestModal({
   onChange,
   onConfirm,
   onCancel,
+  copy,
 }: CancelLoanRequestModalProps) {
+  const text = { ...CANCEL_COPY, ...copy }
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Opening this dialog is the decision to cancel; what's left is the typing.
@@ -50,22 +78,22 @@ export function CancelLoanRequestModal({
     <div className={`${modalStyles.overlay} ${modalStyles.overlayWelcome}`} onClick={isSubmitting ? undefined : onCancel}>
       <ModalDialog
         className={`${modalStyles.modal} ${modalStyles.modalWide}`}
-        aria-label="Cancel this checkout request?"
+        aria-label={text.heading}
         onClose={isSubmitting ? undefined : onCancel}
       >
         <div className={modalStyles.headerRow}>
-          <h2 className={modalStyles.heading}>Cancel this checkout request?</h2>
+          <h2 className={modalStyles.heading}>{text.heading}</h2>
         </div>
 
         <div className={modalStyles.bodyGroup}>
           <p className={modalStyles.body}>
-            {memberName} will be emailed the reason below. Their hardware is released for other members.
+            {memberName} {text.body}
           </p>
         </div>
 
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="cancellation-reason">
-            Reason for cancelling
+            {text.label}
           </label>
           <textarea
             id="cancellation-reason"
@@ -74,7 +102,7 @@ export function CancelLoanRequestModal({
             value={reason}
             maxLength={CANCELLATION_REASON_MAX_LENGTH}
             rows={4}
-            placeholder="e.g. This unit failed inspection and can't be lent out right now."
+            placeholder={text.placeholder}
             onChange={(event) => onChange(event.target.value)}
             aria-invalid={error !== null}
             disabled={isSubmitting}
@@ -100,7 +128,7 @@ export function CancelLoanRequestModal({
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Keep request
+            {text.keepLabel}
           </button>
           <button
             type="button"
@@ -108,7 +136,7 @@ export function CancelLoanRequestModal({
             onClick={onConfirm}
             disabled={!reason.trim() || isSubmitting}
           >
-            {isSubmitting ? 'Cancelling…' : 'Cancel request'}
+            {isSubmitting ? text.submittingLabel : text.confirmLabel}
           </button>
         </div>
       </ModalDialog>

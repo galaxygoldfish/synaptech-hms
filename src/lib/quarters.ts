@@ -2,6 +2,12 @@
 // fall after the current quarter's end, and an extension (see
 // extensionWindow) is how a loan is carried over the break into the next.
 
+/**
+ * Shown to the member asking for an extension and to the admin deciding it.
+ * Deliberately not enforced anywhere — admins check it themselves.
+ */
+export const EXTENSION_GROUP_NOTICE = 'Extensions are only for loans for project groups.'
+
 /** How long before a quarter ends that members can ask to extend a loan. */
 export const EXTENSION_WINDOW_DAYS = 14
 

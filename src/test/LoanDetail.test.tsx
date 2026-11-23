@@ -4,7 +4,9 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
 import {
+  approveExtension,
   cancelLoanRequestAsAdmin,
+  denyExtension,
   fetchAllLoanRequestItems,
   fetchLoanRequestItemDetail,
   LoanConflictError,
@@ -30,6 +32,8 @@ vi.mock('../lib/loanRequests', async () => {
     fetchSignedAgreementUrl: vi.fn(),
     cancelLoanRequestAsAdmin: vi.fn(),
     switchLoanItemUnit: vi.fn(),
+    approveExtension: vi.fn(),
+    denyExtension: vi.fn(),
   }
 })
 
@@ -571,5 +575,75 @@ describe('LoanDetail — switching the unit', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Switch unit' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('That unit was just taken')
+  })
+})
+
+describe('LoanDetail — extensions', () => {
+  const pendingExtension = detail({
+    status: 'approved',
+    returnDate: '2026-12-15',
+    reviewedAt: '2026-10-02T18:00:00Z',
+    extensionStatus: 'pending',
+    extensionReturnDate: '2027-03-10',
+    extensionPreviousReturnDate: '2026-12-15',
+    extensionRequestedAt: '2026-12-05T18:00:00Z',
+    extensionAgreementPath: 'bob/req-1/eq-1-extension-1.pdf',
+  })
+
+  beforeEach(() => {
+    vi.mocked(approveExtension).mockReset().mockResolvedValue(undefined)
+    vi.mocked(denyExtension).mockReset().mockResolvedValue(undefined)
+  })
+
+  it('shows the request with the group notice and approves it in one click', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(pendingExtension)
+    renderDetail()
+
+    expect(await screen.findByText('Extension requested')).toBeInTheDocument()
+    expect(screen.getByText('Extensions are only for loans for project groups.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Approve extension' }))
+
+    expect(approveExtension).toHaveBeenCalledWith({
+      itemId: 'item-1',
+      adminName: 'Ada Admin',
+      expectedReturnDate: '2027-03-10',
+    })
+  })
+
+  it('needs a reason to deny it', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(pendingExtension)
+    renderDetail()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Deny extension' }))
+    const dialog = screen.getByRole('dialog')
+    const confirm = within(dialog).getByRole('button', { name: 'Deny extension' })
+    expect(confirm).toBeDisabled()
+
+    await userEvent.type(within(dialog).getByLabelText(/reason/i), 'No group')
+    await userEvent.click(confirm)
+
+    expect(denyExtension).toHaveBeenCalledWith('item-1', 'No group')
+  })
+
+  it('tells the admin when someone else already decided', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue(pendingExtension)
+    vi.mocked(approveExtension).mockRejectedValue(new LoanConflictError('This extension was already reviewed.'))
+    renderDetail()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve extension' }))
+
+    expect(await screen.findByText('This extension was already reviewed.')).toBeInTheDocument()
+  })
+
+  it('shows nothing about an extension once the hardware is back', async () => {
+    vi.mocked(fetchLoanRequestItemDetail).mockResolvedValue({
+      ...pendingExtension,
+      returnedAt: '2026-12-10T18:00:00Z',
+    })
+    renderDetail()
+
+    expect(await screen.findByText('Returned')).toBeInTheDocument()
+    expect(screen.queryByText('Extension requested')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve extension' })).not.toBeInTheDocument()
   })
 })

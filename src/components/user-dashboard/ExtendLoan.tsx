@@ -7,14 +7,11 @@ import { AgreementPreview } from './AgreementPreview'
 import { canExtend, fetchMemberLoanItem, requestExtension, type MemberLoanItem } from '../../lib/memberLoans'
 import { fetchEquipmentByIds } from '../../lib/inventory'
 import { buildLoanAgreementPdf, preloadAgreementPdfLib } from '../../lib/loanAgreementPdf'
-import { extensionWindow, toISODate } from '../../lib/quarters'
+import { EXTENSION_GROUP_NOTICE, extensionWindow, toISODate } from '../../lib/quarters'
 import type { UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import signStyles from './CheckoutSignAgreement.module.css'
 import styles from './ExtendLoan.module.css'
-
-/** Shown to the member here and to admins on the request. Not enforced. */
-export const EXTENSION_GROUP_NOTICE = 'Extensions are only for loans for project groups.'
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {

@@ -8,6 +8,7 @@ import { ArrowLeftIcon, CalendarIcon, ChevronRightIcon, PersonIcon } from './ico
 import {
   bucketForLoanItem,
   fetchAllLoanRequestItems,
+  hasPendingExtension,
   type AdminLoanRequestItemSummary,
   type LoanBucket,
   peekAllLoanRequestItems,
@@ -111,6 +112,11 @@ function formatCalendarDate(iso: string): string {
 }
 
 function dateText(loan: AdminLoanRequestItemSummary, bucket: LoanRowState): string {
+  // The loan's own dates haven't changed yet; what an admin needs from the
+  // row is what they're being asked to approve.
+  if (hasPendingExtension(loan) && loan.extensionReturnDate) {
+    return `Extension requested to ${formatCalendarDate(loan.extensionReturnDate)}`
+  }
   if (bucket === 'requests') return `Requested on ${formatTimestampDate(loan.requestedAt)}`
   // Never handed over, so no loan period — when it was called off is the date
   // that matters.
@@ -180,7 +186,10 @@ export default function HardwareLoans() {
       .map((loan) => ({ loan, bucket: rowStateFor(loan) }))
       .filter((entry): entry is { loan: AdminLoanRequestItemSummary; bucket: LoanRowState } => {
         if (entry.bucket === null) return false
-        if (!buckets.includes(entry.bucket)) return false
+        // An extension waiting on a decision is a request too, though the loan
+        // itself stays Active or Overdue (see hasPendingExtension).
+        const isWaiting = filter === 'requests' && hasPendingExtension(entry.loan)
+        if (!buckets.includes(entry.bucket) && !isWaiting) return false
         return !trimmed || matchesQuery(entry.loan, trimmed)
       })
   }, [loans, filter, query])

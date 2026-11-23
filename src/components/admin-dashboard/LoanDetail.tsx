@@ -17,10 +17,13 @@ import {
   SwapIcon,
 } from './icons'
 import {
+  approveExtension,
   bucketForLoanItem,
   cancelLoanRequestAsAdmin,
+  denyExtension,
   fetchLoanRequestItemDetail,
   fetchSignedAgreementUrl,
+  hasPendingExtension,
   LoanConflictError,
   switchLoanItemUnit,
   UnitUnavailableError,
@@ -28,6 +31,7 @@ import {
   type LoanBucket,
 } from '../../lib/loanRequests'
 import type { LoanRequestItemRole, UserProfile } from '../../types'
+import { EXTENSION_GROUP_NOTICE } from '../../lib/quarters'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './LoanDetail.module.css'
 
@@ -116,6 +120,13 @@ export default function LoanDetail() {
   const [isSwitchOpen, setSwitchOpen] = useState(false)
   const [switchError, setSwitchError] = useState<string | null>(null)
   const [isSwitching, setSwitching] = useState(false)
+
+  const [isApprovingExtension, setApprovingExtension] = useState(false)
+  const [extensionError, setExtensionError] = useState<string | null>(null)
+  const [isDenyOpen, setDenyOpen] = useState(false)
+  const [denyReason, setDenyReason] = useState('')
+  const [denyError, setDenyError] = useState<string | null>(null)
+  const [isDenying, setDenying] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -220,6 +231,73 @@ export default function LoanDetail() {
       )
     } finally {
       setSwitching(false)
+    }
+  }
+
+  async function handleApproveExtension() {
+    if (!detail?.extensionReturnDate || !profile || isApprovingExtension) return
+    setApprovingExtension(true)
+    setExtensionError(null)
+
+    try {
+      await approveExtension({
+        itemId: detail.id,
+        adminName: `${profile.first_name} ${profile.last_name}`,
+        expectedReturnDate: detail.extensionReturnDate,
+      })
+      // Re-read: the database moved the due date and stamped who and when.
+      setDetail(await fetchLoanRequestItemDetail(detail.id))
+    } catch (approveFailure) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to approve extension:', approveFailure)
+      setExtensionError(
+        approveFailure instanceof LoanConflictError
+          ? approveFailure.message
+          : 'Could not approve this extension. Please try again.',
+      )
+    } finally {
+      setApprovingExtension(false)
+    }
+  }
+
+  function openDeny() {
+    setDenyReason('')
+    setDenyError(null)
+    setDenyOpen(true)
+  }
+
+  async function handleDenyExtension() {
+    if (!detail || isDenying || !denyReason.trim()) return
+    setDenying(true)
+    setDenyError(null)
+
+    try {
+      await denyExtension(detail.id, denyReason)
+      setDenyOpen(false)
+      setDetail(await fetchLoanRequestItemDetail(detail.id))
+    } catch (denyFailure) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to deny extension:', denyFailure)
+      setDenyError(
+        denyFailure instanceof LoanConflictError
+          ? denyFailure.message
+          : 'Could not deny this extension. Please try again.',
+      )
+    } finally {
+      setDenying(false)
+    }
+  }
+
+  async function handleViewExtensionAgreement() {
+    if (!detail?.extensionAgreementPath) return
+    setExtensionError(null)
+    try {
+      const url = await fetchSignedAgreementUrl(detail.extensionAgreementPath)
+      window.open(url, '_blank', 'noopener')
+    } catch (fetchError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to open extension agreement:', fetchError)
+      setExtensionError('Could not open the extension agreement. Please try again.')
     }
   }
 
@@ -358,6 +436,65 @@ export default function LoanDetail() {
 
             {downloadError && <p className={styles.inlineError} role="alert">{downloadError}</p>}
 
+            {/* A decision waiting on an admin, so above the record. Hidden
+                once the hardware is back: an extension on a returned loan
+                means nothing (hasPendingExtension). No scan — the hardware
+                hasn't moved; approving stamps the re-signed agreement. */}
+            {hasPendingExtension(detail) && detail.extensionReturnDate && (
+              <div className={styles.card}>
+                <span className={styles.cardLabel}>Extension requested</span>
+                <p className={styles.reasonText}>{EXTENSION_GROUP_NOTICE}</p>
+                {detail.returnDate && (
+                  <DetailRow label="Currently due" value={formatCalendarDate(detail.returnDate)} />
+                )}
+                <DetailRow label="Requested return date" value={formatCalendarDate(detail.extensionReturnDate)} />
+                {detail.extensionRequestedAt && (
+                  <DetailRow label="Requested on" value={formatDate(detail.extensionRequestedAt)} />
+                )}
+                <div className={styles.actionRow}>
+                  {detail.extensionAgreementPath && (
+                    <button
+                      type="button"
+                      className={styles.agreementButton}
+                      onClick={() => void handleViewExtensionAgreement()}
+                    >
+                      <span className={styles.buttonIcon}>
+                        <DownloadIconFilled size={14} />
+                      </span>
+                      View extension agreement
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.agreementButton}
+                    onClick={() => void handleApproveExtension()}
+                    disabled={isApprovingExtension}
+                  >
+                    <span className={styles.buttonIcon}>
+                      <CalendarIcon size={22} />
+                    </span>
+                    {isApprovingExtension ? 'Approving…' : 'Approve extension'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={openDeny}
+                    disabled={isApprovingExtension}
+                  >
+                    <span className={styles.buttonIcon}>
+                      <CloseIcon size={18} />
+                    </span>
+                    Deny extension
+                  </button>
+                </div>
+                {extensionError && (
+                  <p className={styles.inlineError} role="alert">
+                    {extensionError}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className={styles.card}>
               <button
                 type="button"
@@ -447,6 +584,28 @@ export default function LoanDetail() {
           onChange={setCancelReason}
           onConfirm={() => void handleCancelRequest()}
           onCancel={() => setCancelOpen(false)}
+        />
+      )}
+
+      {detail && (
+        <CancelLoanRequestModal
+          isOpen={isDenyOpen}
+          memberName={detail.memberName}
+          reason={denyReason}
+          error={denyError}
+          isSubmitting={isDenying}
+          onChange={setDenyReason}
+          onConfirm={() => void handleDenyExtension()}
+          onCancel={() => setDenyOpen(false)}
+          copy={{
+            heading: 'Deny this extension?',
+            body: 'will be emailed the reason below. The loan keeps its current return date.',
+            label: 'Reason for denying',
+            placeholder: 'e.g. Extensions are only for loans for project groups.',
+            keepLabel: 'Keep request',
+            confirmLabel: 'Deny extension',
+            submittingLabel: 'Denying…',
+          }}
         />
       )}
 

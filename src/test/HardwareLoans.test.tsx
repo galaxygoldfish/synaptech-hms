@@ -210,3 +210,21 @@ describe('HardwareLoans filters', () => {
     expect(screen.getByText('There are no requests waiting on an admin')).toBeInTheDocument()
   })
 })
+
+describe('HardwareLoans extensions', () => {
+  it('lists a pending extension under Requests and says what it asks for', async () => {
+    vi.mocked(fetchAllLoanRequestItems).mockResolvedValue([
+      checkoutRequest,
+      loan({ id: 'item-9', itemName: 'Emotiv Insight', extensionStatus: 'pending', extensionReturnDate: '2027-03-10' }),
+      loan({ id: 'item-10', itemName: 'Neurosity Crown', extensionStatus: 'approved', extensionReturnDate: '2027-03-10' }),
+    ])
+    renderLoans()
+    await screen.findByText('Muse 2')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Requests' }))
+
+    expect(screen.getByText('Emotiv Insight')).toBeInTheDocument()
+    expect(screen.getByText('Extension requested to Mar 10 2027')).toBeInTheDocument()
+    expect(screen.queryByText('Neurosity Crown')).not.toBeInTheDocument()
+  })
+})
