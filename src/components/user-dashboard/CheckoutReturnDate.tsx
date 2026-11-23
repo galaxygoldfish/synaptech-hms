@@ -8,34 +8,12 @@ import { fetchEquipment, fetchEquipmentByIds, peekEquipmentRows } from '../../li
 import type { Equipment, UserProfile } from '../../types'
 import { Skeleton, SkeletonScreen } from '../skeleton/Skeleton'
 import styles from './CheckoutReturnDate.module.css'
+import { getQuarterEndDate, toISODate } from '../../lib/quarters'
 
 // The Synaptech Hardware Checkout & Usage Policy Google Doc.
 const POLICY_URL = 'https://docs.google.com/document/d/11RSFuvvg1F4aM9V0znWw7wFn_MZMx95T7EdlblAyPfc/edit?tab=t.0'
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
-
-function toISODate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function getQuarterEndDate(today: Date): string | null {
-  const month = today.getMonth()
-  const day = today.getDate()
-  const year = today.getFullYear()
-
-  if (month >= 8) return `${year}-12-15`
-  if (month <= 1 || (month === 2 && day <= 20)) return `${year}-03-20`
-  if ((month === 2 && day >= 21) || (month >= 3 && month <= 4) || (month === 5 && day <= 10)) {
-    return `${year}-06-10`
-  }
-  if ((month === 5 && day >= 15) || month === 6 || (month === 7 && day <= 20)) {
-    return `${year}-08-20`
-  }
-  return null
-}
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
