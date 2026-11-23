@@ -9,6 +9,7 @@ import { EditAvailabilityModal } from './EditAvailabilityModal'
 import {
   ArrowDownRightFilled,
   ArrowLeftIcon,
+  CalendarIcon,
   ChevronRightFilled,
   CloseIcon,
   DocumentationIcon,
@@ -17,12 +18,15 @@ import {
   PencilIcon,
 } from './icons'
 import {
+  canExtend,
   cancelLoanRequest,
   fetchMemberLoanItem,
   isOutWithMember,
   memberLoanState,
+  withdrawExtension,
   type MemberLoanItem,
 } from '../../lib/memberLoans'
+import { extensionWindow, toISODate } from '../../lib/quarters'
 import { fetchSignedAgreementUrl } from '../../lib/loanRequests'
 import { cancelReturnRequest, type AvailabilityTarget } from '../../lib/availability'
 import type { UserProfile } from '../../types'
@@ -67,6 +71,7 @@ export default function MyLoanDetail() {
   const [editing, setEditing] = useState<AvailabilityTarget | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDownloading, setDownloading] = useState(false)
+  const [isWithdrawingExtension, setWithdrawingExtension] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -166,6 +171,43 @@ export default function MyLoanDetail() {
     }
   }
 
+  async function handleWithdrawExtension() {
+    if (!item || isWithdrawingExtension) return
+    setWithdrawingExtension(true)
+    setActionError(null)
+    try {
+      await withdrawExtension(item.id)
+      await reload()
+    } catch (withdrawError) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to withdraw the extension:', withdrawError)
+      setActionError('Could not withdraw your extension request. Please try again.')
+    } finally {
+      setWithdrawingExtension(false)
+    }
+  }
+
+  /**
+   * Extensions: hardware the member is holding and hasn't asked to return.
+   * The button is always shown on such a loan so members learn it exists,
+   * and says when it becomes available rather than just greying out.
+   */
+  const extension = (() => {
+    if (!item || !state || item.isConsumable || !isOutWithMember(state) || state === 'return_requested') return null
+    if (item.extensionStatus === 'pending') return { pending: true as const }
+    const quarterWindow = extensionWindow(new Date())
+    const allowed = canExtend(item)
+    let hint: string | null = null
+    if (!allowed) {
+      if (!quarterWindow) hint = "Extensions aren't available right now"
+      else if (!quarterWindow.isOpen && quarterWindow.opensOn > toISODate(new Date()))
+        hint = `Extensions open ${formatLongDate(quarterWindow.opensOn, true)}`
+      else if (item.returnDate && item.returnDate > quarterWindow.closesOn) hint = 'Already extended this quarter'
+      else hint = 'Extensions are closed for this quarter'
+    }
+    return { pending: false as const, allowed, hint }
+  })()
+
   function handleLogOut() {
     setProfileOpen(false)
     signOut()
@@ -238,6 +280,11 @@ export default function MyLoanDetail() {
                     <p className={styles.cancelReasonText}>{item.cancellationReason}</p>
                   </div>
                 )}
+                {extension?.pending && item.extensionReturnDate && (
+                  <p className={styles.extensionPending}>
+                    Extension requested — until {formatLongDate(item.extensionReturnDate, true)}
+                  </p>
+                )}
                 {dateLines.length > 0 && (
                   <div className={styles.itemDates}>
                     {dateLines.map((line) => (
@@ -268,6 +315,42 @@ export default function MyLoanDetail() {
                     Start return
                   </span>
                   <ChevronRightFilled size={9} color="#474747" />
+                </button>
+              )}
+
+              {extension && !extension.pending && (
+                <button
+                  type="button"
+                  className={styles.linkRow}
+                  onClick={() => navigate(`/home/loans/${item.id}/extend`)}
+                  disabled={!extension.allowed}
+                >
+                  <span className={styles.linkRowLeft}>
+                    <span className={styles.linkRowIcon}>
+                      <CalendarIcon size={18} />
+                    </span>
+                    <span>
+                      Extend loan
+                      {extension.hint && <span className={styles.linkRowHint}>{extension.hint}</span>}
+                    </span>
+                  </span>
+                  <ChevronRightFilled size={9} color="#474747" />
+                </button>
+              )}
+
+              {extension?.pending && (
+                <button
+                  type="button"
+                  className={`${styles.linkRow} ${styles.linkRowCancel}`}
+                  onClick={() => void handleWithdrawExtension()}
+                  disabled={isWithdrawingExtension}
+                >
+                  <span className={styles.linkRowLeft}>
+                    <span className={styles.linkRowIcon}>
+                      <CloseIcon size={16} />
+                    </span>
+                    {isWithdrawingExtension ? 'Withdrawing…' : 'Withdraw extension request'}
+                  </span>
                 </button>
               )}
 

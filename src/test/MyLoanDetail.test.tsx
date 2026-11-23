@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from '../context/AuthContext'
-import { cancelLoanRequest, fetchMemberLoanItem, type MemberLoanItem } from '../lib/memberLoans'
+import { canExtend, cancelLoanRequest, fetchMemberLoanItem, withdrawExtension, type MemberLoanItem } from '../lib/memberLoans'
 import { cancelReturnRequest, fetchAvailability } from '../lib/availability'
 import { fetchSignedAgreementUrl } from '../lib/loanRequests'
 import MyLoanDetail from '../components/user-dashboard/MyLoanDetail'
@@ -12,7 +12,13 @@ vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
 
 vi.mock('../lib/memberLoans', async () => {
   const actual = await vi.importActual<typeof import('../lib/memberLoans')>('../lib/memberLoans')
-  return { ...actual, fetchMemberLoanItem: vi.fn(), cancelLoanRequest: vi.fn() }
+  return {
+    ...actual,
+    fetchMemberLoanItem: vi.fn(),
+    cancelLoanRequest: vi.fn(),
+    canExtend: vi.fn(),
+    withdrawExtension: vi.fn(),
+  }
 })
 
 vi.mock('../lib/loanRequests', async () => {
@@ -66,6 +72,8 @@ function item(overrides: Partial<MemberLoanItem> = {}): MemberLoanItem {
 beforeEach(() => {
   vi.mocked(fetchMemberLoanItem).mockReset().mockResolvedValue(item())
   vi.mocked(cancelLoanRequest).mockReset().mockResolvedValue(undefined)
+  vi.mocked(canExtend).mockReset().mockReturnValue(false)
+  vi.mocked(withdrawExtension).mockReset().mockResolvedValue(undefined)
   vi.mocked(fetchSignedAgreementUrl).mockReset().mockResolvedValue('https://signed.example/a.pdf')
   vi.mocked(cancelReturnRequest).mockReset().mockResolvedValue(undefined)
   vi.mocked(fetchAvailability).mockReset().mockResolvedValue([])
@@ -88,6 +96,7 @@ function renderDetail() {
       { path: '/home/loans/:id', element: <MyLoanDetail /> },
       { path: '/home/loans', element: <p>My hardware loans</p> },
       { path: '/home/loans/:id/return', element: <p>Return availability for item-1</p> },
+      { path: '/home/loans/:id/extend', element: <p>Extend item-1</p> },
     ],
     { initialEntries: ['/home/loans/item-1'] },
   )
@@ -306,5 +315,51 @@ describe('MyLoanDetail', () => {
 
     expect(await screen.findByText(/could not load this loan/i)).toBeInTheDocument()
     consoleError.mockRestore()
+  })
+})
+
+describe('MyLoanDetail extensions', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('offers an extension when the loan can be extended', async () => {
+    vi.mocked(canExtend).mockReturnValue(true)
+    renderDetail()
+
+    const extend = await screen.findByRole('button', { name: /extend loan/i })
+    expect(extend).toBeEnabled()
+    await userEvent.click(extend)
+    expect(await screen.findByText('Extend item-1')).toBeInTheDocument()
+  })
+
+  it('says when extensions open before the window', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 22, 12))
+    vi.mocked(fetchMemberLoanItem).mockResolvedValue(item({ returnDate: '2026-12-15' }))
+    renderDetail()
+
+    expect(await screen.findByRole('button', { name: /extend loan/i })).toBeDisabled()
+    expect(screen.getByText('Extensions open December 1st, 2026')).toBeInTheDocument()
+  })
+
+  it('shows a pending extension and lets the member withdraw it', async () => {
+    vi.mocked(fetchMemberLoanItem).mockResolvedValue(
+      item({ extensionStatus: 'pending', extensionReturnDate: '2027-03-10' }),
+    )
+    renderDetail()
+
+    expect(await screen.findByText('Extension requested — until March 10th, 2027')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /extend loan/i })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /withdraw extension request/i }))
+    await waitFor(() => expect(withdrawExtension).toHaveBeenCalledWith('item-1'))
+  })
+
+  it('offers no extension on a consumable', async () => {
+    vi.mocked(fetchMemberLoanItem).mockResolvedValue(item({ isConsumable: true, returnDate: null }))
+    renderDetail()
+
+    await screen.findByRole('heading', { name: 'Muse 2' })
+    expect(screen.queryByRole('button', { name: /extend loan/i })).not.toBeInTheDocument()
   })
 })
