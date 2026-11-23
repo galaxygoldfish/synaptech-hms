@@ -116,6 +116,16 @@ begin
     if new.extension_agreement_path is null or new.extension_signature_name is null or new.extension_signature_date is null then
       raise exception 'An extension needs a newly signed agreement';
     end if;
+    -- The agreement must be the member's own, for this loan and this item,
+    -- named the way requestExtension names it. Otherwise a member could point
+    -- the request at someone else's agreement and have an admin's approval
+    -- stamp it and attach it to this loan.
+    if new.extension_agreement_path !~ (
+         '^' || auth.uid()::text || '/' || old.loan_request_id::text || '/'
+         || old.equipment_id::text || '-extension-[0-9]+\.pdf$'
+       ) then
+      raise exception 'An extension agreement must be stored with the loan it extends';
+    end if;
     return new;
   end if;
 
