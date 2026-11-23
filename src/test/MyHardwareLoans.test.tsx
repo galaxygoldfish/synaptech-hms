@@ -47,6 +47,8 @@ function item(overrides: Partial<MemberLoanItem> = {}): MemberLoanItem {
     returnedAt: null,
     signedAgreementPath: 'member/req-1/eq-1.pdf',
     cancellationReason: null,
+    extensionStatus: null,
+    extensionReturnDate: null,
     ...overrides,
   }
 }
