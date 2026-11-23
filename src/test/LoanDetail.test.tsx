@@ -80,6 +80,12 @@ function detail(overrides: Partial<AdminLoanRequestDetail> = {}): AdminLoanReque
     cancelledAt: null,
     cancelledByName: null,
     cancellationReason: null,
+    extensionStatus: null,
+    extensionReturnDate: null,
+    extensionPreviousReturnDate: null,
+    extensionRequestedAt: null,
+    extensionAgreementPath: null,
+    extensionReviewNote: null,
     otherItems: [],
     ...overrides,
   }
@@ -240,6 +246,8 @@ describe('HardwareLoans — opening a loan', () => {
         returnRequestedAt: null,
         returnedAt: null,
         cancelledAt: null,
+        extensionStatus: null,
+        extensionReturnDate: null,
         memberName: 'Bob Reyes',
       },
     ])
@@ -266,6 +274,8 @@ describe('HardwareLoans — opening a loan', () => {
         returnRequestedAt: null,
         returnedAt: '2026-09-14T22:15:00Z',
         cancelledAt: null,
+        extensionStatus: null,
+        extensionReturnDate: null,
         memberName: 'Bob Reyes',
       },
     ])
@@ -294,6 +304,8 @@ describe('HardwareLoans — opening a loan', () => {
         returnRequestedAt: null,
         returnedAt: null,
         cancelledAt: null,
+        extensionStatus: null,
+        extensionReturnDate: null,
         memberName: 'Bob Reyes',
       },
       {
@@ -308,6 +320,8 @@ describe('HardwareLoans — opening a loan', () => {
         returnRequestedAt: null,
         returnedAt: null,
         cancelledAt: null,
+        extensionStatus: null,
+        extensionReturnDate: null,
         memberName: 'Priya Raman',
       },
     ])
@@ -344,6 +358,8 @@ describe('HardwareLoans — opening a loan', () => {
         returnRequestedAt: null,
         returnedAt: null,
         cancelledAt: null,
+        extensionStatus: null,
+        extensionReturnDate: null,
         memberName: 'Bob Reyes',
       },
     ])

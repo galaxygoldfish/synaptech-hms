@@ -52,6 +52,8 @@ const requested: AdminLoanRequestItemSummary = {
   returnRequestedAt: null,
   returnedAt: null,
   cancelledAt: null,
+  extensionStatus: null,
+  extensionReturnDate: null,
   memberName: 'Bob Reyes',
 }
 
@@ -68,6 +70,8 @@ const alreadyOut: AdminLoanRequestItemSummary = {
   returnRequestedAt: null,
   returnedAt: null,
   cancelledAt: null,
+  extensionStatus: null,
+  extensionReturnDate: null,
   memberName: 'Cleo Park',
 }
 
@@ -84,6 +88,8 @@ const backOnTheShelf: AdminLoanRequestItemSummary = {
   returnRequestedAt: null,
   returnedAt: '2026-08-30T12:00:00Z',
   cancelledAt: null,
+  extensionStatus: null,
+  extensionReturnDate: null,
   memberName: 'Dara Singh',
 }
 

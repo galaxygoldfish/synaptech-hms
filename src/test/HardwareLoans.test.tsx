@@ -38,6 +38,8 @@ function loan(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     returnRequestedAt: null,
     returnedAt: null,
     cancelledAt: null,
+    extensionStatus: null,
+    extensionReturnDate: null,
     memberName: 'Bob Reyes',
     ...overrides,
   }
