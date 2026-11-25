@@ -113,8 +113,13 @@ describe('approveExtension', () => {
     await approveExtension({ itemId: 'i1', adminName: 'Ada Admin', expectedReturnDate: '2027-03-10' })
 
     expect(stampApprovedAgreement).toHaveBeenCalledWith(
-      expect.objectContaining({ agreementPath: EXTENSION_PATH, managerName: 'Ada Admin' }),
+      expect.objectContaining({ managerName: 'Ada Admin' }),
     )
+    // Named per approval, so two admins racing never overwrite each other's
+    // stamped copy — the loser's upload lands beside the winner's, unused.
+    const { agreementPath, agreementUrl } = vi.mocked(stampApprovedAgreement).mock.calls[0][0]
+    expect(agreementPath).toMatch(/^u1\/r1\/e1-extension-1700000000000-approval-\d+\.pdf$/)
+    expect(agreementUrl).toBe('https://signed')
     const update = queries.find((query) => query.op === 'update')!
     expect(update.values).toEqual({ extension_status: 'approved', signed_agreement_path: STAMPED_PATH })
     expect(update.filters).toEqual(

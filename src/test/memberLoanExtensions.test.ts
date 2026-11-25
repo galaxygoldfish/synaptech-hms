@@ -1,9 +1,17 @@
-import { canExtend, requestExtension, withdrawExtension, type MemberLoanItem } from '../lib/memberLoans'
+import {
+  canExtend,
+  ExtensionUnavailableError,
+  requestExtension,
+  withdrawExtension,
+  type MemberLoanItem,
+} from '../lib/memberLoans'
 
 // Every call the code makes against the mocked client, in order, so a test
 // can say "the upload happened before the update".
 const calls: { op: string; args: unknown[] }[] = []
 let uploadError: unknown = null
+/** What an update's `.select('id')` returns: the rows it matched. */
+let updatedRows: unknown[] = [{ id: 'i1' }]
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -29,8 +37,9 @@ vi.mock('../lib/supabase', () => ({
           calls.push({ op: 'is', args: [column, value] })
           return chain
         },
+        select: () => chain,
         // oxlint-disable-next-line unicorn/no-thenable
-        then: (resolve: (value: unknown) => unknown) => resolve({ data: null, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: updatedRows, error: null }),
       }
       return chain
     },
@@ -39,6 +48,7 @@ vi.mock('../lib/supabase', () => ({
 
 beforeEach(() => {
   calls.length = 0
+  updatedRows = [{ id: 'i1' }]
   uploadError = null
 })
 
@@ -149,6 +159,11 @@ describe('requestExtension', () => {
     expect(calls).toContainEqual({ op: 'is', args: ['returned_at', null] })
   })
 
+  it('says so when the loan changed and nothing was flagged', async () => {
+    updatedRows = []
+    await expect(requestExtension(input)).rejects.toBeInstanceOf(ExtensionUnavailableError)
+  })
+
   it('never flags the item when the upload fails', async () => {
     uploadError = new Error('storage down')
     await expect(requestExtension(input)).rejects.toThrow('storage down')
@@ -162,5 +177,10 @@ describe('withdrawExtension', () => {
     expect(calls).toContainEqual({ op: 'update', args: ['loan_request_items', { extension_status: 'withdrawn' }] })
     expect(calls).toContainEqual({ op: 'eq', args: ['id', 'i1'] })
     expect(calls).toContainEqual({ op: 'eq', args: ['extension_status', 'pending'] })
+  })
+
+  it('says so when there was nothing left to withdraw', async () => {
+    updatedRows = []
+    await expect(withdrawExtension('i1')).rejects.toBeInstanceOf(ExtensionUnavailableError)
   })
 })

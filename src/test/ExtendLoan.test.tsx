@@ -140,6 +140,19 @@ describe('ExtendLoan', () => {
     expect(await screen.findByText('Loan details page')).toBeInTheDocument()
   })
 
+  it('passes on why the database refused the request', async () => {
+    vi.mocked(requestExtension).mockRejectedValue({
+      message: 'Please wait a few minutes before asking for another extension',
+      code: 'P0001',
+    })
+    renderExtend()
+    await userEvent.type(await screen.findByLabelText(/new return date/i), '2027-03-10')
+    await userEvent.type(screen.getByLabelText(/borrower signature/i), 'Ada Lovelace')
+    await userEvent.click(screen.getByRole('button', { name: /request extension/i }))
+
+    expect(await screen.findByText('Please wait a few minutes before asking for another extension.')).toBeInTheDocument()
+  })
+
   it('says so when the request fails', async () => {
     vi.mocked(requestExtension).mockRejectedValue(new Error('nope'))
     renderExtend()

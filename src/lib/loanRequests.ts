@@ -1096,9 +1096,15 @@ export async function approveExtension(input: ApproveExtensionInput): Promise<vo
       throw new Error('This extension has no signed agreement to approve.')
     }
 
+    // The stamped copy is named per approval, not just after the agreement:
+    // two admins approving at once both get this far, and with one shared
+    // name the loser's upload could replace the winner's section 10 after
+    // the database had already recorded the winner. This way the loser's copy
+    // lands beside it, unreferenced.
+    const stampedName = item.extension_agreement_path.replace(/\.pdf$/i, '') + `-approval-${Date.now()}.pdf`
     const stampedPath = await stampApprovedAgreement({
       agreementUrl: await fetchSignedAgreementUrl(item.extension_agreement_path),
-      agreementPath: item.extension_agreement_path,
+      agreementPath: stampedName,
       managerName: input.adminName,
       receivedAt: new Date(),
     })

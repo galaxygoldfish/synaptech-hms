@@ -424,6 +424,35 @@ export async function cancelLoanRequest(loanRequestId: string): Promise<void> {
 const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
 
 /**
+ * The loan moved on while the member was looking at it — returned, or the
+ * extension already decided — so the request or withdrawal matched nothing.
+ * Thrown rather than reporting success for a change that didn't happen.
+ */
+export class ExtensionUnavailableError extends Error {
+  constructor() {
+    super('This loan changed while you were on this page. Go back to see where it stands.')
+    this.name = 'ExtensionUnavailableError'
+  }
+}
+
+// What guard_member_loan_item_update (20261122000000_loan_extensions.sql)
+// raises for a request it refuses on purpose. Written for people, so they're
+// shown as they are rather than collapsed into "please try again" — which
+// would invite exactly the retry the cooldown exists to stop.
+const EXTENSION_REFUSALS = [
+  'Please wait a few minutes before asking for another extension',
+  'That return date cannot be used for an extension',
+]
+
+/** What to tell the member when requesting or withdrawing an extension fails. */
+export function extensionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ExtensionUnavailableError) return error.message
+  const message = (error as { message?: unknown } | null)?.message
+  if (typeof message === 'string' && EXTENSION_REFUSALS.includes(message)) return `${message}.`
+  return fallback
+}
+
+/**
  * Whether the member can ask to extend this loan today: hardware they hold,
  * not on its way back, no extension already waiting, inside the extension
  * window (the last two weeks of the quarter), and not already extended past
@@ -468,7 +497,7 @@ export async function requestExtension(input: RequestExtensionInput): Promise<vo
       .upload(path, input.agreementFile, { contentType: 'application/pdf' })
     if (uploadError) throw uploadError
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('loan_request_items')
       .update({
         extension_status: 'pending',
@@ -479,7 +508,9 @@ export async function requestExtension(input: RequestExtensionInput): Promise<vo
       })
       .eq('id', item.id)
       .is('returned_at', null)
+      .select('id')
     if (error) throw error
+    if (!data || data.length === 0) throw new ExtensionUnavailableError()
   } finally {
     invalidate(CACHE_KEYS.memberLoans)
   }
@@ -488,12 +519,14 @@ export async function requestExtension(input: RequestExtensionInput): Promise<vo
 /** Withdraws an extension nobody has decided on yet. */
 export async function withdrawExtension(itemId: string): Promise<void> {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('loan_request_items')
       .update({ extension_status: 'withdrawn' })
       .eq('id', itemId)
       .eq('extension_status', 'pending')
+      .select('id')
     if (error) throw error
+    if (!data || data.length === 0) throw new ExtensionUnavailableError()
   } finally {
     invalidate(CACHE_KEYS.memberLoans)
   }

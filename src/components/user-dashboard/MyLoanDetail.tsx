@@ -20,6 +20,7 @@ import {
 import {
   canExtend,
   cancelLoanRequest,
+  extensionErrorMessage,
   fetchMemberLoanItem,
   isOutWithMember,
   memberLoanState,
@@ -181,7 +182,7 @@ export default function MyLoanDetail() {
     } catch (withdrawError) {
       // eslint-disable-next-line no-console
       console.error('Failed to withdraw the extension:', withdrawError)
-      setActionError('Could not withdraw your extension request. Please try again.')
+      setActionError(extensionErrorMessage(withdrawError, 'Could not withdraw your extension request. Please try again.'))
     } finally {
       setWithdrawingExtension(false)
     }

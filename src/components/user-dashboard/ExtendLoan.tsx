@@ -4,7 +4,13 @@ import { useAuth } from '../../context/AuthContext'
 import { Header } from './Header'
 import { ProfileModal } from './ProfileModal'
 import { AgreementPreview } from './AgreementPreview'
-import { canExtend, fetchMemberLoanItem, requestExtension, type MemberLoanItem } from '../../lib/memberLoans'
+import {
+  canExtend,
+  extensionErrorMessage,
+  fetchMemberLoanItem,
+  requestExtension,
+  type MemberLoanItem,
+} from '../../lib/memberLoans'
 import { fetchEquipmentByIds } from '../../lib/inventory'
 import { buildLoanAgreementPdf, preloadAgreementPdfLib } from '../../lib/loanAgreementPdf'
 import { EXTENSION_GROUP_NOTICE, extensionWindow, toISODate } from '../../lib/quarters'
@@ -136,7 +142,7 @@ export default function ExtendLoan() {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to request an extension:', error)
-      setSubmitError('Could not submit your extension. Please try again.')
+      setSubmitError(extensionErrorMessage(error, 'Could not submit your extension. Please try again.'))
       setSubmitting(false)
     }
   }
