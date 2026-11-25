@@ -408,6 +408,76 @@ async function resolveEvent(
       ];
     }
 
+    // A loan extension (20261122000000_loan_extensions.sql): the member asked
+    // to keep hardware into the next quarter, or an admin decided. One item
+    // each — extensions are per item, like returns. Nothing on the row is
+    // cleared by a decision, so by the time this runs the requested and the
+    // previous dates are both still there to quote; once approved,
+    // return_date is already the new one.
+    case "loan_item.extension_requested":
+    case "loan_item.extension_approved":
+    case "loan_item.extension_denied": {
+      const item = unwrap(
+        await admin
+          .from("loan_request_items")
+          .select(
+            "loan_request_id, equipment_id, equipment_unit_id, return_date, extension_return_date, extension_previous_return_date, extension_review_note, extension_reviewed_by",
+          )
+          .eq("id", recordId)
+          .maybeSingle(),
+        `${event}: fetching loan_request_items row`,
+      );
+      if (!item) return [];
+
+      const request = unwrap(
+        await admin.from("loan_requests").select("user_id").eq("id", item.loan_request_id).maybeSingle(),
+        `${event}: fetching loan_requests row`,
+      );
+      if (!request) return [];
+
+      const [profileResult, equipmentResult, unitResult] = await Promise.all([
+        admin.from("profiles").select("uw_email, first_name, last_name").eq("id", request.user_id).maybeSingle(),
+        admin.from("equipment").select("name").eq("id", item.equipment_id).maybeSingle(),
+        item.equipment_unit_id
+          ? admin.from("equipment_units").select("serial_number").eq("id", item.equipment_unit_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      const profile = unwrap(profileResult, `${event}: fetching profile`);
+      const equipment = unwrap(equipmentResult, `${event}: fetching equipment`);
+      const unit = unwrap(unitResult, `${event}: fetching equipment_units row`);
+      if (!profile || !equipment) return [];
+
+      const fields = {
+        user_name: `${profile.first_name} ${profile.last_name}`,
+        hardware_name: equipment.name,
+        hardware_serial: unit?.serial_number ?? "",
+        previous_return_date: item.extension_previous_return_date ? formatDate(item.extension_previous_return_date) : "",
+        // Requested: the date being asked for. Approved: the new due date
+        // (return_date has already moved). Denied: the unchanged due date.
+        return_date:
+          event === "loan_item.extension_requested"
+            ? (item.extension_return_date ? formatDate(item.extension_return_date) : "")
+            : (item.return_date ? formatDate(item.return_date) : ""),
+        denial_reason: item.extension_review_note ?? "",
+        admin_name: await fetchActorName(admin, item.extension_reviewed_by),
+      };
+
+      if (event === "loan_item.extension_requested") {
+        const adminDispatch = await dispatchToAdmins(admin, "hardware-extension-requested", fields);
+        return adminDispatch ? [adminDispatch] : [];
+      }
+
+      const templateKey = event === "loan_item.extension_approved" ? "loan-extension-approved" : "loan-extension-denied";
+      return [
+        {
+          templateKey,
+          to: profile.uw_email,
+          fields,
+          extraCc: await resolveExtraCc(admin, templateKey),
+        },
+      ];
+    }
+
     case "equipment.created":
     case "equipment.updated": {
       const equipment = unwrap(

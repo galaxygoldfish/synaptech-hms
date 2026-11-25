@@ -33,6 +33,8 @@ function loanGroup(returnDate: string): MemberLoanGroup {
     returnedAt: null,
     signedAgreementPath: null,
     cancellationReason: null,
+    extensionStatus: null,
+    extensionReturnDate: null,
   }
   return { loanRequestId: 'req-1', requestedAt: primary.requestedAt, primary, addOns: [] }
 }

@@ -46,6 +46,8 @@ import AdminCheckoutPickLoanPage from './pages/AdminCheckoutPickLoanPage'
 // code already here and the Suspense fallback never shows.
 const memberChunks = {
   checkoutSignAgreement: () => import('./pages/CheckoutSignAgreementPage'),
+  // Builds an agreement PDF, like the checkout signing step.
+  extendLoan: () => import('./pages/ExtendLoanPage'),
 }
 const adminChunks = {
   handOff: () => import('./pages/AdminHandOffPage'),
@@ -62,6 +64,7 @@ const adminChunks = {
 }
 
 const CheckoutSignAgreementPage = lazy(memberChunks.checkoutSignAgreement)
+const ExtendLoanPage = lazy(memberChunks.extendLoan)
 const AdminHandOffPage = lazy(adminChunks.handOff)
 const AdminAuditLogPage = lazy(adminChunks.auditLog)
 const AdminInventoryAuditPage = lazy(adminChunks.inventoryAudit)
@@ -175,6 +178,7 @@ export const ROUTE_TITLES: [pattern: string, title: string][] = [
   ['/home/loans', 'My hardware loans'],
   ['/home/loans/:id', 'Loan details'],
   ['/home/loans/:id/return', 'Request a return'],
+  ['/home/loans/:id/extend', 'Extend a loan'],
   ['/home/checkout', 'Check out: select hardware'],
   ['/home/checkout/confirm', 'Check out: confirm hardware'],
   ['/home/checkout/return-date', 'Check out: return date'],
@@ -241,6 +245,7 @@ export function AppRouter() {
             <Route path="/home/loans" element={<PrivateRoute><MyHardwareLoansPage /></PrivateRoute>} />
             <Route path="/home/loans/:id" element={<PrivateRoute><MyLoanDetailPage /></PrivateRoute>} />
             <Route path="/home/loans/:id/return" element={<PrivateRoute><ReturnAvailabilityPage /></PrivateRoute>} />
+            <Route path="/home/loans/:id/extend" element={<PrivateRoute><ExtendLoanPage /></PrivateRoute>} />
             <Route path="/home/checkout" element={<PrivateRoute><CheckoutSelectHardwarePage /></PrivateRoute>} />
           <Route path="/home/checkout/confirm" element={<PrivateRoute><CheckoutConfirmHardwarePage /></PrivateRoute>} />
           <Route path="/home/checkout/return-date" element={<PrivateRoute><CheckoutReturnDatePage /></PrivateRoute>} />

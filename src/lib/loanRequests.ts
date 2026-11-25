@@ -4,6 +4,7 @@ import { isApprovedAgreementPath, restampAgreementSerial, stampApprovedAgreement
 import { CACHE_KEYS, invalidate, peekValue, refresh, DISPLAY_REUSE_MS } from './queryCache'
 import { normalizeSerialNumber } from './serialNumber'
 import type { LoanRequest, LoanRequestItemRole, LoanRequestStatus } from '../types'
+import type { ExtensionStatus } from './memberLoans'
 
 const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
 
@@ -266,6 +267,15 @@ export interface AdminLoanRequestDetail {
   cancelledByName: string | null
   /** Only an admin's cancellation carries one; see cancelLoanRequestAsAdmin. */
   cancellationReason: string | null
+  /** The latest extension on this item — see 20261122000000_loan_extensions.sql. */
+  extensionStatus: ExtensionStatus | null
+  extensionReturnDate: string | null
+  /** The due date the extension would replace. */
+  extensionPreviousReturnDate: string | null
+  extensionRequestedAt: string | null
+  /** The agreement re-signed for the extension, not yet stamped. */
+  extensionAgreementPath: string | null
+  extensionReviewNote: string | null
   otherItems: AdminLoanRequestOtherItem[]
 }
 
@@ -279,7 +289,7 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
   const { data: item, error: itemError } = await supabase
     .from('loan_request_items')
     .select(
-      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, signature_name, signature_date, return_requested_at, returned_at, returned_by',
+      'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, signed_agreement_path, signature_name, signature_date, return_requested_at, returned_at, returned_by, extension_status, extension_return_date, extension_previous_return_date, extension_requested_at, extension_agreement_path, extension_review_note',
     )
     .eq('id', itemId)
     .single()
@@ -411,6 +421,12 @@ export async function fetchLoanRequestItemDetail(itemId: string): Promise<AdminL
     cancelledAt: request.cancelled_at,
     cancelledByName,
     cancellationReason: request.cancellation_reason,
+    extensionStatus: (item.extension_status ?? null) as ExtensionStatus | null,
+    extensionReturnDate: item.extension_return_date ?? null,
+    extensionPreviousReturnDate: item.extension_previous_return_date ?? null,
+    extensionRequestedAt: item.extension_requested_at ?? null,
+    extensionAgreementPath: item.extension_agreement_path ?? null,
+    extensionReviewNote: item.extension_review_note ?? null,
     otherItems,
   }
 }
@@ -470,6 +486,9 @@ export interface AdminLoanRequestItemSummary {
   returnedAt: string | null
   /** Set once the request is cancelled, by the member or an admin. */
   cancelledAt: string | null
+  /** See hasPendingExtension. */
+  extensionStatus: ExtensionStatus | null
+  extensionReturnDate: string | null
   memberName: string
 }
 
@@ -849,7 +868,7 @@ async function loadAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]>
     supabase.from('loan_requests').select('id, user_id, status, requested_at, cancelled_at'),
     supabase
       .from('loan_request_items')
-      .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at, return_requested_at'),
+      .select('id, loan_request_id, equipment_id, equipment_unit_id, return_date, returned_at, return_requested_at, extension_status, extension_return_date'),
     supabase.from('equipment').select('id, name, image_url'),
     supabase.from('equipment_units').select('id, serial_number'),
     supabase.from('profiles').select('id, first_name, last_name'),
@@ -887,6 +906,8 @@ async function loadAllLoanRequestItems(): Promise<AdminLoanRequestItemSummary[]>
         returnRequestedAt: item.return_requested_at,
         returnedAt: item.returned_at,
         cancelledAt: request.cancelled_at,
+        extensionStatus: (item.extension_status ?? null) as ExtensionStatus | null,
+        extensionReturnDate: item.extension_return_date ?? null,
         memberName: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown member',
       },
     ]
@@ -1016,4 +1037,105 @@ export function matchReturnSerial(
   if (requested) return { outcome: 'not_handed_over', serial, loan: requested }
 
   return { outcome: 'no_match', serial, loan: null }
+}
+
+// ── Extensions ───────────────────────────────────────────────────────────
+
+/**
+ * A member is waiting on an extension decision. A flag beside the loan's
+ * bucket rather than a bucket of its own: the loan is still out (active or
+ * overdue) for every screen that asks that — the return flow, the scan
+ * matching, the counts — and only the Requests filter and the detail screen
+ * need to know there is a decision to make. Returned hardware wins: an
+ * extension left pending when it came back is moot.
+ */
+export function hasPendingExtension(
+  loan: Pick<AdminLoanRequestItemSummary, 'extensionStatus' | 'returnedAt'>,
+): boolean {
+  return loan.extensionStatus === 'pending' && !loan.returnedAt
+}
+
+const EXTENSION_ALREADY_DECIDED =
+  'This extension was already reviewed, or the hardware has been returned. Reload to see where it stands.'
+
+export interface ApproveExtensionInput {
+  itemId: string
+  /** Printed into section 10 of the new agreement. */
+  adminName: string
+  /** The date the admin was shown; approval is refused if it has changed. */
+  expectedReturnDate: string
+}
+
+/**
+ * Approves an extension: fills in section 10 of the agreement the member
+ * re-signed for it, then points the item at that stamped copy. The database
+ * (stamp_loan_item_extension) moves the due date, takes over the new
+ * signature and resets the reminder emails in the same update. No scan — the
+ * hardware hasn't moved.
+ *
+ * Compare-and-set on the status and the requested date, so a second admin,
+ * or a request that changed under the screen, gets a readable conflict
+ * rather than a second stamp or a date nobody looked at.
+ */
+export async function approveExtension(input: ApproveExtensionInput): Promise<void> {
+  try {
+    const { data: item, error } = await supabase
+      .from('loan_request_items')
+      .select('extension_status, extension_agreement_path, extension_return_date, returned_at')
+      .eq('id', input.itemId)
+      .single()
+    if (error) throw error
+    if (
+      item.extension_status !== 'pending' ||
+      item.returned_at ||
+      item.extension_return_date !== input.expectedReturnDate
+    ) {
+      throw new LoanConflictError(EXTENSION_ALREADY_DECIDED)
+    }
+    if (!item.extension_agreement_path) {
+      throw new Error('This extension has no signed agreement to approve.')
+    }
+
+    // The stamped copy is named per approval, not just after the agreement:
+    // two admins approving at once both get this far, and with one shared
+    // name the loser's upload could replace the winner's section 10 after
+    // the database had already recorded the winner. This way the loser's copy
+    // lands beside it, unreferenced.
+    const stampedName = item.extension_agreement_path.replace(/\.pdf$/i, '') + `-approval-${Date.now()}.pdf`
+    const stampedPath = await stampApprovedAgreement({
+      agreementUrl: await fetchSignedAgreementUrl(item.extension_agreement_path),
+      agreementPath: stampedName,
+      managerName: input.adminName,
+      receivedAt: new Date(),
+    })
+
+    const { data: approved, error: updateError } = await supabase
+      .from('loan_request_items')
+      .update({ extension_status: 'approved', signed_agreement_path: stampedPath })
+      .eq('id', input.itemId)
+      .eq('extension_status', 'pending')
+      .eq('extension_return_date', input.expectedReturnDate)
+      .is('returned_at', null)
+      .select('id')
+    if (updateError) throw updateError
+    if (!approved || approved.length === 0) throw new LoanConflictError(EXTENSION_ALREADY_DECIDED)
+  } finally {
+    invalidate(CACHE_KEYS.adminLoans)
+  }
+}
+
+/** Turns an extension down. The reason is emailed to the member. */
+export async function denyExtension(itemId: string, reason: string): Promise<void> {
+  try {
+    const { data: denied, error } = await supabase
+      .from('loan_request_items')
+      .update({ extension_status: 'denied', extension_review_note: reason })
+      .eq('id', itemId)
+      .eq('extension_status', 'pending')
+      .select('id')
+    if (error) throw error
+    if (!denied || denied.length === 0) throw new LoanConflictError(EXTENSION_ALREADY_DECIDED)
+  } finally {
+    invalidate(CACHE_KEYS.adminLoans)
+  }
 }

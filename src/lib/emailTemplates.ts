@@ -32,6 +32,9 @@ export const EMAIL_FIELD_LABELS: Record<string, string> = {
   new_role: 'NEW ROLE',
   // What the admin typed when cancelling a checkout request.
   cancellation_reason: 'REASON',
+  // A loan extension: the due date being replaced, and why one was denied.
+  previous_return_date: 'PREVIOUS RETURN DATE',
+  denial_reason: 'REASON',
   // Unlike every field above, these aren't tied to a specific business
   // event — they're the date/time the email itself went out, computed at
   // send time (see sendTemplatedEmail.ts) rather than pulled from a row.
@@ -109,6 +112,16 @@ export const EMAIL_TEMPLATE_DESCRIPTIONS: Record<string, EmailTemplateDescriptio
       'When an admin cancels a checkout request from the loan details screen. Not sent when members cancel their own.',
     recipient: 'The member who made the request.',
   },
+  'loan-extension-approved': {
+    blurb: 'Tells a member their loan extension was approved, with the old and new return dates.',
+    timing: 'When an admin approves an extension from the loan details screen.',
+    recipient: 'The member holding the item.',
+  },
+  'loan-extension-denied': {
+    blurb: 'Tells a member their loan extension was not approved, and passes on the reason given.',
+    timing: 'When an admin denies an extension from the loan details screen.',
+    recipient: 'The member holding the item.',
+  },
   'return-reminder-one-week': {
     blurb: 'First nudge that a loan is coming to an end, while there is still time to plan a return.',
     timing: 'On the daily reminder run, exactly 7 days before an item is due. Sent once per item.',
@@ -163,6 +176,11 @@ export const EMAIL_TEMPLATE_DESCRIPTIONS: Record<string, EmailTemplateDescriptio
   'hardware-handed-off': {
     blurb: 'Records that hardware left the lab and who now holds it.',
     timing: 'When an admin approves a loan request, which is the point the hardware is handed over.',
+    recipient: { name: 'Synaptech', email: EMAIL_ARCHIVE_CC_ADDRESS },
+  },
+  'hardware-extension-requested': {
+    blurb: 'Alerts the admin team that a member wants to keep an item into the next quarter.',
+    timing: 'When a member requests a loan extension, in the last two weeks of a quarter.',
     recipient: { name: 'Synaptech', email: EMAIL_ARCHIVE_CC_ADDRESS },
   },
   'hardware-return-requested': {

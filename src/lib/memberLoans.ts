@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { CACHE_KEYS, invalidate, peekValue, refresh } from './queryCache'
 import type { LoanRequestItemRole, LoanRequestStatus } from '../types'
+import { extensionWindow } from './quarters'
 
 /**
  * The member's own view of their loans — "My hardware loans" and the detail
@@ -67,7 +68,14 @@ export interface MemberLoanItem {
   /** What the admin wrote when they cancelled the request. Null when the
       member cancelled it themselves, or it wasn't cancelled. */
   cancellationReason: string | null
+  /** The latest extension's state, or null if none was ever asked for. */
+  extensionStatus: ExtensionStatus | null
+  /** The date that extension asked for (the new due date once approved). */
+  extensionReturnDate: string | null
 }
+
+/** loan_request_items.extension_status — see 20261122000000_loan_extensions.sql. */
+export type ExtensionStatus = 'pending' | 'approved' | 'denied' | 'withdrawn'
 
 /**
  * One checkout submission and everything in it — the primary item first, then
@@ -163,6 +171,8 @@ interface ItemRow {
   returned_at: string | null
   return_requested_at: string | null
   signed_agreement_path: string | null
+  extension_status: string | null
+  extension_return_date: string | null
 }
 
 interface RequestRow {
@@ -234,6 +244,8 @@ function zipItems(
         returnedAt: item.returned_at,
         signedAgreementPath: item.signed_agreement_path,
         cancellationReason: request.cancellation_reason,
+        extensionStatus: (item.extension_status ?? null) as ExtensionStatus | null,
+        extensionReturnDate: item.extension_return_date ?? null,
       },
     ]
   })
@@ -242,7 +254,7 @@ function zipItems(
 const REQUEST_COLUMNS = 'id, status, requested_at, reviewed_at, cancellation_reason'
 
 const ITEM_COLUMNS =
-  'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, returned_at, return_requested_at, signed_agreement_path'
+  'id, loan_request_id, equipment_id, equipment_unit_id, item_role, return_date, returned_at, return_requested_at, signed_agreement_path, extension_status, extension_return_date'
 
 /**
  * Everything a member has ever checked out, newest request first, grouped by
@@ -407,4 +419,115 @@ export async function cancelLoanRequest(loanRequestId: string): Promise<void> {
   invalidate(CACHE_KEYS.memberLoans)
   invalidate(CACHE_KEYS.equipmentAvailability)
   if (error) throw error
+}
+
+const LOAN_AGREEMENTS_BUCKET = 'loan-agreements'
+
+/**
+ * The loan moved on while the member was looking at it — returned, or the
+ * extension already decided — so the request or withdrawal matched nothing.
+ * Thrown rather than reporting success for a change that didn't happen.
+ */
+export class ExtensionUnavailableError extends Error {
+  constructor() {
+    super('This loan changed while you were on this page. Go back to see where it stands.')
+    this.name = 'ExtensionUnavailableError'
+  }
+}
+
+// What guard_member_loan_item_update (20261122000000_loan_extensions.sql)
+// raises for a request it refuses on purpose. Written for people, so they're
+// shown as they are rather than collapsed into "please try again" — which
+// would invite exactly the retry the cooldown exists to stop.
+const EXTENSION_REFUSALS = [
+  'Please wait a few minutes before asking for another extension',
+  'That return date cannot be used for an extension',
+]
+
+/** What to tell the member when requesting or withdrawing an extension fails. */
+export function extensionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ExtensionUnavailableError) return error.message
+  const message = (error as { message?: unknown } | null)?.message
+  if (typeof message === 'string' && EXTENSION_REFUSALS.includes(message)) return `${message}.`
+  return fallback
+}
+
+/**
+ * Whether the member can ask to extend this loan today: hardware they hold,
+ * not on its way back, no extension already waiting, inside the extension
+ * window (the last two weeks of the quarter), and not already extended past
+ * this quarter's end — one extension per window. Overdue loans qualify; the
+ * point is to stop the hardware coming back just to go out again.
+ */
+export function canExtend(item: MemberLoanItem, now: Date = new Date()): boolean {
+  if (item.isConsumable || item.requestStatus !== 'approved') return false
+  if (item.returnedAt || item.returnRequestedAt || !item.returnDate) return false
+  if (item.extensionStatus === 'pending') return false
+  const window = extensionWindow(now)
+  if (!window?.isOpen) return false
+  return item.returnDate <= window.closesOn
+}
+
+export interface RequestExtensionInput {
+  item: MemberLoanItem
+  userId: string
+  /** `YYYY-MM-DD`, within the window's maxDate. */
+  newReturnDate: string
+  /** The agreement re-signed with the new date (buildLoanAgreementPdf). */
+  agreementFile: File
+  signatureName: string
+  /** `YYYY-MM-DD`. */
+  signatureDate: string
+}
+
+/**
+ * Asks for an extension: stores the newly signed agreement as an object of
+ * its own — named for the moment of asking, so no earlier agreement is ever
+ * overwritten — then flags the item. Upload first, so an admin is never shown
+ * a request whose agreement is missing; a failure the other way round would
+ * leave an unused PDF, which is harmless. Who and when, and the date being
+ * replaced, are stamped by the database.
+ */
+export async function requestExtension(input: RequestExtensionInput): Promise<void> {
+  try {
+    const { item } = input
+    const path = `${input.userId}/${item.loanRequestId}/${item.equipmentId}-extension-${Date.now()}.pdf`
+    const { error: uploadError } = await supabase.storage
+      .from(LOAN_AGREEMENTS_BUCKET)
+      .upload(path, input.agreementFile, { contentType: 'application/pdf' })
+    if (uploadError) throw uploadError
+
+    const { data, error } = await supabase
+      .from('loan_request_items')
+      .update({
+        extension_status: 'pending',
+        extension_return_date: input.newReturnDate,
+        extension_agreement_path: path,
+        extension_signature_name: input.signatureName,
+        extension_signature_date: input.signatureDate,
+      })
+      .eq('id', item.id)
+      .is('returned_at', null)
+      .select('id')
+    if (error) throw error
+    if (!data || data.length === 0) throw new ExtensionUnavailableError()
+  } finally {
+    invalidate(CACHE_KEYS.memberLoans)
+  }
+}
+
+/** Withdraws an extension nobody has decided on yet. */
+export async function withdrawExtension(itemId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('loan_request_items')
+      .update({ extension_status: 'withdrawn' })
+      .eq('id', itemId)
+      .eq('extension_status', 'pending')
+      .select('id')
+    if (error) throw error
+    if (!data || data.length === 0) throw new ExtensionUnavailableError()
+  } finally {
+    invalidate(CACHE_KEYS.memberLoans)
+  }
 }

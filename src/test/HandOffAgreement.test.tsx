@@ -80,6 +80,12 @@ const loan: AdminLoanRequestDetail = {
   cancelledAt: null,
   cancelledByName: null,
   cancellationReason: null,
+  extensionStatus: null,
+  extensionReturnDate: null,
+  extensionPreviousReturnDate: null,
+  extensionRequestedAt: null,
+  extensionAgreementPath: null,
+  extensionReviewNote: null,
   otherItems: [],
 }
 

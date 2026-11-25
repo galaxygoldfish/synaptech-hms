@@ -38,6 +38,8 @@ function loan(overrides: Partial<AdminLoanRequestItemSummary> = {}): AdminLoanRe
     returnRequestedAt: null,
     returnedAt: null,
     cancelledAt: null,
+    extensionStatus: null,
+    extensionReturnDate: null,
     memberName: 'Bob Reyes',
     ...overrides,
   }
@@ -120,6 +122,18 @@ describe('CheckoutPickLoan', () => {
     expect(screen.queryByText('Jetson Nano')).not.toBeInTheDocument()
     expect(screen.queryByText('Oculus Quest 2')).not.toBeInTheDocument()
     expect(screen.queryByText('OpenBCI Mark IV')).not.toBeInTheDocument()
+  })
+
+  // An extension is a request too, but there's nothing to hand over for it.
+  it('leaves out loans waiting on an extension', async () => {
+    vi.mocked(fetchAllLoanRequestItems).mockResolvedValue([
+      waiting,
+      { ...out, extensionStatus: 'pending', extensionReturnDate: '2027-03-10' },
+    ])
+    renderPicker()
+
+    expect(await screen.findByText('Muse 2')).toBeInTheDocument()
+    expect(screen.queryByText('Jetson Nano')).not.toBeInTheDocument()
   })
 
   it('is a plain list — nothing to search or filter before picking', async () => {
